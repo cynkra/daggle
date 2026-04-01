@@ -1,0 +1,11 @@
+name: cycle-dag
+steps:
+  - id: a
+    command: echo a
+    depends: [c]
+  - id: b
+    command: echo b
+    depends: [a]
+  - id: c
+    command: echo c
+    depends: [b]

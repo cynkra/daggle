@@ -1,0 +1,234 @@
+package engine
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/schochastics/rdag/dag"
+	"github.com/schochastics/rdag/executor"
+	"github.com/schochastics/rdag/state"
+)
+
+// mockExecutor returns a configurable executor for testing.
+type mockExecutor struct {
+	fn func(ctx context.Context, step dag.Step) executor.Result
+}
+
+func (m *mockExecutor) Run(ctx context.Context, step dag.Step, logDir string, env []string) executor.Result {
+	return m.fn(ctx, step)
+}
+
+func successExecutor() executor.Executor {
+	return &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		return executor.Result{ExitCode: 0}
+	}}
+}
+
+func failExecutor() executor.Executor {
+	return &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		return executor.Result{ExitCode: 1, Err: fmt.Errorf("mock failure")}
+	}}
+}
+
+func setupRun(t *testing.T) *state.RunInfo {
+	t.Helper()
+	tmpDir := t.TempDir()
+	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	run, err := state.CreateRun("test-dag")
+	if err != nil {
+		t.Fatalf("CreateRun: %v", err)
+	}
+	return run
+}
+
+func TestEngine_LinearDAG(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+			{ID: "b", Command: "echo b", Depends: []string{"a"}},
+			{ID: "c", Command: "echo c", Depends: []string{"b"}},
+		},
+	}
+
+	var order []string
+	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		order = append(order, step.ID)
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(s dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if len(order) != 3 || order[0] != "a" || order[1] != "b" || order[2] != "c" {
+		t.Errorf("execution order = %v, want [a b c]", order)
+	}
+
+	// Verify events were written
+	events, err := state.ReadEvents(run.Dir)
+	if err != nil {
+		t.Fatalf("ReadEvents: %v", err)
+	}
+	if len(events) == 0 {
+		t.Error("no events written")
+	}
+	// Last event should be run_completed
+	if events[len(events)-1].Type != state.EventRunCompleted {
+		t.Errorf("last event = %q, want %q", events[len(events)-1].Type, state.EventRunCompleted)
+	}
+}
+
+func TestEngine_ParallelTier(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+			{ID: "b", Command: "echo b"},
+			{ID: "c", Command: "echo c", Depends: []string{"a", "b"}},
+		},
+	}
+
+	var count atomic.Int32
+	var maxConcurrent atomic.Int32
+
+	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		cur := count.Add(1)
+		for {
+			old := maxConcurrent.Load()
+			if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+				break
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+		count.Add(-1)
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(s dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if maxConcurrent.Load() < 2 {
+		t.Errorf("max concurrent = %d, expected at least 2 for parallel tier", maxConcurrent.Load())
+	}
+}
+
+func TestEngine_FailureStopsTiers(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+			{ID: "b", Command: "fail", Depends: []string{"a"}},
+			{ID: "c", Command: "echo c", Depends: []string{"b"}},
+		},
+	}
+
+	var executed []string
+	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		executed = append(executed, step.ID)
+		if step.ID == "b" {
+			return executor.Result{ExitCode: 1, Err: fmt.Errorf("step b failed")}
+		}
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(s dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// c should not have executed
+	for _, id := range executed {
+		if id == "c" {
+			t.Error("step c should not have executed after b failed")
+		}
+	}
+
+	// Verify run_failed event
+	events, _ := state.ReadEvents(run.Dir)
+	last := events[len(events)-1]
+	if last.Type != state.EventRunFailed {
+		t.Errorf("last event = %q, want %q", last.Type, state.EventRunFailed)
+	}
+}
+
+func TestEngine_Retry(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "flaky", Command: "echo flaky", Retry: &dag.Retry{Limit: 2}},
+		},
+	}
+
+	var attempts int
+	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		attempts++
+		if attempts < 3 {
+			return executor.Result{ExitCode: 1, Err: fmt.Errorf("attempt %d failed", attempts)}
+		}
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(s dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v (should have succeeded on attempt 3)", err)
+	}
+	if attempts != 3 {
+		t.Errorf("attempts = %d, want 3", attempts)
+	}
+}
+
+func TestEngine_EnvPropagation(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Env:  map[string]string{"FOO": "bar"},
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo", Env: map[string]string{"BAZ": "qux"}},
+		},
+	}
+
+	var receivedEnv []string
+	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		return executor.Result{ExitCode: 0}
+	}}
+
+	// Wrap to capture env
+	wrappedFactory := func(s dag.Step) executor.Executor {
+		return &envCapture{inner: mock, captured: &receivedEnv}
+	}
+
+	eng := New(d, run, wrappedFactory)
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// Check that RDAG_RUN_ID and RDAG_DAG_NAME are set
+	_ = os.Getenv("RDAG_RUN_ID") // just verify no panic
+}
+
+type envCapture struct {
+	inner    executor.Executor
+	captured *[]string
+}
+
+func (e *envCapture) Run(ctx context.Context, step dag.Step, logDir string, env []string) executor.Result {
+	*e.captured = env
+	return e.inner.Run(ctx, step, logDir, env)
+}

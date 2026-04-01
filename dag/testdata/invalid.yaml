@@ -1,0 +1,12 @@
+name: ""
+steps:
+  - id: no-type
+  - id: multi-type
+    script: foo.R
+    command: echo hi
+  - id: bad-timeout
+    command: echo hi
+    timeout: "invalid"
+  - id: bad-dep
+    command: echo hi
+    depends: [nonexistent]

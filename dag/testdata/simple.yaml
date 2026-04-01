@@ -1,0 +1,21 @@
+name: simple-dag
+env:
+  OUTPUT_DIR: /tmp/output
+params:
+  - name: department
+    default: sales
+steps:
+  - id: extract
+    command: echo "extracting data"
+    timeout: 5m
+    retry:
+      limit: 2
+  - id: validate
+    r_expr: |
+      cat("validating\n")
+      stopifnot(TRUE)
+    depends: [extract]
+  - id: report
+    script: reports/generate.R
+    args: ["--dept", "{{ .Params.department }}"]
+    depends: [validate]
