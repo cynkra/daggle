@@ -3,10 +3,25 @@ package dag
 import "time"
 
 type DAG struct {
-	Name   string            `yaml:"name"`
-	Env    map[string]string `yaml:"env,omitempty"`
-	Params []Param           `yaml:"params,omitempty"`
-	Steps  []Step            `yaml:"steps"`
+	Name    string            `yaml:"name"`
+	Env     map[string]string `yaml:"env,omitempty"`
+	Params  []Param           `yaml:"params,omitempty"`
+	Steps   []Step            `yaml:"steps"`
+	Workdir string            `yaml:"workdir,omitempty"`
+
+	// SourceDir is the directory containing the DAG YAML file.
+	// Set by ParseFile, not from YAML. Used as default working directory.
+	SourceDir string `yaml:"-"`
+
+	// Hooks
+	OnSuccess *Hook `yaml:"on_success,omitempty"`
+	OnFailure *Hook `yaml:"on_failure,omitempty"`
+	OnExit    *Hook `yaml:"on_exit,omitempty"`
+}
+
+type Hook struct {
+	RExpr   string `yaml:"r_expr,omitempty"`
+	Command string `yaml:"command,omitempty"`
 }
 
 type Param struct {
@@ -24,10 +39,30 @@ type Step struct {
 	Timeout string            `yaml:"timeout,omitempty"`
 	Retry   *Retry            `yaml:"retry,omitempty"`
 	Env     map[string]string `yaml:"env,omitempty"`
+	Workdir string            `yaml:"workdir,omitempty"`
+
+	// Step-level hooks
+	OnSuccess *Hook `yaml:"on_success,omitempty"`
+	OnFailure *Hook `yaml:"on_failure,omitempty"`
 }
 
 type Retry struct {
 	Limit int `yaml:"limit"`
+}
+
+// ResolveWorkdir returns the effective working directory for a step.
+// Precedence: step workdir > DAG workdir > DAG source directory.
+func (d *DAG) ResolveWorkdir(s Step) string {
+	if s.Workdir != "" {
+		return s.Workdir
+	}
+	if d.Workdir != "" {
+		return d.Workdir
+	}
+	if d.SourceDir != "" {
+		return d.SourceDir
+	}
+	return ""
 }
 
 // StepType returns the type of the step based on which field is set.

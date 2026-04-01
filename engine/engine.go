@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,6 +26,11 @@ type Engine struct {
 	events  *state.EventWriter
 	runInfo *state.RunInfo
 	logger  *slog.Logger
+
+	// outputs collects ::rdag-output:: values from completed steps.
+	// Keys are namespaced: RDAG_OUTPUT_<STEP_ID>_<KEY>
+	mu      sync.Mutex
+	outputs map[string]string
 }
 
 // New creates a new Engine.
@@ -32,6 +41,7 @@ func New(d *dag.DAG, runInfo *state.RunInfo, execFn ExecutorFactory) *Engine {
 		events:  state.NewEventWriter(runInfo.Dir),
 		runInfo: runInfo,
 		logger:  slog.Default(),
+		outputs: make(map[string]string),
 	}
 }
 
@@ -50,6 +60,7 @@ func (e *Engine) Run(ctx context.Context) error {
 	// Build environment: DAG-level env + rdag metadata
 	env := buildEnv(e.dag, e.runInfo)
 
+	var runErr error
 	for tierIdx, tier := range tiers {
 		e.logger.Info("executing tier", "tier", tierIdx, "steps", stepIDs(tier))
 
@@ -59,13 +70,20 @@ func (e *Engine) Run(ctx context.Context) error {
 				Error: err.Error(),
 			})
 			e.logger.Error("run failed", "dag", e.dag.Name, "error", err)
-			return err
+			runErr = err
+			break
 		}
 	}
 
-	e.events.Write(state.Event{Type: state.EventRunCompleted})
-	e.logger.Info("run completed", "dag", e.dag.Name, "run_id", e.runInfo.ID)
-	return nil
+	if runErr == nil {
+		e.events.Write(state.Event{Type: state.EventRunCompleted})
+		e.logger.Info("run completed", "dag", e.dag.Name, "run_id", e.runInfo.ID)
+	}
+
+	// Run lifecycle hooks
+	e.runHooks(ctx, runErr)
+
+	return runErr
 }
 
 func (e *Engine) runTier(ctx context.Context, steps []dag.Step, env []string) error {
@@ -92,16 +110,25 @@ func (e *Engine) runTier(ctx context.Context, steps []dag.Step, env []string) er
 }
 
 func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error {
-	exec := e.execFn(step)
-	if exec == nil {
+	ex := e.execFn(step)
+	if ex == nil {
 		return fmt.Errorf("no executor for step %q", step.ID)
 	}
 
-	// Merge step-level env
-	stepEnv := env
+	// Resolve working directory
+	workdir := e.dag.ResolveWorkdir(step)
+
+	// Merge step-level env + accumulated outputs from prior steps
+	stepEnv := make([]string, len(env))
+	copy(stepEnv, env)
 	for k, v := range step.Env {
 		stepEnv = append(stepEnv, k+"="+v)
 	}
+	e.mu.Lock()
+	for k, v := range e.outputs {
+		stepEnv = append(stepEnv, k+"="+v)
+	}
+	e.mu.Unlock()
 
 	// Apply step-level timeout
 	stepCtx := ctx
@@ -122,7 +149,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		})
 		e.logger.Info("step started", "step", step.ID, "attempt", attempt)
 
-		lastResult = exec.Run(stepCtx, step, e.runInfo.Dir, stepEnv)
+		lastResult = ex.Run(stepCtx, step, e.runInfo.Dir, workdir, stepEnv)
 
 		if lastResult.Err == nil {
 			e.events.Write(state.Event{
@@ -133,6 +160,15 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 				Attempt:  attempt,
 			})
 			e.logger.Info("step completed", "step", step.ID, "duration", lastResult.Duration)
+
+			// Collect outputs, namespaced by step ID
+			e.collectOutputs(step.ID, lastResult.Outputs)
+
+			// Run step-level on_success hook
+			if step.OnSuccess != nil {
+				e.runHook(ctx, step.OnSuccess, "step "+step.ID+" on_success")
+			}
+
 			return nil
 		}
 
@@ -144,7 +180,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 				Attempt: attempt,
 			})
 			e.logger.Warn("step failed, retrying", "step", step.ID, "attempt", attempt, "error", lastResult.Err)
-			time.Sleep(time.Duration(attempt) * time.Second) // simple linear backoff
+			time.Sleep(time.Duration(attempt) * time.Second)
 		}
 	}
 
@@ -157,7 +193,87 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		Attempt:  maxAttempts,
 	})
 	e.logger.Error("step failed", "step", step.ID, "error", lastResult.Err)
+
+	// Run step-level on_failure hook
+	if step.OnFailure != nil {
+		e.runHook(ctx, step.OnFailure, "step "+step.ID+" on_failure")
+	}
+
 	return lastResult.Err
+}
+
+func (e *Engine) collectOutputs(stepID string, outputs map[string]string) {
+	if len(outputs) == 0 {
+		return
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	prefix := "RDAG_OUTPUT_" + strings.ToUpper(strings.ReplaceAll(stepID, "-", "_")) + "_"
+	for k, v := range outputs {
+		key := prefix + strings.ToUpper(k)
+		e.outputs[key] = v
+		e.logger.Info("captured output", "step", stepID, "key", k, "value", v)
+	}
+}
+
+func (e *Engine) runHooks(ctx context.Context, runErr error) {
+	// on_exit always runs
+	if e.dag.OnExit != nil {
+		e.runHook(ctx, e.dag.OnExit, "on_exit")
+	}
+
+	if runErr == nil && e.dag.OnSuccess != nil {
+		e.runHook(ctx, e.dag.OnSuccess, "on_success")
+	}
+	if runErr != nil && e.dag.OnFailure != nil {
+		e.runHook(ctx, e.dag.OnFailure, "on_failure")
+	}
+}
+
+func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
+	e.logger.Info("running hook", "hook", name)
+
+	var cmd *exec.Cmd
+	if hook.RExpr != "" {
+		// Write to temp file and run via Rscript
+		tmpFile := filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".R")
+		if err := os.WriteFile(tmpFile, []byte(hook.RExpr), 0644); err != nil {
+			e.logger.Error("hook write failed", "hook", name, "error", err)
+			return
+		}
+		cmd = exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
+	} else if hook.Command != "" {
+		cmd = exec.CommandContext(ctx, "sh", "-c", hook.Command)
+	} else {
+		return
+	}
+
+	// Set working directory
+	if e.dag.Workdir != "" {
+		cmd.Dir = e.dag.Workdir
+	} else if e.dag.SourceDir != "" {
+		cmd.Dir = e.dag.SourceDir
+	}
+
+	// Provide env with run metadata + outputs
+	cmd.Env = append(os.Environ(), buildEnv(e.dag, e.runInfo)...)
+	e.mu.Lock()
+	for k, v := range e.outputs {
+		cmd.Env = append(cmd.Env, k+"="+v)
+	}
+	e.mu.Unlock()
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		e.logger.Error("hook failed", "hook", name, "error", err)
+	}
+}
+
+func sanitize(s string) string {
+	r := strings.NewReplacer(" ", "_", "/", "_", ":", "_")
+	return r.Replace(s)
 }
 
 func buildEnv(d *dag.DAG, runInfo *state.RunInfo) []string {

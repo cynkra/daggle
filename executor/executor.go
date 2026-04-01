@@ -14,11 +14,12 @@ type Result struct {
 	Stderr   string // path to stderr log file
 	Duration time.Duration
 	Err      error
+	Outputs  map[string]string // parsed ::rdag-output:: values
 }
 
 // Executor runs a single DAG step.
 type Executor interface {
-	Run(ctx context.Context, step dag.Step, logDir string, env []string) Result
+	Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result
 }
 
 // New returns the appropriate executor for the given step type.

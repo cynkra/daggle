@@ -32,7 +32,27 @@ func DataDir() string {
 }
 
 // DAGDir returns the directory where DAG YAML files are stored.
+// Precedence: --dags-dir flag (RDAG_DAGS_DIR) > .rdag/ in cwd > ~/.config/rdag/dags
 func DAGDir() string {
+	// Explicit override via --dags-dir flag
+	if dir := os.Getenv("RDAG_DAGS_DIR"); dir != "" {
+		return dir
+	}
+
+	// If config dir is explicitly set, use its dags/ subdir
+	if os.Getenv("RDAG_CONFIG_DIR") != "" {
+		return filepath.Join(ConfigDir(), "dags")
+	}
+
+	// Check for project-local .rdag/ directory in cwd
+	if cwd, err := os.Getwd(); err == nil {
+		localDir := filepath.Join(cwd, ".rdag")
+		if info, err := os.Stat(localDir); err == nil && info.IsDir() {
+			return localDir
+		}
+	}
+
+	// Fall back to global XDG location
 	return filepath.Join(ConfigDir(), "dags")
 }
 

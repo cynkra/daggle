@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -15,7 +16,19 @@ func ParseFile(path string) (*DAG, error) {
 		return nil, fmt.Errorf("open DAG file: %w", err)
 	}
 	defer f.Close()
-	return ParseReader(f)
+
+	d, err := ParseReader(f)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set SourceDir to the directory containing the DAG file
+	absPath, err := filepath.Abs(path)
+	if err == nil {
+		d.SourceDir = filepath.Dir(absPath)
+	}
+
+	return d, nil
 }
 
 // ParseReader parses a YAML DAG definition from a reader.

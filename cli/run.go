@@ -105,7 +105,7 @@ func parseParams(raw []string) map[string]string {
 
 func applyOverrides() {
 	if dagsDir != "" {
-		os.Setenv("RDAG_CONFIG_DIR", filepath.Dir(dagsDir))
+		os.Setenv("RDAG_DAGS_DIR", dagsDir)
 	}
 	if dataDir != "" {
 		os.Setenv("RDAG_DATA_DIR", dataDir)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,7 +19,7 @@ type mockExecutor struct {
 	fn func(ctx context.Context, step dag.Step) executor.Result
 }
 
-func (m *mockExecutor) Run(ctx context.Context, step dag.Step, logDir string, env []string) executor.Result {
+func (m *mockExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) executor.Result {
 	return m.fn(ctx, step)
 }
 
@@ -228,7 +229,99 @@ type envCapture struct {
 	captured *[]string
 }
 
-func (e *envCapture) Run(ctx context.Context, step dag.Step, logDir string, env []string) executor.Result {
+func (e *envCapture) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) executor.Result {
 	*e.captured = env
-	return e.inner.Run(ctx, step, logDir, env)
+	return e.inner.Run(ctx, step, logDir, workdir, env)
+}
+
+func TestEngine_OutputPassing(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "producer", Command: "echo produce"},
+			{ID: "consumer", Command: "echo consume", Depends: []string{"producer"}},
+		},
+	}
+
+	var consumerEnv []string
+	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		if step.ID == "producer" {
+			return executor.Result{
+				ExitCode: 0,
+				Outputs:  map[string]string{"row_count": "42", "file_path": "/tmp/data.csv"},
+			}
+		}
+		return executor.Result{ExitCode: 0}
+	}}
+
+	// Use a wrapper that captures env for the consumer step
+	factory := func(s dag.Step) executor.Executor {
+		if s.ID == "consumer" {
+			return &envCapture{inner: mock, captured: &consumerEnv}
+		}
+		return mock
+	}
+
+	eng := New(d, run, factory)
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// Check that producer outputs are available to consumer
+	envMap := make(map[string]string)
+	for _, e := range consumerEnv {
+		parts := strings.SplitN(e, "=", 2)
+		if len(parts) == 2 {
+			envMap[parts[0]] = parts[1]
+		}
+	}
+
+	if envMap["RDAG_OUTPUT_PRODUCER_ROW_COUNT"] != "42" {
+		t.Errorf("RDAG_OUTPUT_PRODUCER_ROW_COUNT = %q, want %q", envMap["RDAG_OUTPUT_PRODUCER_ROW_COUNT"], "42")
+	}
+	if envMap["RDAG_OUTPUT_PRODUCER_FILE_PATH"] != "/tmp/data.csv" {
+		t.Errorf("RDAG_OUTPUT_PRODUCER_FILE_PATH = %q, want %q", envMap["RDAG_OUTPUT_PRODUCER_FILE_PATH"], "/tmp/data.csv")
+	}
+}
+
+func TestEngine_Workdir(t *testing.T) {
+	run := setupRun(t)
+	sourceDir := t.TempDir()
+	d := &dag.DAG{
+		Name:      "test",
+		SourceDir: sourceDir,
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+		},
+	}
+
+	var capturedWorkdir string
+	wrappedMock := &workdirCapture{
+		inner: &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+			return executor.Result{ExitCode: 0}
+		}},
+		captured: &capturedWorkdir,
+	}
+
+	eng := New(d, run, func(s dag.Step) executor.Executor { return wrappedMock })
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if capturedWorkdir != sourceDir {
+		t.Errorf("workdir = %q, want %q", capturedWorkdir, sourceDir)
+	}
+}
+
+type workdirCapture struct {
+	inner    executor.Executor
+	captured *string
+}
+
+func (w *workdirCapture) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) executor.Result {
+	*w.captured = workdir
+	return w.inner.Run(ctx, step, logDir, workdir, env)
 }
