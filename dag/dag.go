@@ -3,11 +3,12 @@ package dag
 import "time"
 
 type DAG struct {
-	Name    string            `yaml:"name"`
-	Env     map[string]string `yaml:"env,omitempty"`
-	Params  []Param           `yaml:"params,omitempty"`
-	Steps   []Step            `yaml:"steps"`
-	Workdir string            `yaml:"workdir,omitempty"`
+	Name     string            `yaml:"name"`
+	Schedule string            `yaml:"schedule,omitempty"`
+	Env      map[string]string `yaml:"env,omitempty"`
+	Params   []Param           `yaml:"params,omitempty"`
+	Steps    []Step            `yaml:"steps"`
+	Workdir  string            `yaml:"workdir,omitempty"`
 
 	// SourceDir is the directory containing the DAG YAML file.
 	// Set by ParseFile, not from YAML. Used as default working directory.
