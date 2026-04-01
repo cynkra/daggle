@@ -1,0 +1,110 @@
+name: penguin-monitor
+schedule: "@every 6h"
+
+env:
+  REPORT_DIR: reports
+
+steps:
+  - id: load
+    r_expr: |
+      dir.create(Sys.getenv("REPORT_DIR"), showWarnings = FALSE)
+
+      if (!requireNamespace("palmerpenguins", quietly = TRUE)) {
+        install.packages("palmerpenguins", repos = "https://cloud.r-project.org")
+      }
+
+      library(palmerpenguins)
+      penguins <- penguins
+      saveRDS(penguins, "penguins_snapshot.rds")
+
+      cat(sprintf("Loaded %d rows at %s\n", nrow(penguins), Sys.time()))
+      cat("::rdag-output name=n_rows::", nrow(penguins), "\n")
+
+  - id: check-completeness
+    r_expr: |
+      penguins <- readRDS("penguins_snapshot.rds")
+
+      # Check missing values per column
+      missing <- colSums(is.na(penguins))
+      total <- nrow(penguins)
+      pct_complete <- round((1 - sum(missing) / (total * ncol(penguins))) * 100, 1)
+
+      cat("Missing values per column:\n")
+      print(missing[missing > 0])
+      cat(sprintf("\nOverall completeness: %.1f%%\n", pct_complete))
+
+      # Fail if completeness drops below 90%
+      if (pct_complete < 90) {
+        stop(sprintf("Data completeness %.1f%% is below 90%% threshold!", pct_complete))
+      }
+
+      cat("::rdag-output name=completeness::", pct_complete, "\n")
+    depends: [load]
+
+  - id: check-distributions
+    r_expr: |
+      penguins <- readRDS("penguins_snapshot.rds")
+      penguins <- penguins[complete.cases(penguins), ]
+
+      # Check for measurement outliers (> 3 SD from mean)
+      numeric_cols <- c("bill_length_mm", "bill_depth_mm",
+                        "flipper_length_mm", "body_mass_g")
+
+      outlier_count <- 0
+      for (col in numeric_cols) {
+        vals <- penguins[[col]]
+        z <- abs((vals - mean(vals)) / sd(vals))
+        n_outliers <- sum(z > 3)
+        if (n_outliers > 0) {
+          cat(sprintf("WARNING: %d outliers in %s (> 3 SD)\n", n_outliers, col))
+        }
+        outlier_count <- outlier_count + n_outliers
+      }
+
+      cat(sprintf("\nTotal outliers detected: %d\n", outlier_count))
+      cat("::rdag-output name=outlier_count::", outlier_count, "\n")
+
+      # Check species balance
+      counts <- table(penguins$species)
+      cat("\nSpecies distribution:\n")
+      print(counts)
+
+      min_pct <- min(prop.table(counts)) * 100
+      if (min_pct < 10) {
+        warning(sprintf("Smallest species group is only %.1f%% — possible imbalance", min_pct))
+      }
+    depends: [load]
+
+  - id: report
+    r_expr: |
+      completeness <- Sys.getenv("RDAG_OUTPUT_CHECK_COMPLETENESS_COMPLETENESS")
+      outliers <- Sys.getenv("RDAG_OUTPUT_CHECK_DISTRIBUTIONS_OUTLIER_COUNT")
+      n_rows <- Sys.getenv("RDAG_OUTPUT_LOAD_N_ROWS")
+      run_id <- Sys.getenv("RDAG_RUN_ID")
+
+      report <- data.frame(
+        timestamp = Sys.time(),
+        run_id = run_id,
+        rows = as.integer(n_rows),
+        completeness_pct = as.numeric(completeness),
+        outliers = as.integer(outliers),
+        status = "OK"
+      )
+
+      report_file <- file.path(Sys.getenv("REPORT_DIR"), "quality_log.csv")
+      write_header <- !file.exists(report_file)
+      write.table(report, report_file, append = TRUE, sep = ",",
+                  row.names = FALSE, col.names = write_header)
+
+      cat("\n=== Data Quality Report ===\n")
+      cat(sprintf("Run:          %s\n", run_id))
+      cat(sprintf("Rows:         %s\n", n_rows))
+      cat(sprintf("Completeness: %s%%\n", completeness))
+      cat(sprintf("Outliers:     %s\n", outliers))
+      cat(sprintf("Status:       OK\n"))
+    depends: [check-completeness, check-distributions]
+
+on_failure:
+  r_expr: |
+    cat(sprintf("DATA QUALITY CHECK FAILED at %s\n", Sys.time()))
+    cat("Review the step logs for details.\n")

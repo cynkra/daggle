@@ -1,0 +1,108 @@
+name: penguin-models
+env:
+  DATA_DIR: data
+  MODEL_DIR: models
+
+steps:
+  - id: prepare
+    r_expr: |
+      dir.create(Sys.getenv("DATA_DIR"), showWarnings = FALSE)
+      dir.create(Sys.getenv("MODEL_DIR"), showWarnings = FALSE)
+
+      if (!requireNamespace("palmerpenguins", quietly = TRUE)) {
+        install.packages("palmerpenguins", repos = "https://cloud.r-project.org")
+      }
+
+      library(palmerpenguins)
+      penguins <- penguins[complete.cases(penguins), ]
+
+      # Encode species as integer for classification
+      penguins$species_int <- as.integer(penguins$species)
+
+      # Train/test split (70/30)
+      set.seed(42)
+      n <- nrow(penguins)
+      train_idx <- sample(n, size = floor(0.7 * n))
+
+      train <- penguins[train_idx, ]
+      test <- penguins[-train_idx, ]
+
+      saveRDS(train, file.path(Sys.getenv("DATA_DIR"), "train.rds"))
+      saveRDS(test, file.path(Sys.getenv("DATA_DIR"), "test.rds"))
+
+      cat(sprintf("Train: %d rows, Test: %d rows\n", nrow(train), nrow(test)))
+      cat("::rdag-output name=n_train::", nrow(train), "\n")
+      cat("::rdag-output name=n_test::", nrow(test), "\n")
+
+  - id: fit-lda
+    r_expr: |
+      train <- readRDS(file.path(Sys.getenv("DATA_DIR"), "train.rds"))
+      test <- readRDS(file.path(Sys.getenv("DATA_DIR"), "test.rds"))
+
+      model <- MASS::lda(species ~ bill_length_mm + bill_depth_mm +
+                          flipper_length_mm + body_mass_g, data = train)
+      preds <- predict(model, test)$class
+      accuracy <- mean(preds == test$species)
+
+      saveRDS(model, file.path(Sys.getenv("MODEL_DIR"), "lda_model.rds"))
+      cat(sprintf("LDA accuracy: %.1f%%\n", accuracy * 100))
+      cat("::rdag-output name=accuracy::", round(accuracy, 4), "\n")
+    depends: [prepare]
+
+  - id: fit-tree
+    r_expr: |
+      train <- readRDS(file.path(Sys.getenv("DATA_DIR"), "train.rds"))
+      test <- readRDS(file.path(Sys.getenv("DATA_DIR"), "test.rds"))
+
+      model <- rpart::rpart(species ~ bill_length_mm + bill_depth_mm +
+                             flipper_length_mm + body_mass_g, data = train)
+      preds <- predict(model, test, type = "class")
+      accuracy <- mean(preds == test$species)
+
+      saveRDS(model, file.path(Sys.getenv("MODEL_DIR"), "tree_model.rds"))
+      cat(sprintf("Decision tree accuracy: %.1f%%\n", accuracy * 100))
+      cat("::rdag-output name=accuracy::", round(accuracy, 4), "\n")
+    depends: [prepare]
+
+  - id: fit-knn
+    r_expr: |
+      train <- readRDS(file.path(Sys.getenv("DATA_DIR"), "train.rds"))
+      test <- readRDS(file.path(Sys.getenv("DATA_DIR"), "test.rds"))
+
+      features <- c("bill_length_mm", "bill_depth_mm",
+                     "flipper_length_mm", "body_mass_g")
+
+      # Standardize features
+      means <- colMeans(train[, features])
+      sds <- apply(train[, features], 2, sd)
+      train_scaled <- scale(train[, features], center = means, scale = sds)
+      test_scaled <- scale(test[, features], center = means, scale = sds)
+
+      preds <- class::knn(train_scaled, test_scaled, train$species, k = 5)
+      accuracy <- mean(preds == test$species)
+
+      cat(sprintf("KNN (k=5) accuracy: %.1f%%\n", accuracy * 100))
+      cat("::rdag-output name=accuracy::", round(accuracy, 4), "\n")
+    depends: [prepare]
+
+  - id: compare
+    r_expr: |
+      lda_acc <- as.numeric(Sys.getenv("RDAG_OUTPUT_FIT_LDA_ACCURACY"))
+      tree_acc <- as.numeric(Sys.getenv("RDAG_OUTPUT_FIT_TREE_ACCURACY"))
+      knn_acc <- as.numeric(Sys.getenv("RDAG_OUTPUT_FIT_KNN_ACCURACY"))
+
+      results <- data.frame(
+        model = c("LDA", "Decision Tree", "KNN (k=5)"),
+        accuracy = c(lda_acc, tree_acc, knn_acc)
+      )
+      results <- results[order(-results$accuracy), ]
+      results$accuracy_pct <- sprintf("%.1f%%", results$accuracy * 100)
+
+      cat("\n=== Model Comparison ===\n\n")
+      print(results[, c("model", "accuracy_pct")], row.names = FALSE)
+      cat(sprintf("\nBest model: %s (%.1f%%)\n", results$model[1],
+                  results$accuracy[1] * 100))
+
+      write.csv(results, file.path(Sys.getenv("MODEL_DIR"), "comparison.csv"),
+                row.names = FALSE)
+    depends: [fit-lda, fit-tree, fit-knn]
