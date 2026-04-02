@@ -1,7 +1,8 @@
 version: 2
 
 builds:
-  - main: ./cmd/daggle/
+  - dir: .
+    main: ./cmd/daggle
     binary: daggle
     env:
       - CGO_ENABLED=0
@@ -15,7 +16,8 @@ builds:
       - -s -w -X github.com/cynkra/daggle/cli.Version={{.Version}}
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     name_template: "daggle_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
