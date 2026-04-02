@@ -94,9 +94,13 @@ Behavior:
 | Document | `document:` | `roxygen2::roxygenize()` |
 | Lint | `lint:` | `lintr::lint_package()` with issue counts |
 | Style | `style:` | `styler::style_pkg()` |
+| R Markdown | `rmd:` | `rmarkdown::render()` |
+| Restore renv | `renv_restore:` | `renv::restore()` to install packages |
+| Coverage | `coverage:` | `covr::package_coverage()` with percentage output |
+| Validate | `validate:` | Run a data validation R script via Rscript |
 | Deploy | `connect:` | Deploy to Posit Connect (Shiny, Quarto, Plumber) |
 
-R package dev steps check for their required packages at runtime and fail with a clear install instruction if missing.
+R-specific steps check for their required packages at runtime and fail with a clear install instruction if missing.
 
 ## Roadmap
 
@@ -104,7 +108,7 @@ R package dev steps check for their required packages at runtime and fail with a
 
 **Phase 1 — MVP:** YAML parsing, topo sort, 3 step types (script/r_expr/command), retries, timeouts, lifecycle hooks, inter-step output passing, cron scheduler, CLI (run/validate/status/list/serve), JSONL events, XDG paths.
 
-**Phase 2 — Usable Daily Driver:** Quarto step type, R package dev steps (test/check/document/lint/style), Posit Connect deployment, exponential backoff retries, R error extraction in status, reproducibility metadata (meta.json), YAML JSON Schema.
+**Phase 2 — Usable Daily Driver:** Quarto step type, R package dev steps (test/check/document/lint/style), Posit Connect deployment, exponential backoff retries, R error extraction in status, reproducibility metadata (meta.json), YAML JSON Schema, renv autodetection.
 
 ### Planned
 

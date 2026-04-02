@@ -114,6 +114,8 @@ func ExpandDAG(d *DAG, paramOverrides map[string]string) (*DAG, error) {
 		}{
 			{&es.Test, "test"}, {&es.Check, "check"}, {&es.Document, "document"},
 			{&es.Lint, "lint"}, {&es.Style, "style"},
+			{&es.Rmd, "rmd"}, {&es.RenvRestore, "renv_restore"},
+			{&es.Coverage, "coverage"}, {&es.Validate, "validate"},
 		} {
 			src := *field.val
 			if src != "" {

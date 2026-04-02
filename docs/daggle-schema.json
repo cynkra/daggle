@@ -94,6 +94,10 @@
         "document": { "type": "string", "description": "Generate docs via roxygen2::roxygenize(). Value is package path or 'true' for '.'" },
         "lint": { "type": "string", "description": "Run linter via lintr::lint_package(). Value is package path or 'true' for '.'" },
         "style": { "type": "string", "description": "Format code via styler::style_pkg(). Value is package path or 'true' for '.'" },
+        "rmd": { "type": "string", "description": "Render R Markdown document via rmarkdown::render(). Value is path to .Rmd file" },
+        "renv_restore": { "type": "string", "description": "Restore renv library via renv::restore(). Value is project path or 'true' for '.'" },
+        "coverage": { "type": "string", "description": "Measure code coverage via covr::package_coverage(). Value is package path or 'true' for '.'" },
+        "validate": { "type": "string", "description": "Run a data validation R script via Rscript. Value is path to validation script" },
         "connect": { "$ref": "#/$defs/connect" },
         "args": {
           "type": "array",

@@ -54,6 +54,12 @@ type Step struct {
 	Lint     string `yaml:"lint,omitempty"`
 	Style    string `yaml:"style,omitempty"`
 
+	// R workflow step types
+	Rmd         string `yaml:"rmd,omitempty"`
+	RenvRestore string `yaml:"renv_restore,omitempty"`
+	Coverage    string `yaml:"coverage,omitempty"`
+	Validate    string `yaml:"validate,omitempty"`
+
 	// Posit Connect deployment
 	Connect *ConnectDeploy `yaml:"connect,omitempty"`
 
@@ -113,6 +119,14 @@ func StepType(s Step) string {
 		return "lint"
 	case s.Style != "":
 		return "style"
+	case s.Rmd != "":
+		return "rmd"
+	case s.RenvRestore != "":
+		return "renv_restore"
+	case s.Coverage != "":
+		return "coverage"
+	case s.Validate != "":
+		return "validate"
 	case s.Connect != nil:
 		return "connect"
 	default:

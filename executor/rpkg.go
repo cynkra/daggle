@@ -12,7 +12,7 @@ import (
 
 // RPkgExecutor runs R package development actions via Rscript.
 type RPkgExecutor struct {
-	Action string // "test", "check", "document", "lint", "style"
+	Action string // "test", "check", "document", "lint", "style", "renv_restore", "coverage"
 }
 
 // Run generates R code for the given action and executes it via Rscript.
@@ -42,6 +42,10 @@ func (e *RPkgExecutor) resolvePkgPath(step dag.Step) string {
 		raw = step.Lint
 	case "style":
 		raw = step.Style
+	case "renv_restore":
+		raw = step.RenvRestore
+	case "coverage":
+		raw = step.Coverage
 	}
 	if raw == "" || raw == "true" || raw == "." {
 		return "."
@@ -95,6 +99,22 @@ res <- styler::style_pkg(%q)
 changed <- sum(res$changed)
 cat(sprintf("::daggle-output name=files_changed::%%d\n", changed))
 cat(sprintf("Styled %%d file(s)\n", changed))
+`, pkgPath)
+
+	case "renv_restore":
+		return fmt.Sprintf(`if (!requireNamespace("renv", quietly = TRUE)) stop("step requires the renv package. Install with: install.packages('renv')")
+cat("Restoring renv library...\n")
+renv::restore(project = %q, prompt = FALSE)
+cat("renv restore complete\n")
+`, pkgPath)
+
+	case "coverage":
+		return fmt.Sprintf(`if (!requireNamespace("covr", quietly = TRUE)) stop("step requires the covr package. Install with: install.packages('covr')")
+cat("Measuring code coverage...\n")
+cov <- covr::package_coverage(%q)
+pct <- covr::percent_coverage(cov)
+cat(sprintf("Coverage: %%.1f%%%%\n", pct))
+cat(sprintf("::daggle-output name=coverage_pct::%%.1f\n", pct))
 `, pkgPath)
 
 	default:

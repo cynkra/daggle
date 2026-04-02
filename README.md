@@ -77,6 +77,10 @@ Every step is assumed to be R unless stated otherwise. The following step types 
 | Document | `document:` | Runs `roxygen2::roxygenize()` |
 | Lint | `lint:` | Runs `lintr::lint_package()` |
 | Style | `style:` | Runs `styler::style_pkg()` |
+| R Markdown | `rmd:` | Renders via `rmarkdown::render()` |
+| Restore renv | `renv_restore:` | Runs `renv::restore()` to install packages |
+| Coverage | `coverage:` | Runs `covr::package_coverage()` with percentage output |
+| Validate | `validate:` | Runs a data validation R script via Rscript |
 | Deploy | `connect:` | Deploys to Posit Connect (Shiny, Quarto, Plumber) |
 
 ### Full YAML reference
@@ -198,20 +202,26 @@ daggle has first-class support for R package workflows:
 ```yaml
 name: pkg-check
 steps:
+  - id: restore
+    renv_restore: "."
   - id: document
     document: "."
+    depends: [restore]
   - id: lint
     lint: "."
     depends: [document]
   - id: test
     test: "."
     depends: [document]
+  - id: coverage
+    coverage: "."
+    depends: [test]
   - id: check
     check: "."
     depends: [document]
 ```
 
-Each step checks for its required R package (devtools, rcmdcheck, roxygen2, lintr, styler) and fails with a clear install instruction if missing. Test results, check errors/warnings/notes, and lint issue counts are emitted as `::daggle-output::` markers for downstream use.
+Each step checks for its required R package (devtools, rcmdcheck, roxygen2, lintr, styler, covr, renv) and fails with a clear install instruction if missing. Test results, check errors/warnings/notes, lint issue counts, and coverage percentages are emitted as `::daggle-output::` markers for downstream use.
 
 ## Posit Connect deployment
 

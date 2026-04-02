@@ -35,8 +35,12 @@ func New(step dag.Step) Executor {
 		return &ShellExecutor{}
 	case "quarto":
 		return &QuartoExecutor{}
-	case "test", "check", "document", "lint", "style":
+	case "test", "check", "document", "lint", "style", "renv_restore", "coverage":
 		return &RPkgExecutor{Action: typ}
+	case "rmd":
+		return &RmdExecutor{}
+	case "validate":
+		return &ValidateExecutor{}
 	case "connect":
 		return &ConnectExecutor{}
 	default:

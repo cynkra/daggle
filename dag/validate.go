@@ -34,13 +34,14 @@ func Validate(d *DAG) error {
 		for _, set := range []bool{
 			s.Script != "", s.RExpr != "", s.Command != "", s.Quarto != "",
 			s.Test != "", s.Check != "", s.Document != "", s.Lint != "", s.Style != "",
+			s.Rmd != "", s.RenvRestore != "", s.Coverage != "", s.Validate != "",
 			s.Connect != nil,
 		} {
 			if set {
 				typeCount++
 			}
 		}
-		stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, connect"
+		stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, connect"
 		if typeCount == 0 {
 			errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
 		}
