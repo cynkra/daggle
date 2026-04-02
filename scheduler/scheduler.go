@@ -12,7 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/robfig/cron/v3"
+
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/engine"
 	"github.com/cynkra/daggle/executor"
@@ -23,20 +25,30 @@ const (
 	defaultPollInterval  = 30 * time.Second
 	defaultMaxConcurrent = 4
 	shutdownGracePeriod  = 5 * time.Minute
+	defaultDebounce      = 500 * time.Millisecond
 )
 
-// dagEntry tracks a registered DAG and its cron entry.
+// dagEntry tracks a registered DAG and its active triggers.
 type dagEntry struct {
-	entryID  cron.EntryID
-	schedule string
-	hash     string // file content hash for change detection
+	cronID   cron.EntryID       // zero if no cron trigger
+	schedule string             // cron expression (empty if none)
+	hash     string             // file content hash for change detection
+	cancelFns []context.CancelFunc // cancel functions for non-cron trigger goroutines
 }
 
-// Scheduler manages cron-based DAG execution.
+// teardown cancels all non-cron triggers for this entry.
+func (e *dagEntry) teardown() {
+	for _, cancel := range e.cancelFns {
+		cancel()
+	}
+	e.cancelFns = nil
+}
+
+// Scheduler manages trigger-based DAG execution.
 type Scheduler struct {
-	cron    *cron.Cron
-	dagDir  string
-	logger  *slog.Logger
+	cron   *cron.Cron
+	dagDir string
+	logger *slog.Logger
 
 	mu            sync.Mutex
 	registered    map[string]*dagEntry          // dagName -> entry
@@ -60,7 +72,7 @@ func New(dagDir string) *Scheduler {
 // Start begins the scheduler loop. It blocks until ctx is cancelled.
 func (s *Scheduler) Start(ctx context.Context) error {
 	// Initial scan
-	if err := s.syncDAGs(); err != nil {
+	if err := s.syncDAGs(ctx); err != nil {
 		s.logger.Error("initial DAG scan failed", "error", err)
 	}
 
@@ -78,7 +90,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 			s.shutdown()
 			return nil
 		case <-ticker.C:
-			if err := s.syncDAGs(); err != nil {
+			if err := s.syncDAGs(ctx); err != nil {
 				s.logger.Error("DAG sync failed", "error", err)
 			}
 		}
@@ -89,6 +101,13 @@ func (s *Scheduler) Start(ctx context.Context) error {
 func (s *Scheduler) shutdown() {
 	// Stop cron (no new triggers)
 	cronCtx := s.cron.Stop()
+
+	// Cancel all non-cron trigger goroutines
+	s.mu.Lock()
+	for _, entry := range s.registered {
+		entry.teardown()
+	}
+	s.mu.Unlock()
 
 	// Wait for cron jobs to finish their scheduling
 	<-cronCtx.Done()
@@ -130,8 +149,8 @@ func (s *Scheduler) shutdown() {
 	}
 }
 
-// syncDAGs scans the DAG directory and updates cron registrations.
-func (s *Scheduler) syncDAGs() error {
+// syncDAGs scans the DAG directory and updates trigger registrations.
+func (s *Scheduler) syncDAGs(ctx context.Context) error {
 	entries, err := os.ReadDir(s.dagDir)
 	if err != nil {
 		return fmt.Errorf("read DAG dir: %w", err)
@@ -161,8 +180,7 @@ func (s *Scheduler) syncDAGs() error {
 			continue
 		}
 
-		cronSchedule := d.CronSchedule()
-		if cronSchedule == "" {
+		if !d.HasTrigger() {
 			continue
 		}
 
@@ -176,30 +194,41 @@ func (s *Scheduler) syncDAGs() error {
 			continue // no change
 		}
 
-		// Remove old entry if schedule changed
+		// Tear down old triggers
 		if exists {
-			s.cron.Remove(existing.entryID)
-			s.logger.Info("updated DAG schedule", "dag", d.Name, "schedule", cronSchedule)
+			s.cron.Remove(existing.cronID)
+			existing.teardown()
+			s.logger.Info("updating DAG triggers", "dag", d.Name)
 		} else {
-			s.logger.Info("registered DAG", "dag", d.Name, "schedule", cronSchedule)
+			s.logger.Info("registering DAG", "dag", d.Name)
 		}
 
-		// Register new cron entry
+		newEntry := &dagEntry{hash: hash}
 		dagPath := path // capture for closure
-		entryID, err := s.cron.AddFunc(cronSchedule, func() {
-			s.triggerRun(dagPath)
-		})
-		if err != nil {
-			s.logger.Error("invalid cron schedule", "dag", d.Name, "schedule", cronSchedule, "error", err)
-			continue
+
+		// Set up cron trigger
+		if sched := d.CronSchedule(); sched != "" {
+			entryID, err := s.cron.AddFunc(sched, func() {
+				s.triggerRun(dagPath, "cron")
+			})
+			if err != nil {
+				s.logger.Error("invalid cron schedule", "dag", d.Name, "schedule", sched, "error", err)
+			} else {
+				newEntry.cronID = entryID
+				newEntry.schedule = sched
+			}
+		}
+
+		// Set up watch trigger
+		if d.Trigger.Watch != nil {
+			cancelFn := s.setupWatchTrigger(ctx, d, dagPath)
+			if cancelFn != nil {
+				newEntry.cancelFns = append(newEntry.cancelFns, cancelFn)
+			}
 		}
 
 		s.mu.Lock()
-		s.registered[d.Name] = &dagEntry{
-			entryID:  entryID,
-			schedule: cronSchedule,
-			hash:     hash,
-		}
+		s.registered[d.Name] = newEntry
 		s.mu.Unlock()
 	}
 
@@ -207,7 +236,8 @@ func (s *Scheduler) syncDAGs() error {
 	s.mu.Lock()
 	for name, entry := range s.registered {
 		if !seen[name] {
-			s.cron.Remove(entry.entryID)
+			s.cron.Remove(entry.cronID)
+			entry.teardown()
 			delete(s.registered, name)
 			s.logger.Info("unregistered DAG", "dag", name)
 		}
@@ -217,8 +247,95 @@ func (s *Scheduler) syncDAGs() error {
 	return nil
 }
 
-// triggerRun executes a DAG run. Called by cron.
-func (s *Scheduler) triggerRun(dagPath string) {
+// setupWatchTrigger starts a file watcher goroutine for the DAG's watch trigger.
+// Returns a cancel function to stop the watcher, or nil on error.
+func (s *Scheduler) setupWatchTrigger(ctx context.Context, d *dag.DAG, dagPath string) context.CancelFunc {
+	w := d.Trigger.Watch
+
+	// Resolve watch path relative to DAG directory
+	watchPath := w.Path
+	if !filepath.IsAbs(watchPath) {
+		watchPath = filepath.Join(d.SourceDir, watchPath)
+	}
+
+	// Parse debounce duration
+	debounce := defaultDebounce
+	if w.Debounce != "" {
+		if parsed, err := time.ParseDuration(w.Debounce); err == nil {
+			debounce = parsed
+		}
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		s.logger.Error("failed to create file watcher", "dag", d.Name, "error", err)
+		return nil
+	}
+
+	if err := watcher.Add(watchPath); err != nil {
+		s.logger.Error("failed to watch path", "dag", d.Name, "path", watchPath, "error", err)
+		_ = watcher.Close()
+		return nil
+	}
+
+	watchCtx, cancel := context.WithCancel(ctx)
+	s.logger.Info("watching directory", "dag", d.Name, "path", watchPath, "pattern", w.Pattern, "debounce", debounce)
+
+	go func() {
+		defer func() { _ = watcher.Close() }()
+
+		var debounceTimer *time.Timer
+		var debounceC <-chan time.Time
+
+		for {
+			select {
+			case <-watchCtx.Done():
+				if debounceTimer != nil {
+					debounceTimer.Stop()
+				}
+				return
+
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				// Only care about create and write events
+				if !event.Has(fsnotify.Create) && !event.Has(fsnotify.Write) {
+					continue
+				}
+				// Filter by pattern if set
+				if w.Pattern != "" {
+					matched, _ := filepath.Match(w.Pattern, filepath.Base(event.Name))
+					if !matched {
+						continue
+					}
+				}
+				// Reset debounce timer
+				if debounceTimer != nil {
+					debounceTimer.Stop()
+				}
+				debounceTimer = time.NewTimer(debounce)
+				debounceC = debounceTimer.C
+
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				s.logger.Warn("file watcher error", "dag", d.Name, "error", err)
+
+			case <-debounceC:
+				s.logger.Info("file change detected, triggering run", "dag", d.Name)
+				s.triggerRun(dagPath, "watch")
+				debounceC = nil
+			}
+		}
+	}()
+
+	return cancel
+}
+
+// triggerRun executes a DAG run. Called by any trigger source.
+func (s *Scheduler) triggerRun(dagPath string, source string) {
 	d, err := dag.ParseFile(dagPath)
 	if err != nil {
 		s.logger.Error("failed to parse DAG for run", "path", dagPath, "error", err)
@@ -230,7 +347,7 @@ func (s *Scheduler) triggerRun(dagPath string) {
 	// Skip if already running (overlap policy: skip)
 	if _, running := s.running[d.Name]; running {
 		s.mu.Unlock()
-		s.logger.Info("skipping run, DAG already active", "dag", d.Name)
+		s.logger.Info("skipping run, DAG already active", "dag", d.Name, "source", source)
 		return
 	}
 
@@ -255,7 +372,7 @@ func (s *Scheduler) triggerRun(dagPath string) {
 			s.mu.Unlock()
 		}()
 
-		s.logger.Info("scheduled run starting", "dag", d.Name)
+		s.logger.Info("triggered run starting", "dag", d.Name, "source", source)
 
 		expanded, err := dag.ExpandDAG(d, nil)
 		if err != nil {
@@ -272,9 +389,9 @@ func (s *Scheduler) triggerRun(dagPath string) {
 		eng := engine.New(expanded, run, executor.New)
 
 		if err := eng.Run(ctx); err != nil {
-			s.logger.Error("scheduled run failed", "dag", d.Name, "run_id", run.ID, "error", err)
+			s.logger.Error("triggered run failed", "dag", d.Name, "run_id", run.ID, "source", source, "error", err)
 		} else {
-			s.logger.Info("scheduled run completed", "dag", d.Name, "run_id", run.ID)
+			s.logger.Info("triggered run completed", "dag", d.Name, "run_id", run.ID, "source", source)
 		}
 	}()
 }

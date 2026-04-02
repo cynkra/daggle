@@ -250,9 +250,11 @@ env:
 
 Supported types: `shiny`, `quarto`, `plumber`. Requires the `rsconnect` R package.
 
-## Cron scheduling
+## Triggers
 
-Add a `trigger:` block with a `schedule:` field to any DAG and run `daggle serve` to start the scheduler:
+DAGs can be triggered automatically via the `trigger:` block. Multiple triggers can coexist — any matching trigger starts a run. Run `daggle serve` to start the trigger daemon.
+
+### Cron schedule
 
 ```yaml
 name: daily-report
@@ -263,13 +265,45 @@ steps:
     script: reports/daily.R
 ```
 
+Supports standard 5-field cron plus `@every 5m`, `@hourly`, etc.
+
+### File watcher
+
+```yaml
+name: process-uploads
+trigger:
+  watch:
+    path: /data/incoming/
+    pattern: "*.csv"
+    debounce: 5s
+steps:
+  - id: process
+    script: etl/process.R
+```
+
+Triggers when files matching the pattern are created or modified in the watched directory. Debounce prevents firing on partial writes.
+
+### Combined triggers
+
+Triggers are additive — any matching trigger starts a run:
+
+```yaml
+name: etl-pipeline
+trigger:
+  schedule: "0 6 * * *"        # daily at 6 AM
+  watch:
+    path: /data/incoming/
+    pattern: "*.csv"
+    debounce: 5s
+```
+
 ```bash
 daggle serve
 ```
 
 The scheduler:
 - Monitors the DAG directory for files with `trigger:` blocks
-- Triggers runs on cron expressions (standard 5-field, plus `@every 5m`, `@hourly`, etc.)
+- Manages cron schedules and file watchers
 - Skips runs if the same DAG is still executing (overlap protection)
 - Limits to 4 concurrent DAG runs
 - Hot-reloads DAG files every 30 seconds (add, edit, or remove DAGs without restart)
