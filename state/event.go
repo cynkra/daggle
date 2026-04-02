@@ -23,13 +23,14 @@ const (
 
 // Event represents a lifecycle event in a DAG run.
 type Event struct {
-	Timestamp time.Time `json:"ts"`
-	Type      string    `json:"type"`
-	StepID    string    `json:"step_id,omitempty"`
-	ExitCode  int       `json:"exit_code,omitempty"`
-	Duration  string    `json:"duration,omitempty"`
-	Error     string    `json:"error,omitempty"`
-	Attempt   int       `json:"attempt,omitempty"`
+	Timestamp   time.Time `json:"ts"`
+	Type        string    `json:"type"`
+	StepID      string    `json:"step_id,omitempty"`
+	ExitCode    int       `json:"exit_code,omitempty"`
+	Duration    string    `json:"duration,omitempty"`
+	Error       string    `json:"error,omitempty"`
+	ErrorDetail string    `json:"error_detail,omitempty"`
+	Attempt     int       `json:"attempt,omitempty"`
 }
 
 // EventWriter provides thread-safe JSONL event writing.

@@ -133,6 +133,52 @@ func buildResult(err error, start time.Time, stdoutPath, stderrPath string) Resu
 		} else {
 			r.ExitCode = -1
 		}
+		r.ErrorDetail = extractRError(stderrPath)
 	}
 	return r
+}
+
+var rErrorRe = regexp.MustCompile(`^Error[ :]`)
+
+// extractRError reads the last lines of a stderr log file and extracts
+// R error messages (lines starting with "Error in ..." or "Error: ...").
+func extractRError(stderrPath string) string {
+	if stderrPath == "" {
+		return ""
+	}
+	data, err := os.ReadFile(stderrPath)
+	if err != nil {
+		return ""
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+
+	// Find the last R error line and collect it plus any following context
+	errorStart := -1
+	for i := len(lines) - 1; i >= 0 && i >= len(lines)-50; i-- {
+		line := strings.TrimSpace(lines[i])
+		if rErrorRe.MatchString(line) {
+			errorStart = i
+			break
+		}
+	}
+	if errorStart < 0 {
+		return ""
+	}
+
+	var errorLines []string
+	for i := errorStart; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if line == "Execution halted" {
+			continue
+		}
+		if line != "" {
+			errorLines = append(errorLines, line)
+		}
+	}
+
+	detail := strings.Join(errorLines, "\n")
+	if len(detail) > 500 {
+		detail = detail[:497] + "..."
+	}
+	return detail
 }

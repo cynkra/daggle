@@ -3,6 +3,7 @@ package dag
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // Validate checks that a DAG definition is well-formed.
@@ -30,20 +31,34 @@ func Validate(d *DAG) error {
 
 		// Exactly one step type must be set
 		typeCount := 0
-		if s.Script != "" {
-			typeCount++
+		for _, set := range []bool{
+			s.Script != "", s.RExpr != "", s.Command != "", s.Quarto != "",
+			s.Test != "", s.Check != "", s.Document != "", s.Lint != "", s.Style != "",
+			s.Connect != nil,
+		} {
+			if set {
+				typeCount++
+			}
 		}
-		if s.RExpr != "" {
-			typeCount++
-		}
-		if s.Command != "" {
-			typeCount++
-		}
+		stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, connect"
 		if typeCount == 0 {
-			errs = append(errs, fmt.Sprintf("step %q must have one of: script, r_expr, command", s.ID))
+			errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
 		}
 		if typeCount > 1 {
-			errs = append(errs, fmt.Sprintf("step %q has multiple types; use exactly one of: script, r_expr, command", s.ID))
+			errs = append(errs, fmt.Sprintf("step %q has multiple types; use exactly one of: %s", s.ID, stepTypes))
+		}
+
+		// Validate connect step fields
+		if s.Connect != nil {
+			validTypes := map[string]bool{"shiny": true, "quarto": true, "plumber": true}
+			if s.Connect.Type == "" {
+				errs = append(errs, fmt.Sprintf("step %q connect.type is required (shiny, quarto, plumber)", s.ID))
+			} else if !validTypes[s.Connect.Type] {
+				errs = append(errs, fmt.Sprintf("step %q connect.type %q is invalid; must be one of: shiny, quarto, plumber", s.ID, s.Connect.Type))
+			}
+			if s.Connect.Path == "" {
+				errs = append(errs, fmt.Sprintf("step %q connect.path is required", s.ID))
+			}
 		}
 
 		// Validate depends references
@@ -71,8 +86,18 @@ func Validate(d *DAG) error {
 		}
 
 		// Validate retry
-		if s.Retry != nil && s.Retry.Limit < 0 {
-			errs = append(errs, fmt.Sprintf("step %q retry limit must be >= 0", s.ID))
+		if s.Retry != nil {
+			if s.Retry.Limit < 0 {
+				errs = append(errs, fmt.Sprintf("step %q retry limit must be >= 0", s.ID))
+			}
+			if s.Retry.Backoff != "" && s.Retry.Backoff != "linear" && s.Retry.Backoff != "exponential" {
+				errs = append(errs, fmt.Sprintf("step %q retry backoff must be \"linear\" or \"exponential\"", s.ID))
+			}
+			if s.Retry.MaxDelay != "" {
+				if _, err := time.ParseDuration(s.Retry.MaxDelay); err != nil {
+					errs = append(errs, fmt.Sprintf("step %q retry max_delay %q is invalid: %v", s.ID, s.Retry.MaxDelay, err))
+				}
+			}
 		}
 	}
 

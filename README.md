@@ -64,13 +64,20 @@ daggle list
 
 ## DAG definition
 
-Every step is assumed to be R unless stated otherwise. Three step types are supported:
+Every step is assumed to be R unless stated otherwise. The following step types are supported:
 
 | Type | Field | What it does |
 |------|-------|-------------|
 | R script | `script:` | Runs `Rscript --no-save --no-restore <path> [args]` |
 | Inline R | `r_expr:` | Writes expression to a temp `.R` file, runs via Rscript |
 | Shell | `command:` | Runs via `sh -c` (escape hatch for non-R tasks) |
+| Quarto | `quarto:` | Runs `quarto render <path> [args]` |
+| Test | `test:` | Runs `devtools::test()` with structured output |
+| Check | `check:` | Runs `rcmdcheck::rcmdcheck()` with error/warning/note counts |
+| Document | `document:` | Runs `roxygen2::roxygenize()` |
+| Lint | `lint:` | Runs `lintr::lint_package()` |
+| Style | `style:` | Runs `styler::style_pkg()` |
+| Deploy | `connect:` | Deploys to Posit Connect (Shiny, Quarto, Plumber) |
 
 ### Full YAML reference
 
@@ -184,6 +191,54 @@ steps:
 
 Hooks receive all run metadata and accumulated step outputs as environment variables.
 
+## R package development
+
+daggle has first-class support for R package workflows:
+
+```yaml
+name: pkg-check
+steps:
+  - id: document
+    document: "."
+  - id: lint
+    lint: "."
+    depends: [document]
+  - id: test
+    test: "."
+    depends: [document]
+  - id: check
+    check: "."
+    depends: [document]
+```
+
+Each step checks for its required R package (devtools, rcmdcheck, roxygen2, lintr, styler) and fails with a clear install instruction if missing. Test results, check errors/warnings/notes, and lint issue counts are emitted as `::daggle-output::` markers for downstream use.
+
+## Posit Connect deployment
+
+Deploy Shiny apps, Quarto docs, or Plumber APIs to Posit Connect:
+
+```yaml
+steps:
+  - id: render
+    quarto: reports/dashboard.qmd
+  - id: deploy
+    connect:
+      type: quarto
+      path: reports/dashboard.qmd
+      name: sales-dashboard
+    depends: [render]
+```
+
+Authentication via environment variables:
+
+```yaml
+env:
+  CONNECT_SERVER: "https://connect.example.com"
+  CONNECT_API_KEY: "${env:CONNECT_API_KEY}"
+```
+
+Supported types: `shiny`, `quarto`, `plumber`. Requires the `rsconnect` R package.
+
 ## Cron scheduling
 
 Add a `schedule:` field to any DAG and run `daggle serve` to start the scheduler:
@@ -240,10 +295,22 @@ Global flags:
 
 **Timeouts** — Each step can specify a `timeout`. On expiry, daggle sends SIGTERM to the entire process group, waits 5 seconds, then SIGKILL. No orphaned R processes.
 
-**Retries** — Steps with `retry.limit` are re-executed on failure, with linear backoff between attempts.
+**Retries** — Steps with `retry.limit` are re-executed on failure. Supports `backoff: linear` (default) or `backoff: exponential` (1s, 2s, 4s, 8s...) with an optional `max_delay` cap:
+
+```yaml
+retry:
+  limit: 5
+  backoff: exponential
+  max_delay: 60s
+```
+
+**Error reporting** — When an R step fails, daggle extracts the R error message from stderr and shows it in `daggle status`, so you don't have to dig through log files.
+
+**Reproducibility** — Each run writes a `meta.json` with the DAG file hash, R version, platform, daggle version, and parameters used. This makes it easy to trace what produced a given result.
 
 **Run history** — Every run creates a directory under `~/.local/share/daggle/runs/<dag>/<date>/run_<id>/` containing:
 - `events.jsonl` — Lifecycle events (started, completed, failed, retried)
+- `meta.json` — Reproducibility metadata (R version, DAG hash, platform)
 - `<step-id>.stdout.log` / `<step-id>.stderr.log` — Captured output per step
 
 ## DAG discovery
@@ -286,6 +353,14 @@ my-project/
 ```
 
 Override with `DAGGLE_CONFIG_DIR` / `DAGGLE_DATA_DIR` environment variables or `--dags-dir` / `--data-dir` flags.
+
+## Editor support
+
+A [JSON Schema](docs/daggle-schema.json) is provided for DAG YAML files. Add this to the top of your YAML files for autocomplete and validation in VS Code (with the YAML extension):
+
+```yaml
+# yaml-language-server: $schema=https://github.com/cynkra/daggle/raw/main/docs/daggle-schema.json
+```
 
 ## License
 

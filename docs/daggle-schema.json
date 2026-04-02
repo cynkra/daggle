@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cynkra/daggle/raw/main/docs/daggle-schema.json",
+  "title": "daggle DAG definition",
+  "description": "Schema for daggle YAML DAG workflow definitions",
+  "type": "object",
+  "required": ["name", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique name for the DAG"
+    },
+    "schedule": {
+      "type": "string",
+      "description": "Cron expression for scheduled execution (e.g. '30 6 * * MON-FRI', '@every 1h')"
+    },
+    "workdir": {
+      "type": "string",
+      "description": "Working directory override for all steps"
+    },
+    "env": {
+      "type": "object",
+      "description": "Environment variables available to all steps",
+      "additionalProperties": { "type": "string" }
+    },
+    "params": {
+      "type": "array",
+      "description": "Parameters with optional defaults, overridable via CLI",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "default": { "type": "string" }
+        }
+      }
+    },
+    "on_success": { "$ref": "#/$defs/hook" },
+    "on_failure": { "$ref": "#/$defs/hook" },
+    "on_exit": { "$ref": "#/$defs/hook" },
+    "steps": {
+      "type": "array",
+      "description": "Ordered list of steps to execute",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "hook": {
+      "type": "object",
+      "description": "Lifecycle hook — an R expression or shell command",
+      "additionalProperties": false,
+      "properties": {
+        "r_expr": { "type": "string", "description": "Inline R expression" },
+        "command": { "type": "string", "description": "Shell command" }
+      }
+    },
+    "retry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": { "type": "integer", "minimum": 0, "description": "Number of retries (total attempts = limit + 1)" },
+        "backoff": { "type": "string", "enum": ["linear", "exponential"], "description": "Backoff strategy (default: linear)" },
+        "max_delay": { "type": "string", "description": "Maximum delay between retries (e.g. '60s', '5m')" }
+      }
+    },
+    "connect": {
+      "type": "object",
+      "description": "Deploy to Posit Connect",
+      "required": ["type", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "enum": ["shiny", "quarto", "plumber"], "description": "Content type to deploy" },
+        "path": { "type": "string", "description": "Path to content directory or file" },
+        "name": { "type": "string", "description": "Content name on Connect (defaults to directory name)" },
+        "force_update": { "type": "boolean", "description": "Overwrite existing content (default: true)" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "description": "A single execution unit. Exactly one step type field must be set.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique step identifier" },
+        "script": { "type": "string", "description": "Path to R script (runs via Rscript)" },
+        "r_expr": { "type": "string", "description": "Inline R expression" },
+        "command": { "type": "string", "description": "Shell command (runs via sh -c)" },
+        "quarto": { "type": "string", "description": "Path to Quarto document or project (runs quarto render)" },
+        "test": { "type": "string", "description": "Run package tests via devtools::test(). Value is package path or 'true' for '.'" },
+        "check": { "type": "string", "description": "Run R CMD check via rcmdcheck. Value is package path or 'true' for '.'" },
+        "document": { "type": "string", "description": "Generate docs via roxygen2::roxygenize(). Value is package path or 'true' for '.'" },
+        "lint": { "type": "string", "description": "Run linter via lintr::lint_package(). Value is package path or 'true' for '.'" },
+        "style": { "type": "string", "description": "Format code via styler::style_pkg(). Value is package path or 'true' for '.'" },
+        "connect": { "$ref": "#/$defs/connect" },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Command-line arguments passed to the step"
+        },
+        "depends": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs of steps that must complete before this step runs"
+        },
+        "timeout": { "type": "string", "description": "Maximum duration (e.g. '30s', '5m', '1h')" },
+        "retry": { "$ref": "#/$defs/retry" },
+        "env": {
+          "type": "object",
+          "description": "Step-level environment variable overrides",
+          "additionalProperties": { "type": "string" }
+        },
+        "workdir": { "type": "string", "description": "Step-level working directory override" },
+        "on_success": { "$ref": "#/$defs/hook" },
+        "on_failure": { "$ref": "#/$defs/hook" }
+      }
+    }
+  }
+}

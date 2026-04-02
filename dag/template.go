@@ -98,6 +98,53 @@ func ExpandDAG(d *DAG, paramOverrides map[string]string) (*DAG, error) {
 			es.Command = v
 		}
 
+		// Expand quarto path
+		if s.Quarto != "" {
+			v, err := expandString(s.Quarto, ctx, fmt.Sprintf("step %q quarto", s.ID))
+			if err != nil {
+				return nil, err
+			}
+			es.Quarto = v
+		}
+
+		// Expand R package dev step paths
+		for _, field := range []struct {
+			val  *string
+			name string
+		}{
+			{&es.Test, "test"}, {&es.Check, "check"}, {&es.Document, "document"},
+			{&es.Lint, "lint"}, {&es.Style, "style"},
+		} {
+			src := *field.val
+			if src != "" {
+				v, err := expandString(src, ctx, fmt.Sprintf("step %q %s", s.ID, field.name))
+				if err != nil {
+					return nil, err
+				}
+				*field.val = v
+			}
+		}
+
+		// Expand connect fields
+		if s.Connect != nil {
+			ec := *s.Connect
+			if ec.Path != "" {
+				v, err := expandString(ec.Path, ctx, fmt.Sprintf("step %q connect.path", s.ID))
+				if err != nil {
+					return nil, err
+				}
+				ec.Path = v
+			}
+			if ec.Name != "" {
+				v, err := expandString(ec.Name, ctx, fmt.Sprintf("step %q connect.name", s.ID))
+				if err != nil {
+					return nil, err
+				}
+				ec.Name = v
+			}
+			es.Connect = &ec
+		}
+
 		// Expand step-level env
 		if len(s.Env) > 0 {
 			es.Env = make(map[string]string, len(s.Env))

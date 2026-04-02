@@ -56,6 +56,13 @@ func TestStepType(t *testing.T) {
 		{Step{Script: "foo.R"}, "script"},
 		{Step{RExpr: "1+1"}, "r_expr"},
 		{Step{Command: "echo hi"}, "command"},
+		{Step{Quarto: "report.qmd"}, "quarto"},
+		{Step{Test: "."}, "test"},
+		{Step{Check: "."}, "check"},
+		{Step{Document: "."}, "document"},
+		{Step{Lint: "."}, "lint"},
+		{Step{Style: "."}, "style"},
+		{Step{Connect: &ConnectDeploy{Type: "shiny", Path: "app/"}}, "connect"},
 		{Step{}, ""},
 	}
 	for _, tt := range tests {
@@ -122,6 +129,70 @@ func TestTopoSort_Cycle(t *testing.T) {
 	_, err := TopoSort(steps)
 	if err == nil {
 		t.Fatal("expected cycle error, got nil")
+	}
+}
+
+func TestValidate_NewStepTypes(t *testing.T) {
+	// Valid quarto step
+	d := &DAG{Name: "t", Steps: []Step{{ID: "a", Quarto: "report.qmd"}}}
+	if err := Validate(d); err != nil {
+		t.Errorf("quarto step should be valid: %v", err)
+	}
+
+	// Valid connect step
+	d = &DAG{Name: "t", Steps: []Step{{ID: "a", Connect: &ConnectDeploy{Type: "shiny", Path: "app/"}}}}
+	if err := Validate(d); err != nil {
+		t.Errorf("connect step should be valid: %v", err)
+	}
+
+	// Connect missing type
+	d = &DAG{Name: "t", Steps: []Step{{ID: "a", Connect: &ConnectDeploy{Path: "app/"}}}}
+	if err := Validate(d); err == nil {
+		t.Error("connect without type should fail")
+	}
+
+	// Connect invalid type
+	d = &DAG{Name: "t", Steps: []Step{{ID: "a", Connect: &ConnectDeploy{Type: "invalid", Path: "app/"}}}}
+	if err := Validate(d); err == nil {
+		t.Error("connect with invalid type should fail")
+	}
+
+	// Connect missing path
+	d = &DAG{Name: "t", Steps: []Step{{ID: "a", Connect: &ConnectDeploy{Type: "shiny"}}}}
+	if err := Validate(d); err == nil {
+		t.Error("connect without path should fail")
+	}
+
+	// Multiple types should fail
+	d = &DAG{Name: "t", Steps: []Step{{ID: "a", Script: "foo.R", Quarto: "bar.qmd"}}}
+	if err := Validate(d); err == nil {
+		t.Error("multiple types should fail")
+	}
+}
+
+func TestValidate_RetryBackoff(t *testing.T) {
+	// Valid exponential
+	d := &DAG{Name: "t", Steps: []Step{{ID: "a", Command: "echo", Retry: &Retry{Limit: 2, Backoff: "exponential"}}}}
+	if err := Validate(d); err != nil {
+		t.Errorf("exponential backoff should be valid: %v", err)
+	}
+
+	// Valid with max_delay
+	d = &DAG{Name: "t", Steps: []Step{{ID: "a", Command: "echo", Retry: &Retry{Limit: 2, Backoff: "exponential", MaxDelay: "30s"}}}}
+	if err := Validate(d); err != nil {
+		t.Errorf("max_delay should be valid: %v", err)
+	}
+
+	// Invalid backoff
+	d = &DAG{Name: "t", Steps: []Step{{ID: "a", Command: "echo", Retry: &Retry{Limit: 2, Backoff: "quadratic"}}}}
+	if err := Validate(d); err == nil {
+		t.Error("invalid backoff should fail")
+	}
+
+	// Invalid max_delay
+	d = &DAG{Name: "t", Steps: []Step{{ID: "a", Command: "echo", Retry: &Retry{Limit: 2, MaxDelay: "not-a-duration"}}}}
+	if err := Validate(d); err == nil {
+		t.Error("invalid max_delay should fail")
 	}
 }
 

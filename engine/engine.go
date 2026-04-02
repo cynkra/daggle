@@ -25,6 +25,7 @@ type Engine struct {
 	execFn  ExecutorFactory
 	events  *state.EventWriter
 	runInfo *state.RunInfo
+	meta    *state.RunMeta
 	logger  *slog.Logger
 
 	// outputs collects ::daggle-output:: values from completed steps.
@@ -45,6 +46,11 @@ func New(d *dag.DAG, runInfo *state.RunInfo, execFn ExecutorFactory) *Engine {
 	}
 }
 
+// SetMeta sets the run metadata to be written at start and updated at completion.
+func (e *Engine) SetMeta(meta *state.RunMeta) {
+	e.meta = meta
+}
+
 // Run executes the DAG by walking tiers in topological order.
 // Steps within a tier run in parallel. If any step fails (after retries),
 // remaining tiers are skipped and the run is marked as failed.
@@ -56,6 +62,11 @@ func (e *Engine) Run(ctx context.Context) error {
 
 	_ = e.events.Write(state.Event{Type: state.EventRunStarted})
 	e.logger.Info("run started", "dag", e.dag.Name, "run_id", e.runInfo.ID)
+
+	// Write initial metadata
+	if e.meta != nil {
+		_ = state.WriteMeta(e.runInfo.Dir, e.meta)
+	}
 
 	// Build environment: DAG-level env + daggle metadata
 	env := buildEnv(e.dag, e.runInfo)
@@ -78,6 +89,17 @@ func (e *Engine) Run(ctx context.Context) error {
 	if runErr == nil {
 		_ = e.events.Write(state.Event{Type: state.EventRunCompleted})
 		e.logger.Info("run completed", "dag", e.dag.Name, "run_id", e.runInfo.ID)
+	}
+
+	// Update metadata with final status
+	if e.meta != nil {
+		e.meta.EndTime = time.Now()
+		if runErr == nil {
+			e.meta.Status = "completed"
+		} else {
+			e.meta.Status = "failed"
+		}
+		_ = state.WriteMeta(e.runInfo.Dir, e.meta)
 	}
 
 	// Run lifecycle hooks
@@ -180,17 +202,18 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 				Attempt: attempt,
 			})
 			e.logger.Warn("step failed, retrying", "step", step.ID, "attempt", attempt, "error", lastResult.Err)
-			time.Sleep(time.Duration(attempt) * time.Second)
+			time.Sleep(retryDelay(attempt, step.Retry))
 		}
 	}
 
 	_ = e.events.Write(state.Event{
-		Type:     state.EventStepFailed,
-		StepID:   step.ID,
-		ExitCode: lastResult.ExitCode,
-		Error:    lastResult.Err.Error(),
-		Duration: lastResult.Duration.String(),
-		Attempt:  maxAttempts,
+		Type:        state.EventStepFailed,
+		StepID:      step.ID,
+		ExitCode:    lastResult.ExitCode,
+		Error:       lastResult.Err.Error(),
+		ErrorDetail: lastResult.ErrorDetail,
+		Duration:    lastResult.Duration.String(),
+		Attempt:     maxAttempts,
 	})
 	e.logger.Error("step failed", "step", step.ID, "error", lastResult.Err)
 
@@ -296,4 +319,23 @@ func stepIDs(steps []dag.Step) []string {
 		ids[i] = s.ID
 	}
 	return ids
+}
+
+func retryDelay(attempt int, retry *dag.Retry) time.Duration {
+	if retry == nil {
+		return time.Duration(attempt) * time.Second
+	}
+	var delay time.Duration
+	switch retry.Backoff {
+	case "exponential":
+		delay = time.Duration(1<<uint(attempt-1)) * time.Second
+	default:
+		delay = time.Duration(attempt) * time.Second
+	}
+	if retry.MaxDelay != "" {
+		if max, err := time.ParseDuration(retry.MaxDelay); err == nil && delay > max {
+			delay = max
+		}
+	}
+	return delay
 }

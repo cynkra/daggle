@@ -1,13 +1,17 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/engine"
@@ -15,6 +19,9 @@ import (
 	"github.com/cynkra/daggle/state"
 	"github.com/spf13/cobra"
 )
+
+// Version is set via ldflags at build time.
+var Version = "dev"
 
 var runParams []string
 
@@ -63,8 +70,23 @@ func runDAG(_ *cobra.Command, args []string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	// Build reproducibility metadata
+	dagHash, _ := dag.HashFile(dagPath)
+	meta := &state.RunMeta{
+		RunID:         run.ID,
+		DAGName:       expanded.Name,
+		DAGHash:       dagHash,
+		DAGPath:       dagPath,
+		StartTime:     time.Now(),
+		RVersion:      detectRVersion(),
+		Platform:      runtime.GOOS + "/" + runtime.GOARCH,
+		Params:        params,
+		DaggleVersion: Version,
+	}
+
 	// Execute
 	eng := engine.New(expanded, run, executor.New)
+	eng.SetMeta(meta)
 
 	if err := eng.Run(ctx); err != nil {
 		fmt.Printf("\nDAG %q failed: %v\n", expanded.Name, err)
@@ -99,6 +121,27 @@ func parseParams(raw []string) map[string]string {
 		}
 	}
 	return params
+}
+
+func detectRVersion() string {
+	out, err := exec.Command("Rscript", "--version").CombinedOutput()
+	if err != nil {
+		return ""
+	}
+	// Rscript --version outputs something like "Rscript (R) version 4.4.1 (2024-06-14)"
+	// or "R scripting front-end version 4.4.1 (2024-06-14)"
+	s := strings.TrimSpace(string(bytes.TrimRight(out, "\n")))
+	// Extract version number
+	for _, line := range strings.Split(s, "\n") {
+		if idx := strings.Index(line, "version "); idx >= 0 {
+			rest := line[idx+8:]
+			if sp := strings.IndexByte(rest, ' '); sp > 0 {
+				return rest[:sp]
+			}
+			return rest
+		}
+	}
+	return s
 }
 
 func applyOverrides() {

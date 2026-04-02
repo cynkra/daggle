@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -127,6 +128,63 @@ func TestShellExecutor_OutputMarkers(t *testing.T) {
 	}
 	if result.Outputs["file_path"] != "/tmp/data.csv" {
 		t.Errorf("file_path = %q, want %q", result.Outputs["file_path"], "/tmp/data.csv")
+	}
+}
+
+func TestNew_AllStepTypes(t *testing.T) {
+	tests := []struct {
+		step dag.Step
+		want string
+	}{
+		{dag.Step{Script: "foo.R"}, "*executor.ScriptExecutor"},
+		{dag.Step{RExpr: "1+1"}, "*executor.InlineRExecutor"},
+		{dag.Step{Command: "echo"}, "*executor.ShellExecutor"},
+		{dag.Step{Quarto: "report.qmd"}, "*executor.QuartoExecutor"},
+		{dag.Step{Test: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Check: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Document: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Lint: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Style: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Connect: &dag.ConnectDeploy{Type: "shiny", Path: "app/"}}, "*executor.ConnectExecutor"},
+		{dag.Step{}, "<nil>"},
+	}
+	for _, tt := range tests {
+		ex := New(tt.step)
+		got := fmt.Sprintf("%T", ex)
+		if got != tt.want {
+			t.Errorf("New(%v) = %s, want %s", dag.StepType(tt.step), got, tt.want)
+		}
+	}
+}
+
+func TestExtractRError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Test with R error pattern
+	stderrPath := filepath.Join(tmpDir, "test.stderr.log")
+	_ = os.WriteFile(stderrPath, []byte("some output\nWarning message:\nError in foo(): bar is not defined\nExecution halted\n"), 0644)
+
+	detail := extractRError(stderrPath)
+	if detail == "" {
+		t.Fatal("expected error detail, got empty string")
+	}
+	if !strings.Contains(detail, "Error in foo()") {
+		t.Errorf("error detail = %q, want it to contain 'Error in foo()'", detail)
+	}
+
+	// Test with no R error
+	noErrPath := filepath.Join(tmpDir, "noerr.stderr.log")
+	_ = os.WriteFile(noErrPath, []byte("just some warnings\n"), 0644)
+
+	detail = extractRError(noErrPath)
+	if detail != "" {
+		t.Errorf("expected empty detail for non-error, got %q", detail)
+	}
+
+	// Test with nonexistent file
+	detail = extractRError(filepath.Join(tmpDir, "nonexistent"))
+	if detail != "" {
+		t.Errorf("expected empty detail for missing file, got %q", detail)
 	}
 }
 

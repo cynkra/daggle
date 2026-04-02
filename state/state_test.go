@@ -105,6 +105,38 @@ func TestRunStatus(t *testing.T) {
 	}
 }
 
+func TestMetaRoundTrip(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	meta := &RunMeta{
+		RunID:         "abc123",
+		DAGName:       "test-dag",
+		DAGHash:       "sha256hash",
+		Platform:      "darwin/arm64",
+		DaggleVersion: "0.1.0",
+		RVersion:      "4.4.1",
+	}
+
+	if err := WriteMeta(tmpDir, meta); err != nil {
+		t.Fatalf("WriteMeta: %v", err)
+	}
+
+	read, err := ReadMeta(tmpDir)
+	if err != nil {
+		t.Fatalf("ReadMeta: %v", err)
+	}
+
+	if read.RunID != "abc123" {
+		t.Errorf("RunID = %q, want %q", read.RunID, "abc123")
+	}
+	if read.DAGHash != "sha256hash" {
+		t.Errorf("DAGHash = %q, want %q", read.DAGHash, "sha256hash")
+	}
+	if read.RVersion != "4.4.1" {
+		t.Errorf("RVersion = %q, want %q", read.RVersion, "4.4.1")
+	}
+}
+
 func TestXDGPaths(t *testing.T) {
 	t.Setenv("DAGGLE_CONFIG_DIR", "/custom/config")
 	t.Setenv("DAGGLE_DATA_DIR", "/custom/data")

@@ -39,6 +39,7 @@ type Step struct {
 	Script  string            `yaml:"script,omitempty"`
 	RExpr   string            `yaml:"r_expr,omitempty"`
 	Command string            `yaml:"command,omitempty"`
+	Quarto  string            `yaml:"quarto,omitempty"`
 	Args    []string          `yaml:"args,omitempty"`
 	Depends []string          `yaml:"depends,omitempty"`
 	Timeout string            `yaml:"timeout,omitempty"`
@@ -46,14 +47,34 @@ type Step struct {
 	Env     map[string]string `yaml:"env,omitempty"`
 	Workdir string            `yaml:"workdir,omitempty"`
 
+	// R package development step types
+	Test     string `yaml:"test,omitempty"`
+	Check    string `yaml:"check,omitempty"`
+	Document string `yaml:"document,omitempty"`
+	Lint     string `yaml:"lint,omitempty"`
+	Style    string `yaml:"style,omitempty"`
+
+	// Posit Connect deployment
+	Connect *ConnectDeploy `yaml:"connect,omitempty"`
+
 	// Step-level hooks
 	OnSuccess *Hook `yaml:"on_success,omitempty"`
 	OnFailure *Hook `yaml:"on_failure,omitempty"`
 }
 
+// ConnectDeploy configures deployment to Posit Connect.
+type ConnectDeploy struct {
+	Type        string `yaml:"type"`                  // shiny, quarto, plumber
+	Path        string `yaml:"path"`                  // content directory or file
+	Name        string `yaml:"name,omitempty"`         // content name on Connect
+	ForceUpdate *bool  `yaml:"force_update,omitempty"` // default true
+}
+
 // Retry configures retry behavior for a step.
 type Retry struct {
-	Limit int `yaml:"limit"`
+	Limit    int    `yaml:"limit"`
+	Backoff  string `yaml:"backoff,omitempty"`   // "linear" (default) or "exponential"
+	MaxDelay string `yaml:"max_delay,omitempty"` // cap on delay, e.g. "60s"
 }
 
 // ResolveWorkdir returns the effective working directory for a step.
@@ -80,6 +101,20 @@ func StepType(s Step) string {
 		return "r_expr"
 	case s.Command != "":
 		return "command"
+	case s.Quarto != "":
+		return "quarto"
+	case s.Test != "":
+		return "test"
+	case s.Check != "":
+		return "check"
+	case s.Document != "":
+		return "document"
+	case s.Lint != "":
+		return "lint"
+	case s.Style != "":
+		return "style"
+	case s.Connect != nil:
+		return "connect"
 	default:
 		return ""
 	}

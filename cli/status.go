@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/cynkra/daggle/state"
@@ -73,10 +74,11 @@ func showStatus(_ *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(w, "STEP\tSTATUS\tDURATION\tATTEMPTS\tERROR")
 
 	type stepInfo struct {
-		status   string
-		duration string
-		attempts int
-		err      string
+		status      string
+		duration    string
+		attempts    int
+		err         string
+		errorDetail string
 	}
 	steps := make(map[string]*stepInfo)
 
@@ -101,6 +103,7 @@ func showStatus(_ *cobra.Command, args []string) error {
 			si.status = "failed"
 			si.duration = e.Duration
 			si.err = e.Error
+			si.errorDetail = e.ErrorDetail
 			si.attempts = e.Attempt
 		case state.EventStepRetrying:
 			si.status = "retrying"
@@ -122,6 +125,18 @@ func showStatus(_ *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", e.StepID, si.status, si.duration, si.attempts, errStr)
 	}
 	_ = w.Flush()
+
+	// Show error details for failed steps
+	for _, e := range events {
+		if e.StepID == "" || seen[e.StepID+"_detail"] {
+			continue
+		}
+		si := steps[e.StepID]
+		if si != nil && si.errorDetail != "" {
+			seen[e.StepID+"_detail"] = true
+			fmt.Printf("\nError detail for step %q:\n  %s\n", e.StepID, strings.ReplaceAll(si.errorDetail, "\n", "\n  "))
+		}
+	}
 
 	return nil
 }

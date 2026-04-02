@@ -313,3 +313,31 @@ func (w *workdirCapture) Run(ctx context.Context, step dag.Step, logDir string, 
 	*w.captured = workdir
 	return w.inner.Run(ctx, step, logDir, workdir, env)
 }
+
+func TestRetryDelay(t *testing.T) {
+	// Default (nil retry) = linear
+	if d := retryDelay(3, nil); d != 3*time.Second {
+		t.Errorf("nil retry: delay = %v, want 3s", d)
+	}
+
+	// Linear
+	r := &dag.Retry{Limit: 3, Backoff: "linear"}
+	if d := retryDelay(2, r); d != 2*time.Second {
+		t.Errorf("linear: delay = %v, want 2s", d)
+	}
+
+	// Exponential: attempt 1=1s, 2=2s, 3=4s, 4=8s
+	r = &dag.Retry{Limit: 5, Backoff: "exponential"}
+	if d := retryDelay(1, r); d != 1*time.Second {
+		t.Errorf("exp attempt 1: delay = %v, want 1s", d)
+	}
+	if d := retryDelay(3, r); d != 4*time.Second {
+		t.Errorf("exp attempt 3: delay = %v, want 4s", d)
+	}
+
+	// Exponential with max_delay
+	r = &dag.Retry{Limit: 5, Backoff: "exponential", MaxDelay: "3s"}
+	if d := retryDelay(3, r); d != 3*time.Second {
+		t.Errorf("exp capped attempt 3: delay = %v, want 3s", d)
+	}
+}

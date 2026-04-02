@@ -1,6 +1,8 @@
 package dag
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -29,6 +31,20 @@ func ParseFile(path string) (*DAG, error) {
 	}
 
 	return d, nil
+}
+
+// HashFile computes the SHA-256 hash of a file's contents.
+func HashFile(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // ParseReader parses a YAML DAG definition from a reader.
