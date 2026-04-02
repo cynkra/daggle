@@ -1,7 +1,7 @@
 version: 2
 
 builds:
-  - main: ./cmd/daggle/
+  - main: ./cmd/daggle/main.go
     binary: daggle
     env:
       - CGO_ENABLED=0
