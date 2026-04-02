@@ -102,6 +102,52 @@ func Validate(d *DAG) error {
 		}
 	}
 
+	// Validate trigger block
+	if d.Trigger != nil {
+		if d.Trigger.Watch != nil {
+			if d.Trigger.Watch.Path == "" {
+				errs = append(errs, "trigger.watch.path is required")
+			}
+			if d.Trigger.Watch.Debounce != "" {
+				if _, err := time.ParseDuration(d.Trigger.Watch.Debounce); err != nil {
+					errs = append(errs, fmt.Sprintf("trigger.watch.debounce %q is invalid: %v", d.Trigger.Watch.Debounce, err))
+				}
+			}
+		}
+		if d.Trigger.OnDAG != nil {
+			if d.Trigger.OnDAG.Name == "" {
+				errs = append(errs, "trigger.on_dag.name is required")
+			}
+			validStatuses := map[string]bool{"": true, "completed": true, "failed": true, "any": true}
+			if !validStatuses[d.Trigger.OnDAG.Status] {
+				errs = append(errs, fmt.Sprintf("trigger.on_dag.status %q is invalid; must be one of: completed, failed, any", d.Trigger.OnDAG.Status))
+			}
+		}
+		if d.Trigger.Condition != nil {
+			if d.Trigger.Condition.RExpr == "" && d.Trigger.Condition.Command == "" {
+				errs = append(errs, "trigger.condition requires r_expr or command")
+			}
+			if d.Trigger.Condition.PollInterval != "" {
+				if _, err := time.ParseDuration(d.Trigger.Condition.PollInterval); err != nil {
+					errs = append(errs, fmt.Sprintf("trigger.condition.poll_interval %q is invalid: %v", d.Trigger.Condition.PollInterval, err))
+				}
+			}
+		}
+		if d.Trigger.Git != nil {
+			if d.Trigger.Git.PollInterval != "" {
+				if _, err := time.ParseDuration(d.Trigger.Git.PollInterval); err != nil {
+					errs = append(errs, fmt.Sprintf("trigger.git.poll_interval %q is invalid: %v", d.Trigger.Git.PollInterval, err))
+				}
+			}
+			validEvents := map[string]bool{"push": true, "tag": true}
+			for _, ev := range d.Trigger.Git.Events {
+				if !validEvents[ev] {
+					errs = append(errs, fmt.Sprintf("trigger.git.events contains invalid event %q; must be one of: push, tag", ev))
+				}
+			}
+		}
+	}
+
 	// Cycle detection via TopoSort
 	if len(errs) == 0 {
 		if _, err := TopoSort(d.Steps); err != nil {

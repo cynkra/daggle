@@ -14,7 +14,7 @@ R has excellent tools for *what* to compute (tidyverse, targets, brms) but poor 
 
 | Question | Before daggle | With daggle |
 |----------|--------------|-------------|
-| When should this run? | crontab | `schedule:` field in YAML |
+| When should this run? | crontab | `trigger: { schedule: ... }` in YAML |
 | What if it fails? | Check syslog manually | Retries with exponential backoff, `on_failure` hooks |
 | What if it hangs? | Kill it manually | Timeout with SIGTERM/SIGKILL to entire process group |
 | Who gets told? | Nobody | Hooks (R expressions — slackr, blastula, whatever you want) |

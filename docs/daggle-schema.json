@@ -11,9 +11,63 @@
       "type": "string",
       "description": "Unique name for the DAG"
     },
-    "schedule": {
-      "type": "string",
-      "description": "Cron expression for scheduled execution (e.g. '30 6 * * MON-FRI', '@every 1h')"
+    "trigger": {
+      "type": "object",
+      "description": "Trigger configuration for automated DAG execution. Multiple triggers can coexist — any matching trigger starts a run.",
+      "additionalProperties": false,
+      "properties": {
+        "schedule": { "type": "string", "description": "Cron expression (e.g. '30 6 * * MON-FRI', '@every 1h')" },
+        "watch": {
+          "type": "object",
+          "description": "Trigger on file changes",
+          "additionalProperties": false,
+          "required": ["path"],
+          "properties": {
+            "path": { "type": "string", "description": "Directory to watch" },
+            "pattern": { "type": "string", "description": "Glob pattern to filter files (e.g. '*.csv')" },
+            "debounce": { "type": "string", "description": "Wait for writes to settle (e.g. '5s')" }
+          }
+        },
+        "webhook": {
+          "type": "object",
+          "description": "Trigger on HTTP POST request",
+          "additionalProperties": false,
+          "properties": {
+            "secret": { "type": "string", "description": "HMAC-SHA256 secret for request validation" }
+          }
+        },
+        "on_dag": {
+          "type": "object",
+          "description": "Trigger when another DAG completes or fails",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string", "description": "Name of the upstream DAG" },
+            "status": { "type": "string", "enum": ["completed", "failed", "any"], "description": "Status to match (default: completed)" },
+            "pass_outputs": { "type": "boolean", "description": "Pass upstream DAG outputs as env vars" }
+          }
+        },
+        "condition": {
+          "type": "object",
+          "description": "Trigger when an R expression or shell command succeeds",
+          "additionalProperties": false,
+          "properties": {
+            "r_expr": { "type": "string", "description": "R expression to evaluate" },
+            "command": { "type": "string", "description": "Shell command to evaluate" },
+            "poll_interval": { "type": "string", "description": "How often to check (e.g. '5m')" }
+          }
+        },
+        "git": {
+          "type": "object",
+          "description": "Trigger on new git commits or tags",
+          "additionalProperties": false,
+          "properties": {
+            "branch": { "type": "string", "description": "Branch to monitor" },
+            "events": { "type": "array", "items": { "type": "string", "enum": ["push", "tag"] }, "description": "Git events to watch" },
+            "poll_interval": { "type": "string", "description": "How often to poll (e.g. '30s')" }
+          }
+        }
+      }
     },
     "workdir": {
       "type": "string",

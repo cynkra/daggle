@@ -55,7 +55,8 @@ func TestScheduler_ScanDAGs(t *testing.T) {
 	// Create a DAG with a schedule
 	writeDAG(t, dagDir, "scheduled.yaml", `
 name: scheduled-dag
-schedule: "@every 1h"
+trigger:
+  schedule: "@every 1h"
 steps:
   - id: hello
     command: echo hello
@@ -100,7 +101,8 @@ func TestScheduler_HotReload(t *testing.T) {
 	// Add a DAG
 	writeDAG(t, dagDir, "new.yaml", `
 name: new-dag
-schedule: "@every 1h"
+trigger:
+  schedule: "@every 1h"
 steps:
   - id: a
     command: echo a
@@ -113,7 +115,8 @@ steps:
 	// Update schedule
 	writeDAG(t, dagDir, "new.yaml", `
 name: new-dag
-schedule: "@every 2h"
+trigger:
+  schedule: "@every 2h"
 steps:
   - id: a
     command: echo a
@@ -140,7 +143,8 @@ func TestScheduler_SkipOverlap(t *testing.T) {
 	// Create a DAG that sleeps
 	writeDAG(t, dagDir, "slow.yaml", `
 name: slow-dag
-schedule: "@every 1s"
+trigger:
+  schedule: "@every 1s"
 steps:
   - id: slow
     command: sleep 10
@@ -196,7 +200,8 @@ func TestScheduler_MaxConcurrent(t *testing.T) {
 	for _, name := range []string{"dag-a", "dag-b", "dag-c"} {
 		writeDAG(t, dagDir, name+".yaml", `
 name: `+name+`
-schedule: "@every 1h"
+trigger:
+  schedule: "@every 1h"
 steps:
   - id: slow
     command: sleep 30

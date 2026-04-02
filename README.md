@@ -87,7 +87,8 @@ Every step is assumed to be R unless stated otherwise. The following step types 
 
 ```yaml
 name: my-pipeline               # required
-schedule: "30 6 * * MON-FRI"    # optional cron schedule for daggle serve
+trigger:                        # optional: automated execution triggers
+  schedule: "30 6 * * MON-FRI" # cron schedule for daggle serve
 workdir: /opt/projects/etl      # optional working directory override
 
 env:                            # environment variables for all steps
@@ -251,11 +252,12 @@ Supported types: `shiny`, `quarto`, `plumber`. Requires the `rsconnect` R packag
 
 ## Cron scheduling
 
-Add a `schedule:` field to any DAG and run `daggle serve` to start the scheduler:
+Add a `trigger:` block with a `schedule:` field to any DAG and run `daggle serve` to start the scheduler:
 
 ```yaml
 name: daily-report
-schedule: "30 6 * * MON-FRI"    # 6:30 AM weekdays
+trigger:
+  schedule: "30 6 * * MON-FRI"  # 6:30 AM weekdays
 steps:
   - id: report
     script: reports/daily.R
@@ -266,7 +268,7 @@ daggle serve
 ```
 
 The scheduler:
-- Monitors the DAG directory for files with `schedule:` fields
+- Monitors the DAG directory for files with `trigger:` blocks
 - Triggers runs on cron expressions (standard 5-field, plus `@every 5m`, `@hourly`, etc.)
 - Skips runs if the same DAG is still executing (overlap protection)
 - Limits to 4 concurrent DAG runs

@@ -1,5 +1,6 @@
 name: penguin-monitor
-schedule: "@every 6h"
+trigger:
+  schedule: "@every 6h"
 
 env:
   REPORT_DIR: reports

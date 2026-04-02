@@ -24,7 +24,7 @@ daggle run pipeline.yaml
 
 ## Run on schedule
 
-The pipeline includes `schedule: "@every 6h"`. Start the scheduler to run it automatically:
+The pipeline includes `trigger: { schedule: "@every 6h" }`. Start the scheduler to run it automatically:
 
 ```bash
 cd examples/penguin-monitor

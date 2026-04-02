@@ -161,7 +161,8 @@ func (s *Scheduler) syncDAGs() error {
 			continue
 		}
 
-		if d.Schedule == "" {
+		cronSchedule := d.CronSchedule()
+		if cronSchedule == "" {
 			continue
 		}
 
@@ -178,25 +179,25 @@ func (s *Scheduler) syncDAGs() error {
 		// Remove old entry if schedule changed
 		if exists {
 			s.cron.Remove(existing.entryID)
-			s.logger.Info("updated DAG schedule", "dag", d.Name, "schedule", d.Schedule)
+			s.logger.Info("updated DAG schedule", "dag", d.Name, "schedule", cronSchedule)
 		} else {
-			s.logger.Info("registered DAG", "dag", d.Name, "schedule", d.Schedule)
+			s.logger.Info("registered DAG", "dag", d.Name, "schedule", cronSchedule)
 		}
 
 		// Register new cron entry
 		dagPath := path // capture for closure
-		entryID, err := s.cron.AddFunc(d.Schedule, func() {
+		entryID, err := s.cron.AddFunc(cronSchedule, func() {
 			s.triggerRun(dagPath)
 		})
 		if err != nil {
-			s.logger.Error("invalid cron schedule", "dag", d.Name, "schedule", d.Schedule, "error", err)
+			s.logger.Error("invalid cron schedule", "dag", d.Name, "schedule", cronSchedule, "error", err)
 			continue
 		}
 
 		s.mu.Lock()
 		s.registered[d.Name] = &dagEntry{
 			entryID:  entryID,
-			schedule: d.Schedule,
+			schedule: cronSchedule,
 			hash:     hash,
 		}
 		s.mu.Unlock()

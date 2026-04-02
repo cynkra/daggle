@@ -22,8 +22,9 @@ type RunMeta struct {
 	Params       map[string]string `json:"params,omitempty"`
 	DaggleVersion string           `json:"daggle_version,omitempty"`
 	RPlatform     string           `json:"r_platform,omitempty"`
-	RenvDetected  bool             `json:"renv_detected,omitempty"`
-	RenvLibrary   string           `json:"renv_library,omitempty"`
+	RenvDetected   bool             `json:"renv_detected,omitempty"`
+	RenvLibrary    string           `json:"renv_library,omitempty"`
+	TriggerSource  string           `json:"trigger_source,omitempty"`
 }
 
 // WriteMeta writes the run metadata to meta.json in the given directory.

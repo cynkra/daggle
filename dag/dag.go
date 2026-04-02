@@ -4,12 +4,12 @@ import "time"
 
 // DAG represents a directed acyclic graph workflow definition.
 type DAG struct {
-	Name     string            `yaml:"name"`
-	Schedule string            `yaml:"schedule,omitempty"`
-	Env      map[string]string `yaml:"env,omitempty"`
-	Params   []Param           `yaml:"params,omitempty"`
-	Steps    []Step            `yaml:"steps"`
-	Workdir  string            `yaml:"workdir,omitempty"`
+	Name    string            `yaml:"name"`
+	Trigger *Trigger          `yaml:"trigger,omitempty"`
+	Env     map[string]string `yaml:"env,omitempty"`
+	Params  []Param           `yaml:"params,omitempty"`
+	Steps   []Step            `yaml:"steps"`
+	Workdir string            `yaml:"workdir,omitempty"`
 
 	// SourceDir is the directory containing the DAG YAML file.
 	// Set by ParseFile, not from YAML. Used as default working directory.
@@ -19,6 +19,68 @@ type DAG struct {
 	OnSuccess *Hook `yaml:"on_success,omitempty"`
 	OnFailure *Hook `yaml:"on_failure,omitempty"`
 	OnExit    *Hook `yaml:"on_exit,omitempty"`
+}
+
+// Trigger defines when a DAG should be automatically executed.
+// Multiple trigger types can coexist — any matching trigger starts a run.
+type Trigger struct {
+	Schedule  string            `yaml:"schedule,omitempty"`
+	Watch     *WatchTrigger     `yaml:"watch,omitempty"`
+	Webhook   *WebhookTrigger   `yaml:"webhook,omitempty"`
+	OnDAG     *OnDAGTrigger     `yaml:"on_dag,omitempty"`
+	Condition *ConditionTrigger `yaml:"condition,omitempty"`
+	Git       *GitTrigger       `yaml:"git,omitempty"`
+}
+
+// WatchTrigger fires when files matching a pattern change in a directory.
+type WatchTrigger struct {
+	Path     string `yaml:"path"`
+	Pattern  string `yaml:"pattern,omitempty"`
+	Debounce string `yaml:"debounce,omitempty"` // duration, e.g. "5s"
+}
+
+// WebhookTrigger fires on HTTP POST requests.
+type WebhookTrigger struct {
+	Secret string `yaml:"secret,omitempty"` // HMAC-SHA256 secret
+}
+
+// OnDAGTrigger fires when another DAG completes or fails.
+type OnDAGTrigger struct {
+	Name        string `yaml:"name"`
+	Status      string `yaml:"status,omitempty"`       // "completed" (default), "failed", "any"
+	PassOutputs bool   `yaml:"pass_outputs,omitempty"`
+}
+
+// ConditionTrigger fires when an R expression or shell command succeeds.
+type ConditionTrigger struct {
+	RExpr        string `yaml:"r_expr,omitempty"`
+	Command      string `yaml:"command,omitempty"`
+	PollInterval string `yaml:"poll_interval,omitempty"` // duration, default "5m"
+}
+
+// GitTrigger fires on new commits or tags in a git repository.
+type GitTrigger struct {
+	Branch       string   `yaml:"branch,omitempty"`
+	Events       []string `yaml:"events,omitempty"`       // "push", "tag"
+	PollInterval string   `yaml:"poll_interval,omitempty"` // duration, default "30s"
+}
+
+// CronSchedule returns the cron expression from the trigger block, or "" if none.
+func (d *DAG) CronSchedule() string {
+	if d.Trigger == nil {
+		return ""
+	}
+	return d.Trigger.Schedule
+}
+
+// HasTrigger returns true if the DAG has any trigger configured.
+func (d *DAG) HasTrigger() bool {
+	if d.Trigger == nil {
+		return false
+	}
+	t := d.Trigger
+	return t.Schedule != "" || t.Watch != nil || t.Webhook != nil ||
+		t.OnDAG != nil || t.Condition != nil || t.Git != nil
 }
 
 // Hook defines a lifecycle action triggered on success, failure, or exit.
