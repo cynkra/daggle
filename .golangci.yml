@@ -12,7 +12,3 @@ linters:
         - name: exported
         - name: unused-parameter
         - name: unreachable-code
-
-run:
-  exclude-dirs:
-    - testdata
