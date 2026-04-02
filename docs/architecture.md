@@ -10,7 +10,7 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
 │                                                           │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐ │
 │  │   CLI    │  │Scheduler │  │ Web UI   │  │ REST API │ │
-│  │  (cobra) │  │  (cron)  │  │(planned) │  │(planned) │ │
+│  │  (cobra) │  │ (triggers│  │(planned) │  │(planned) │ │
 │  └────┬─────┘  └────┬─────┘  └──────────┘  └──────────┘ │
 │       │              │                                    │
 │       ▼              ▼                                    │
@@ -147,15 +147,28 @@ Every executor delegates to `runProcess()` which handles process groups, log cap
 3. Create executor implementing the interface
 4. Add case to `executor.New()` factory
 
-## Scheduler
+## Scheduler & Trigger System
 
-The cron scheduler (`daggle serve`) runs as a long-lived daemon:
+The scheduler (`daggle serve`) runs as a long-lived daemon managing all trigger types:
 
 - Uses `robfig/cron/v3` for cron expression parsing
 - **Hot reload** — re-scans DAG directory every 30s, detects changes via SHA-256 file hashing
 - **Overlap protection** — skips a scheduled run if the same DAG is still executing
 - **Concurrency limit** — max 4 simultaneous DAG runs (configurable)
 - **Graceful shutdown** — on SIGINT/SIGTERM, stops scheduling and waits up to 5 minutes for in-flight runs
+
+### Trigger types (planned for Phase 3)
+
+All triggers live under a unified `trigger:` block in DAG YAML. Triggers are additive — any matching trigger starts a run.
+
+| Trigger | Mechanism | Use case |
+|---------|-----------|----------|
+| `schedule` | Cron expressions (implemented) | Recurring pipelines |
+| `watch` | fsnotify file events | Data drops, config changes |
+| `webhook` | HTTP POST endpoint | GitHub hooks, external systems |
+| `on_dag` | Event listener on DAG completion | Multi-DAG chaining |
+| `condition` | R expr / shell polling | DB changes, API readiness |
+| `git` | Poll git for new commits/tags | Local CI |
 
 ## Dependencies
 

@@ -108,7 +108,10 @@ R package dev steps check for their required packages at runtime and fail with a
 
 ### Planned
 
-**Phase 3 — Web UI & API:**
+**Phase 3 — Triggers, Web UI & New Step Types:**
+- Unified `trigger:` block replacing top-level `schedule:`
+- File watcher, webhook, DAG completion, condition polling, git triggers
+- New step types: `rmd:`, `renv_restore:`, `coverage:`, `validate:`
 - REST API for triggering and monitoring runs
 - Embedded web UI (HTML/JS/CSS via `go:embed`) — DAG list, run history, log tailing, DAG visualization
 - Cancellation and in-flight run management (`daggle stop`)
@@ -116,12 +119,13 @@ R package dev steps check for their required packages at runtime and fail with a
 - Graceful daemon lifecycle (SIGHUP reload, systemd/launchd integration)
 - `daggle doctor` diagnostics
 
-**Phase 4 — Power Features:**
+**Phase 4 — Power Features & Advanced Steps:**
+- New step types: `pin:`, `vetiver:`, `shinytest:`, `pkgdown:`, `install:`, `targets:`, `benchmark:`, `revdepcheck:`
 - Sub-DAG composition (`call:` step)
 - Conditional steps (`when:` field)
 - Matrix runs (parameter grid execution)
 - Format-aware artifact tracking
-- `targets:` integration
+- DAG templates (`daggle init`)
 - Duration trends and stats from event history
 
 **Phase 5 — Enterprise (if needed):**
