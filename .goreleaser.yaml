@@ -1,8 +1,7 @@
 version: 2
 
 builds:
-  - dir: .
-    main: ./cmd/daggle
+  - main: ./cmd/daggle/
     binary: daggle
     env:
       - CGO_ENABLED=0
