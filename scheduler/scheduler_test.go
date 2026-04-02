@@ -367,6 +367,126 @@ steps:
 	}
 }
 
+func TestScheduler_OnDAGTrigger(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// Upstream DAG: fast, cron-triggered
+	writeDAG(t, dagDir, "upstream.yaml", `
+name: upstream
+trigger:
+  schedule: "@every 1h"
+steps:
+  - id: produce
+    command: echo upstream-done
+`)
+
+	// Downstream DAG: triggered when upstream completes
+	writeDAG(t, dagDir, "downstream.yaml", `
+name: downstream
+trigger:
+  on_dag:
+    name: upstream
+    status: completed
+steps:
+  - id: consume
+    command: sleep 10
+`)
+
+	sched := New(dagDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = sched.syncDAGs(ctx)
+
+	// Start the completion dispatcher
+	go sched.dispatchCompletions(ctx)
+
+	// Verify on_dag listener is registered
+	sched.mu.Lock()
+	listeners := sched.onDAGListeners["upstream"]
+	sched.mu.Unlock()
+	if len(listeners) != 1 {
+		t.Fatalf("expected 1 on_dag listener for upstream, got %d", len(listeners))
+	}
+
+	// Manually trigger the upstream DAG
+	sched.triggerRun(filepath.Join(dagDir, "upstream.yaml"), "test")
+
+	// Wait for upstream to complete and on_dag to fire
+	time.Sleep(1 * time.Second)
+
+	sched.mu.Lock()
+	running := len(sched.running)
+	sched.mu.Unlock()
+
+	// Downstream should now be running (triggered by upstream completion)
+	if running != 1 {
+		t.Errorf("running = %d, want 1 (downstream should be triggered by on_dag)", running)
+	}
+
+	// Clean up
+	sched.mu.Lock()
+	for _, cancelFn := range sched.running {
+		cancelFn()
+	}
+	sched.mu.Unlock()
+	time.Sleep(200 * time.Millisecond)
+}
+
+func TestScheduler_OnDAGTriggerStatusFilter(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// Upstream DAG: succeeds
+	writeDAG(t, dagDir, "upstream.yaml", `
+name: upstream
+trigger:
+  schedule: "@every 1h"
+steps:
+  - id: ok
+    command: echo ok
+`)
+
+	// Downstream: only triggers on failure
+	writeDAG(t, dagDir, "on-fail.yaml", `
+name: on-fail
+trigger:
+  on_dag:
+    name: upstream
+    status: failed
+steps:
+  - id: alert
+    command: sleep 10
+`)
+
+	sched := New(dagDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = sched.syncDAGs(ctx)
+	go sched.dispatchCompletions(ctx)
+
+	// Trigger upstream (will succeed)
+	sched.triggerRun(filepath.Join(dagDir, "upstream.yaml"), "test")
+
+	// Wait for upstream to complete
+	time.Sleep(1 * time.Second)
+
+	sched.mu.Lock()
+	running := len(sched.running)
+	sched.mu.Unlock()
+
+	// on-fail should NOT have triggered (upstream succeeded, listener wants "failed")
+	if running != 0 {
+		t.Errorf("running = %d, want 0 (on-fail should not trigger on success)", running)
+	}
+}
+
 func writeDAG(t *testing.T, dir, name, content string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0644); err != nil {

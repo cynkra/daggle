@@ -28,11 +28,23 @@ const (
 	defaultDebounce      = 500 * time.Millisecond
 )
 
+// dagCompletionEvent is emitted when a DAG run finishes.
+type dagCompletionEvent struct {
+	DAGName string
+	Status  string // "completed" or "failed"
+}
+
+// onDAGListener tracks a DAG that should be triggered when another DAG completes.
+type onDAGListener struct {
+	dagPath string // path to the downstream DAG file
+	status  string // "completed", "failed", or "any"
+}
+
 // dagEntry tracks a registered DAG and its active triggers.
 type dagEntry struct {
-	cronID   cron.EntryID       // zero if no cron trigger
-	schedule string             // cron expression (empty if none)
-	hash     string             // file content hash for change detection
+	cronID    cron.EntryID         // zero if no cron trigger
+	schedule  string               // cron expression (empty if none)
+	hash      string               // file content hash for change detection
 	cancelFns []context.CancelFunc // cancel functions for non-cron trigger goroutines
 }
 
@@ -50,22 +62,26 @@ type Scheduler struct {
 	dagDir string
 	logger *slog.Logger
 
-	mu            sync.Mutex
-	registered    map[string]*dagEntry          // dagName -> entry
-	running       map[string]context.CancelFunc // dagName -> cancel
-	runningCount  int
-	maxConcurrent int
+	mu             sync.Mutex
+	registered     map[string]*dagEntry              // dagName -> entry
+	running        map[string]context.CancelFunc     // dagName -> cancel
+	runningCount   int
+	maxConcurrent  int
+	onDAGListeners map[string][]onDAGListener        // upstreamDAGName -> downstream listeners
+	completions    chan dagCompletionEvent
 }
 
 // New creates a new Scheduler that watches the given DAG directory.
 func New(dagDir string) *Scheduler {
 	return &Scheduler{
-		cron:          cron.New(),
-		dagDir:        dagDir,
-		logger:        slog.Default(),
-		registered:    make(map[string]*dagEntry),
-		running:       make(map[string]context.CancelFunc),
-		maxConcurrent: defaultMaxConcurrent,
+		cron:           cron.New(),
+		dagDir:         dagDir,
+		logger:         slog.Default(),
+		registered:     make(map[string]*dagEntry),
+		running:        make(map[string]context.CancelFunc),
+		maxConcurrent:  defaultMaxConcurrent,
+		onDAGListeners: make(map[string][]onDAGListener),
+		completions:    make(chan dagCompletionEvent, 64),
 	}
 }
 
@@ -78,6 +94,9 @@ func (s *Scheduler) Start(ctx context.Context) error {
 
 	s.cron.Start()
 	s.logger.Info("scheduler started", "dag_dir", s.dagDir)
+
+	// Start on_dag completion dispatcher
+	go s.dispatchCompletions(ctx)
 
 	// Poll for DAG file changes
 	ticker := time.NewTicker(defaultPollInterval)
@@ -157,6 +176,7 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 	}
 
 	seen := make(map[string]bool)
+	newListeners := make(map[string][]onDAGListener)
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -227,6 +247,19 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 			}
 		}
 
+		// Register on_dag listener
+		if d.Trigger.OnDAG != nil {
+			upstream := d.Trigger.OnDAG.Name
+			status := d.Trigger.OnDAG.Status
+			if status == "" {
+				status = "completed"
+			}
+			newListeners[upstream] = append(newListeners[upstream], onDAGListener{
+				dagPath: dagPath,
+				status:  status,
+			})
+		}
+
 		s.mu.Lock()
 		s.registered[d.Name] = newEntry
 		s.mu.Unlock()
@@ -242,6 +275,8 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 			s.logger.Info("unregistered DAG", "dag", name)
 		}
 	}
+	// Update on_dag listeners
+	s.onDAGListeners = newListeners
 	s.mu.Unlock()
 
 	return nil
@@ -334,6 +369,27 @@ func (s *Scheduler) setupWatchTrigger(ctx context.Context, d *dag.DAG, dagPath s
 	return cancel
 }
 
+// dispatchCompletions listens for DAG completion events and triggers on_dag listeners.
+func (s *Scheduler) dispatchCompletions(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event := <-s.completions:
+			s.mu.Lock()
+			listeners := s.onDAGListeners[event.DAGName]
+			s.mu.Unlock()
+
+			for _, listener := range listeners {
+				if listener.status == "any" || listener.status == event.Status || (listener.status == "" && event.Status == "completed") {
+					s.logger.Info("on_dag trigger fired", "upstream", event.DAGName, "status", event.Status, "downstream", listener.dagPath)
+					s.triggerRun(listener.dagPath, "on_dag")
+				}
+			}
+		}
+	}
+}
+
 // triggerRun executes a DAG run. Called by any trigger source.
 func (s *Scheduler) triggerRun(dagPath string, source string) {
 	d, err := dag.ParseFile(dagPath)
@@ -388,10 +444,19 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 
 		eng := engine.New(expanded, run, executor.New)
 
+		status := "completed"
 		if err := eng.Run(ctx); err != nil {
+			status = "failed"
 			s.logger.Error("triggered run failed", "dag", d.Name, "run_id", run.ID, "source", source, "error", err)
 		} else {
 			s.logger.Info("triggered run completed", "dag", d.Name, "run_id", run.ID, "source", source)
+		}
+
+		// Emit completion event for on_dag listeners
+		select {
+		case s.completions <- dagCompletionEvent{DAGName: d.Name, Status: status}:
+		default:
+			s.logger.Warn("completion event dropped, channel full", "dag", d.Name)
 		}
 	}()
 }

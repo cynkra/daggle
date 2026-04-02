@@ -283,6 +283,21 @@ steps:
 
 Triggers when files matching the pattern are created or modified in the watched directory. Debounce prevents firing on partial writes.
 
+### DAG completion
+
+```yaml
+name: send-report
+trigger:
+  on_dag:
+    name: daily-etl
+    status: completed             # completed (default), failed, or any
+steps:
+  - id: notify
+    r_expr: 'slackr::slackr_msg("ETL finished, report sent")'
+```
+
+Triggers when another DAG completes or fails. Enables multi-DAG workflows without sub-DAG composition.
+
 ### Combined triggers
 
 Triggers are additive — any matching trigger starts a run:
