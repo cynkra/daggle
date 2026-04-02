@@ -287,7 +287,7 @@ func TestEngine_Workdir(t *testing.T) {
 
 	var capturedWorkdir string
 	wrappedMock := &workdirCapture{
-		inner: &mockExecutor{fn: func(step dag.Step) executor.Result {
+		inner: &mockExecutor{fn: func(_ dag.Step) executor.Result {
 			return executor.Result{ExitCode: 0}
 		}},
 		captured: &capturedWorkdir,
