@@ -97,8 +97,8 @@ cat("Deploying to", server, "\n")
 
 %s
 
-cat(sprintf("::daggle-output name=connect_url::::%%s\n", server))
-cat(sprintf("::daggle-output name=connect_app::%s\n"))
+cat(paste0("::daggle-output name=connect_url::", server, "\n"))
+cat("::daggle-output name=connect_app::%s\n")
 cat("Deploy complete\n")
 `, deployCall, appName)
 }

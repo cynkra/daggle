@@ -114,10 +114,22 @@ func killProcessGroup(cmd *exec.Cmd) {
 	pgid := -cmd.Process.Pid
 	_ = syscall.Kill(pgid, syscall.SIGTERM)
 
-	timer := time.NewTimer(gracePeriod)
-	defer timer.Stop()
-	<-timer.C
-	_ = syscall.Kill(pgid, syscall.SIGKILL)
+	// Poll for process exit instead of blocking the full grace period
+	deadline := time.After(gracePeriod)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-deadline:
+			_ = syscall.Kill(pgid, syscall.SIGKILL)
+			return
+		case <-ticker.C:
+			// Check if process has exited (signal 0 returns error if gone)
+			if err := syscall.Kill(-pgid, 0); err != nil {
+				return // process group already exited
+			}
+		}
+	}
 }
 
 func buildResult(err error, start time.Time, stdoutPath, stderrPath string) Result {

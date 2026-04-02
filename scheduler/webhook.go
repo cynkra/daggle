@@ -9,7 +9,10 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
+
+const maxWebhookBodySize = 1 << 20 // 1MB
 
 // webhookEntry tracks a webhook-enabled DAG.
 type webhookEntry struct {
@@ -36,7 +39,7 @@ func (s *Scheduler) startWebhookServer(_ map[string]webhookEntry) (addr string, 
 
 		// Validate HMAC if secret is configured
 		if entry.secret != "" {
-			body, err := io.ReadAll(r.Body)
+			body, err := io.ReadAll(io.LimitReader(r.Body, maxWebhookBodySize))
 			if err != nil {
 				http.Error(w, "failed to read body", http.StatusBadRequest)
 				return
@@ -60,7 +63,12 @@ func (s *Scheduler) startWebhookServer(_ map[string]webhookEntry) (addr string, 
 		return "", nil, fmt.Errorf("webhook listen: %w", err)
 	}
 
-	server := &http.Server{Handler: mux}
+	server := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+	}
 
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {

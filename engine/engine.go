@@ -68,12 +68,12 @@ func (e *Engine) Run(ctx context.Context) error {
 		return fmt.Errorf("topo sort: %w", err)
 	}
 
-	_ = e.events.Write(state.Event{Type: state.EventRunStarted})
+	e.writeEvent(state.Event{Type: state.EventRunStarted})
 	e.logger.Info("run started", "dag", e.dag.Name, "run_id", e.runInfo.ID)
 
 	// Write initial metadata
 	if e.meta != nil {
-		_ = state.WriteMeta(e.runInfo.Dir, e.meta)
+		e.writeMeta(e.runInfo.Dir, e.meta)
 	}
 
 	// Build environment: DAG-level env + daggle metadata + renv
@@ -84,7 +84,7 @@ func (e *Engine) Run(ctx context.Context) error {
 		e.logger.Info("executing tier", "tier", tierIdx, "steps", stepIDs(tier))
 
 		if err := e.runTier(ctx, tier, env); err != nil {
-			_ = e.events.Write(state.Event{
+			e.writeEvent(state.Event{
 				Type:  state.EventRunFailed,
 				Error: err.Error(),
 			})
@@ -95,7 +95,7 @@ func (e *Engine) Run(ctx context.Context) error {
 	}
 
 	if runErr == nil {
-		_ = e.events.Write(state.Event{Type: state.EventRunCompleted})
+		e.writeEvent(state.Event{Type: state.EventRunCompleted})
 		e.logger.Info("run completed", "dag", e.dag.Name, "run_id", e.runInfo.ID)
 	}
 
@@ -107,7 +107,7 @@ func (e *Engine) Run(ctx context.Context) error {
 		} else {
 			e.meta.Status = "failed"
 		}
-		_ = state.WriteMeta(e.runInfo.Dir, e.meta)
+		e.writeMeta(e.runInfo.Dir, e.meta)
 	}
 
 	// Run lifecycle hooks
@@ -172,7 +172,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 	var lastResult executor.Result
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		_ = e.events.Write(state.Event{
+		e.writeEvent(state.Event{
 			Type:    state.EventStepStarted,
 			StepID:  step.ID,
 			Attempt: attempt,
@@ -182,7 +182,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		lastResult = ex.Run(stepCtx, step, e.runInfo.Dir, workdir, stepEnv)
 
 		if lastResult.Err == nil {
-			_ = e.events.Write(state.Event{
+			e.writeEvent(state.Event{
 				Type:     state.EventStepCompleted,
 				StepID:   step.ID,
 				ExitCode: lastResult.ExitCode,
@@ -203,7 +203,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		}
 
 		if attempt < maxAttempts {
-			_ = e.events.Write(state.Event{
+			e.writeEvent(state.Event{
 				Type:    state.EventStepRetrying,
 				StepID:  step.ID,
 				Error:   lastResult.Err.Error(),
@@ -214,7 +214,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		}
 	}
 
-	_ = e.events.Write(state.Event{
+	e.writeEvent(state.Event{
 		Type:        state.EventStepFailed,
 		StepID:      step.ID,
 		ExitCode:    lastResult.ExitCode,
@@ -306,6 +306,18 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 func sanitize(s string) string {
 	r := strings.NewReplacer(" ", "_", "/", "_", ":", "_")
 	return r.Replace(s)
+}
+
+func (e *Engine) writeEvent(ev state.Event) {
+	if err := e.events.Write(ev); err != nil {
+		e.logger.Warn("failed to write event", "type", ev.Type, "error", err)
+	}
+}
+
+func (e *Engine) writeMeta(dir string, meta *state.RunMeta) {
+	if err := state.WriteMeta(dir, meta); err != nil {
+		e.logger.Warn("failed to write metadata", "error", err)
+	}
 }
 
 func buildEnv(d *dag.DAG, runInfo *state.RunInfo, renvLibPath string) []string {

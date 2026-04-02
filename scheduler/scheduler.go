@@ -73,6 +73,7 @@ type Scheduler struct {
 	webhooks       map[string]webhookEntry            // dagName -> webhook config
 	webhookCloseFn func()                             // close the webhook server
 	webhookAddr    string                             // address the webhook server is listening on
+	ctx            context.Context                    // scheduler lifecycle context
 }
 
 // New creates a new Scheduler that watches the given DAG directory.
@@ -101,6 +102,8 @@ func (s *Scheduler) Reload(ctx context.Context) {
 
 // Start begins the scheduler loop. It blocks until ctx is cancelled.
 func (s *Scheduler) Start(ctx context.Context) error {
+	s.ctx = ctx
+
 	// Initial scan
 	if err := s.syncDAGs(ctx); err != nil {
 		s.logger.Error("initial DAG scan failed", "error", err)
@@ -225,22 +228,22 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 
 		seen[d.Name] = true
 
+		// Check and teardown under lock to prevent races with triggerRun
 		s.mu.Lock()
 		existing, exists := s.registered[d.Name]
-		s.mu.Unlock()
-
 		if exists && existing.hash == hash {
+			s.mu.Unlock()
 			continue // no change
 		}
-
-		// Tear down old triggers
 		if exists {
 			s.cron.Remove(existing.cronID)
 			existing.teardown()
+			delete(s.registered, d.Name)
 			s.logger.Info("updating DAG triggers", "dag", d.Name)
 		} else {
 			s.logger.Info("registering DAG", "dag", d.Name)
 		}
+		s.mu.Unlock()
 
 		newEntry := &dagEntry{hash: hash}
 		dagPath := path // capture for closure
@@ -586,11 +589,17 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 		if overlap == "cancel" {
 			s.logger.Info("cancelling previous run (overlap: cancel)", "dag", d.Name, "source", source)
 			cancelOld()
-			delete(s.running, d.Name)
-			s.runningCount--
 			s.mu.Unlock()
-			// Brief pause for process cleanup
-			time.Sleep(100 * time.Millisecond)
+			// Wait for old goroutine to clean up (its defer deletes from running map)
+			for i := 0; i < 50; i++ {
+				time.Sleep(100 * time.Millisecond)
+				s.mu.Lock()
+				_, stillRunning := s.running[d.Name]
+				s.mu.Unlock()
+				if !stillRunning {
+					break
+				}
+			}
 			s.mu.Lock()
 		} else {
 			s.mu.Unlock()
@@ -606,7 +615,11 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	parentCtx := s.ctx
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parentCtx)
 	s.running[d.Name] = cancel
 	s.runningCount++
 	s.mu.Unlock()

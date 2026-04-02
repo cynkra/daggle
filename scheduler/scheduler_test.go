@@ -194,6 +194,61 @@ steps:
 	time.Sleep(200 * time.Millisecond)
 }
 
+func TestScheduler_CancelOverlap(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// DAG with overlap: cancel policy
+	writeDAG(t, dagDir, "cancel.yaml", `
+name: cancel-dag
+trigger:
+  schedule: "@every 1s"
+  overlap: cancel
+steps:
+  - id: slow
+    command: sleep 30
+`)
+
+	sched := New(dagDir)
+	_ = sched.syncDAGs(context.Background())
+
+	dagPath := filepath.Join(dagDir, "cancel.yaml")
+
+	// Start first run
+	sched.triggerRun(dagPath, "test")
+	time.Sleep(200 * time.Millisecond)
+
+	sched.mu.Lock()
+	running := len(sched.running)
+	sched.mu.Unlock()
+	if running != 1 {
+		t.Fatalf("running = %d, want 1", running)
+	}
+
+	// Trigger again — should cancel old and start new (overlap: cancel)
+	sched.triggerRun(dagPath, "test")
+	time.Sleep(500 * time.Millisecond)
+
+	sched.mu.Lock()
+	running = len(sched.running)
+	sched.mu.Unlock()
+
+	// Should still have exactly 1 running (the new one replaced the old)
+	if running != 1 {
+		t.Errorf("after cancel overlap: running = %d, want 1", running)
+	}
+
+	// Clean up
+	sched.mu.Lock()
+	for _, cancel := range sched.running {
+		cancel()
+	}
+	sched.mu.Unlock()
+	time.Sleep(200 * time.Millisecond)
+}
+
 func TestScheduler_MaxConcurrent(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
