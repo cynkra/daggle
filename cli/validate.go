@@ -18,7 +18,7 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 }
 
-func validateDAG(cmd *cobra.Command, args []string) error {
+func validateDAG(_ *cobra.Command, args []string) error {
 	dagPath := resolveDAGPath(args[0])
 	d, err := dag.ParseFile(dagPath)
 	if err != nil {

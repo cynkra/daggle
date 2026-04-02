@@ -23,7 +23,7 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
-func showStatus(cmd *cobra.Command, args []string) error {
+func showStatus(_ *cobra.Command, args []string) error {
 	dagName := args[0]
 	applyOverrides()
 
@@ -70,7 +70,7 @@ func showStatus(cmd *cobra.Command, args []string) error {
 
 	// Build step summary from events
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "STEP\tSTATUS\tDURATION\tATTEMPTS\tERROR")
+	_, _ = fmt.Fprintln(w, "STEP\tSTATUS\tDURATION\tATTEMPTS\tERROR")
 
 	type stepInfo struct {
 		status   string

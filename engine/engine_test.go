@@ -89,7 +89,7 @@ func TestEngine_ParallelTier(t *testing.T) {
 	var count atomic.Int32
 	var maxConcurrent atomic.Int32
 
-	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
 		cur := count.Add(1)
 		for {
 			old := maxConcurrent.Load()
@@ -164,7 +164,7 @@ func TestEngine_Retry(t *testing.T) {
 	}
 
 	var attempts int
-	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
 		attempts++
 		if attempts < 3 {
 			return executor.Result{ExitCode: 1, Err: fmt.Errorf("attempt %d failed", attempts)}
@@ -193,7 +193,7 @@ func TestEngine_EnvPropagation(t *testing.T) {
 	}
 
 	var receivedEnv []string
-	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
 		return executor.Result{ExitCode: 0}
 	}}
 
