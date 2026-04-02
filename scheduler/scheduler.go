@@ -90,6 +90,15 @@ func New(dagDir string) *Scheduler {
 	}
 }
 
+// Reload triggers an immediate rescan of the DAG directory.
+func (s *Scheduler) Reload(ctx context.Context) {
+	if err := s.syncDAGs(ctx); err != nil {
+		s.logger.Error("reload failed", "error", err)
+	} else {
+		s.logger.Info("DAGs reloaded")
+	}
+}
+
 // Start begins the scheduler loop. It blocks until ctx is cancelled.
 func (s *Scheduler) Start(ctx context.Context) error {
 	// Initial scan
@@ -563,13 +572,30 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 		return
 	}
 
+	// Determine overlap policy
+	overlap := "skip"
+	if d.Trigger != nil && d.Trigger.Overlap != "" {
+		overlap = d.Trigger.Overlap
+	}
+
 	s.mu.Lock()
 
-	// Skip if already running (overlap policy: skip)
-	if _, running := s.running[d.Name]; running {
-		s.mu.Unlock()
-		s.logger.Info("skipping run, DAG already active", "dag", d.Name, "source", source)
-		return
+	// Handle overlap with already-running DAG
+	if cancelOld, running := s.running[d.Name]; running {
+		if overlap == "cancel" {
+			s.logger.Info("cancelling previous run (overlap: cancel)", "dag", d.Name, "source", source)
+			cancelOld()
+			delete(s.running, d.Name)
+			s.runningCount--
+			s.mu.Unlock()
+			// Brief pause for process cleanup
+			time.Sleep(100 * time.Millisecond)
+			s.mu.Lock()
+		} else {
+			s.mu.Unlock()
+			s.logger.Info("skipping run, DAG already active", "dag", d.Name, "source", source)
+			return
+		}
 	}
 
 	// Check max concurrent

@@ -104,6 +104,9 @@ func Validate(d *DAG) error {
 
 	// Validate trigger block
 	if d.Trigger != nil {
+		if d.Trigger.Overlap != "" && d.Trigger.Overlap != "skip" && d.Trigger.Overlap != "cancel" {
+			errs = append(errs, fmt.Sprintf("trigger.overlap %q is invalid; must be one of: skip, cancel", d.Trigger.Overlap))
+		}
 		if d.Trigger.Watch != nil {
 			if d.Trigger.Watch.Path == "" {
 				errs = append(errs, "trigger.watch.path is required")

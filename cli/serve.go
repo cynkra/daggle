@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -43,10 +44,27 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 	fmt.Printf("DAG directory: %s\n", dagDir)
 	fmt.Printf("PID file: %s\n\n", scheduler.PIDPath())
 
-	// Set up signal handling
+	// Set up signal handling: SIGINT/SIGTERM for shutdown
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	// SIGHUP for immediate DAG reload
+	sighup := make(chan os.Signal, 1)
+	signal.Notify(sighup, syscall.SIGHUP)
+
 	sched := scheduler.New(dagDir)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-sighup:
+				fmt.Println("SIGHUP received, reloading DAGs...")
+				sched.Reload(ctx)
+			}
+		}
+	}()
+
 	return sched.Start(ctx)
 }

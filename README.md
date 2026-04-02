@@ -361,6 +361,16 @@ trigger:
     debounce: 5s
 ```
 
+### Overlap policy
+
+By default, triggers are skipped if the DAG is already running. Set `overlap: cancel` to kill the old run and start fresh:
+
+```yaml
+trigger:
+  schedule: "@every 5m"
+  overlap: cancel
+```
+
 ```bash
 daggle serve
 ```
@@ -368,11 +378,11 @@ daggle serve
 The scheduler:
 - Monitors the DAG directory for files with `trigger:` blocks
 - Manages cron schedules and file watchers
-- Skips runs if the same DAG is still executing (overlap protection)
+- Handles overlap: `skip` (default) ignores triggers while a DAG runs, `cancel` kills the old run and starts fresh
 - Limits to 4 concurrent DAG runs
-- Hot-reloads DAG files every 30 seconds (add, edit, or remove DAGs without restart)
+- Hot-reloads DAG files every 30 seconds, or immediately on SIGHUP
 - Shuts down gracefully on SIGINT/SIGTERM (waits for in-flight runs)
-- Writes a PID file for process management
+- Writes a PID file for process management (`daggle stop` to shut down)
 
 ## CLI reference
 
@@ -387,7 +397,10 @@ daggle status <dag-name> [flags]  Show status of the latest run
 
 daggle list                       List all available DAGs with last run status
 
-daggle serve                      Start the cron scheduler daemon
+daggle serve                      Start the scheduler daemon
+daggle stop                       Stop the scheduler daemon
+
+daggle doctor                     Check system health (R, renv, scheduler, DAGs)
 ```
 
 Global flags:

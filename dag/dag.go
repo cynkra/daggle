@@ -30,6 +30,7 @@ type Trigger struct {
 	OnDAG     *OnDAGTrigger     `yaml:"on_dag,omitempty"`
 	Condition *ConditionTrigger `yaml:"condition,omitempty"`
 	Git       *GitTrigger       `yaml:"git,omitempty"`
+	Overlap   string            `yaml:"overlap,omitempty"` // "skip" (default) or "cancel"
 }
 
 // WatchTrigger fires when files matching a pattern change in a directory.
