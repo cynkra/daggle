@@ -94,12 +94,12 @@ func TestRunStatus(t *testing.T) {
 		t.Errorf("empty status = %q, want %q", s, "unknown")
 	}
 
-	writer.Write(Event{Type: EventRunStarted})
+	_ = writer.Write(Event{Type: EventRunStarted})
 	if s := RunStatus(tmpDir); s != "running" {
 		t.Errorf("after start = %q, want %q", s, "running")
 	}
 
-	writer.Write(Event{Type: EventRunCompleted})
+	_ = writer.Write(Event{Type: EventRunCompleted})
 	if s := RunStatus(tmpDir); s != "completed" {
 		t.Errorf("after complete = %q, want %q", s, "completed")
 	}

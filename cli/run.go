@@ -30,7 +30,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 }
 
-func runDAG(cmd *cobra.Command, args []string) error {
+func runDAG(_ *cobra.Command, args []string) error {
 	dagName := args[0]
 	applyOverrides()
 
@@ -64,9 +64,7 @@ func runDAG(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	// Execute
-	eng := engine.New(expanded, run, func(s dag.Step) executor.Executor {
-		return executor.New(s)
-	})
+	eng := engine.New(expanded, run, executor.New)
 
 	if err := eng.Run(ctx); err != nil {
 		fmt.Printf("\nDAG %q failed: %v\n", expanded.Name, err)
@@ -105,9 +103,9 @@ func parseParams(raw []string) map[string]string {
 
 func applyOverrides() {
 	if dagsDir != "" {
-		os.Setenv("DAGGLE_DAGS_DIR", dagsDir)
+		_ = os.Setenv("DAGGLE_DAGS_DIR", dagsDir)
 	}
 	if dataDir != "" {
-		os.Setenv("DAGGLE_DATA_DIR", dataDir)
+		_ = os.Setenv("DAGGLE_DATA_DIR", dataDir)
 	}
 }

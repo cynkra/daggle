@@ -15,7 +15,7 @@ func ParseFile(path string) (*DAG, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open DAG file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	d, err := ParseReader(f)
 	if err != nil {

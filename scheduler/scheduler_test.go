@@ -49,7 +49,7 @@ func TestPIDFile(t *testing.T) {
 func TestScheduler_ScanDAGs(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Create a DAG with a schedule
@@ -86,13 +86,13 @@ steps:
 func TestScheduler_HotReload(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New(dagDir)
 
 	// Initial scan — empty
-	sched.syncDAGs()
+	_ = sched.syncDAGs()
 	if len(sched.registered) != 0 {
 		t.Errorf("registered = %d, want 0", len(sched.registered))
 	}
@@ -105,7 +105,7 @@ steps:
   - id: a
     command: echo a
 `)
-	sched.syncDAGs()
+	_ = sched.syncDAGs()
 	if len(sched.registered) != 1 {
 		t.Errorf("after add: registered = %d, want 1", len(sched.registered))
 	}
@@ -118,14 +118,14 @@ steps:
   - id: a
     command: echo a
 `)
-	sched.syncDAGs()
+	_ = sched.syncDAGs()
 	if sched.registered["new-dag"].schedule != "@every 2h" {
 		t.Errorf("schedule = %q, want %q", sched.registered["new-dag"].schedule, "@every 2h")
 	}
 
 	// Remove DAG file
-	os.Remove(filepath.Join(dagDir, "new.yaml"))
-	sched.syncDAGs()
+	_ = os.Remove(filepath.Join(dagDir, "new.yaml"))
+	_ = sched.syncDAGs()
 	if len(sched.registered) != 0 {
 		t.Errorf("after remove: registered = %d, want 0", len(sched.registered))
 	}
@@ -134,7 +134,7 @@ steps:
 func TestScheduler_SkipOverlap(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Create a DAG that sleeps
@@ -147,7 +147,7 @@ steps:
 `)
 
 	sched := New(dagDir)
-	sched.syncDAGs()
+	_ = sched.syncDAGs()
 
 	// Trigger first run
 	dagPath := filepath.Join(dagDir, "slow.yaml")
@@ -186,7 +186,7 @@ steps:
 func TestScheduler_MaxConcurrent(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New(dagDir)
@@ -202,7 +202,7 @@ steps:
     command: sleep 30
 `)
 	}
-	sched.syncDAGs()
+	_ = sched.syncDAGs()
 
 	// Trigger all three
 	sched.triggerRun(filepath.Join(dagDir, "dag-a.yaml"))
@@ -233,7 +233,7 @@ steps:
 func TestScheduler_StartStop(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New(dagDir)

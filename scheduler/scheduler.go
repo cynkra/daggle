@@ -268,9 +268,7 @@ func (s *Scheduler) triggerRun(dagPath string) {
 			return
 		}
 
-		eng := engine.New(expanded, run, func(step dag.Step) executor.Executor {
-			return executor.New(step)
-		})
+		eng := engine.New(expanded, run, executor.New)
 
 		if err := eng.Run(ctx); err != nil {
 			s.logger.Error("scheduled run failed", "dag", d.Name, "run_id", run.ID, "error", err)

@@ -54,7 +54,7 @@ func (e *Engine) Run(ctx context.Context) error {
 		return fmt.Errorf("topo sort: %w", err)
 	}
 
-	e.events.Write(state.Event{Type: state.EventRunStarted})
+	_ = e.events.Write(state.Event{Type: state.EventRunStarted})
 	e.logger.Info("run started", "dag", e.dag.Name, "run_id", e.runInfo.ID)
 
 	// Build environment: DAG-level env + daggle metadata
@@ -65,7 +65,7 @@ func (e *Engine) Run(ctx context.Context) error {
 		e.logger.Info("executing tier", "tier", tierIdx, "steps", stepIDs(tier))
 
 		if err := e.runTier(ctx, tier, env); err != nil {
-			e.events.Write(state.Event{
+			_ = e.events.Write(state.Event{
 				Type:  state.EventRunFailed,
 				Error: err.Error(),
 			})
@@ -76,7 +76,7 @@ func (e *Engine) Run(ctx context.Context) error {
 	}
 
 	if runErr == nil {
-		e.events.Write(state.Event{Type: state.EventRunCompleted})
+		_ = e.events.Write(state.Event{Type: state.EventRunCompleted})
 		e.logger.Info("run completed", "dag", e.dag.Name, "run_id", e.runInfo.ID)
 	}
 
@@ -142,7 +142,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 	var lastResult executor.Result
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		e.events.Write(state.Event{
+		_ = e.events.Write(state.Event{
 			Type:    state.EventStepStarted,
 			StepID:  step.ID,
 			Attempt: attempt,
@@ -152,7 +152,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		lastResult = ex.Run(stepCtx, step, e.runInfo.Dir, workdir, stepEnv)
 
 		if lastResult.Err == nil {
-			e.events.Write(state.Event{
+			_ = e.events.Write(state.Event{
 				Type:     state.EventStepCompleted,
 				StepID:   step.ID,
 				ExitCode: lastResult.ExitCode,
@@ -173,7 +173,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		}
 
 		if attempt < maxAttempts {
-			e.events.Write(state.Event{
+			_ = e.events.Write(state.Event{
 				Type:    state.EventStepRetrying,
 				StepID:  step.ID,
 				Error:   lastResult.Err.Error(),
@@ -184,7 +184,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		}
 	}
 
-	e.events.Write(state.Event{
+	_ = e.events.Write(state.Event{
 		Type:     state.EventStepFailed,
 		StepID:   step.ID,
 		ExitCode: lastResult.ExitCode,
@@ -234,7 +234,8 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	e.logger.Info("running hook", "hook", name)
 
 	var cmd *exec.Cmd
-	if hook.RExpr != "" {
+	switch {
+	case hook.RExpr != "":
 		// Write to temp file and run via Rscript
 		tmpFile := filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".R")
 		if err := os.WriteFile(tmpFile, []byte(hook.RExpr), 0644); err != nil {
@@ -242,9 +243,9 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 			return
 		}
 		cmd = exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
-	} else if hook.Command != "" {
+	case hook.Command != "":
 		cmd = exec.CommandContext(ctx, "sh", "-c", hook.Command)
-	} else {
+	default:
 		return
 	}
 

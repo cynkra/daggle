@@ -23,7 +23,7 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 }
 
-func listDAGs(cmd *cobra.Command, args []string) error {
+func listDAGs(_ *cobra.Command, _ []string) error {
 	applyOverrides()
 	dir := state.DAGDir()
 
@@ -38,7 +38,7 @@ func listDAGs(cmd *cobra.Command, args []string) error {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tSTEPS\tLAST RUN\tSTATUS")
+	_, _ = fmt.Fprintln(w, "NAME\tSTEPS\tLAST RUN\tSTATUS")
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -53,7 +53,7 @@ func listDAGs(cmd *cobra.Command, args []string) error {
 		d, err := dag.ParseFile(dagPath)
 		if err != nil {
 			dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
-			fmt.Fprintf(w, "%s\t-\t-\tINVALID\n", dagName)
+			_, _ = fmt.Fprintf(w, "%s\t-\t-\tINVALID\n", dagName)
 			continue
 		}
 
@@ -64,9 +64,9 @@ func listDAGs(cmd *cobra.Command, args []string) error {
 			status = state.RunStatus(run.Dir)
 		}
 
-		fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", d.Name, len(d.Steps), lastRun, status)
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", d.Name, len(d.Steps), lastRun, status)
 	}
-	w.Flush()
+	_ = w.Flush()
 
 	return nil
 }

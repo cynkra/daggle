@@ -44,13 +44,13 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 	if err != nil {
 		return Result{ExitCode: -1, Err: err, Duration: time.Since(start)}
 	}
-	defer stdoutFile.Close()
+	defer func() { _ = stdoutFile.Close() }()
 
 	stderrFile, err := os.Create(stderrPath)
 	if err != nil {
 		return Result{ExitCode: -1, Err: err, Duration: time.Since(start)}
 	}
-	defer stderrFile.Close()
+	defer func() { _ = stderrFile.Close() }()
 
 	// Use pipes so we can parse stdout line-by-line for ::daggle-output:: markers
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -74,10 +74,10 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 			if m := outputMarkerRe.FindStringSubmatch(line); m != nil {
 				outputs[m[1]] = strings.TrimSpace(m[2])
 				// Don't write marker lines to terminal, but still log them
-				fmt.Fprintln(stdoutFile, line)
+				_, _ = fmt.Fprintln(stdoutFile, line)
 			} else {
-				fmt.Fprintln(stdoutFile, line)
-				fmt.Fprintln(os.Stdout, line)
+				_, _ = fmt.Fprintln(stdoutFile, line)
+				_, _ = fmt.Fprintln(os.Stdout, line)
 			}
 		}
 	}()

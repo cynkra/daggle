@@ -16,23 +16,11 @@ import (
 
 // mockExecutor returns a configurable executor for testing.
 type mockExecutor struct {
-	fn func(ctx context.Context, step dag.Step) executor.Result
+	fn func(step dag.Step) executor.Result
 }
 
-func (m *mockExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) executor.Result {
-	return m.fn(ctx, step)
-}
-
-func successExecutor() executor.Executor {
-	return &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
-		return executor.Result{ExitCode: 0}
-	}}
-}
-
-func failExecutor() executor.Executor {
-	return &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
-		return executor.Result{ExitCode: 1, Err: fmt.Errorf("mock failure")}
-	}}
+func (m *mockExecutor) Run(_ context.Context, step dag.Step, _ string, _ string, _ []string) executor.Result {
+	return m.fn(step)
 }
 
 func setupRun(t *testing.T) *state.RunInfo {
@@ -58,12 +46,12 @@ func TestEngine_LinearDAG(t *testing.T) {
 	}
 
 	var order []string
-	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
 		order = append(order, step.ID)
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(s dag.Step) executor.Executor { return mock })
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -101,7 +89,7 @@ func TestEngine_ParallelTier(t *testing.T) {
 	var count atomic.Int32
 	var maxConcurrent atomic.Int32
 
-	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
 		cur := count.Add(1)
 		for {
 			old := maxConcurrent.Load()
@@ -114,7 +102,7 @@ func TestEngine_ParallelTier(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(s dag.Step) executor.Executor { return mock })
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -137,7 +125,7 @@ func TestEngine_FailureStopsTiers(t *testing.T) {
 	}
 
 	var executed []string
-	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
 		executed = append(executed, step.ID)
 		if step.ID == "b" {
 			return executor.Result{ExitCode: 1, Err: fmt.Errorf("step b failed")}
@@ -145,7 +133,7 @@ func TestEngine_FailureStopsTiers(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(s dag.Step) executor.Executor { return mock })
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -176,7 +164,7 @@ func TestEngine_Retry(t *testing.T) {
 	}
 
 	var attempts int
-	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
 		attempts++
 		if attempts < 3 {
 			return executor.Result{ExitCode: 1, Err: fmt.Errorf("attempt %d failed", attempts)}
@@ -184,7 +172,7 @@ func TestEngine_Retry(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(s dag.Step) executor.Executor { return mock })
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v (should have succeeded on attempt 3)", err)
@@ -205,12 +193,12 @@ func TestEngine_EnvPropagation(t *testing.T) {
 	}
 
 	var receivedEnv []string
-	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
 		return executor.Result{ExitCode: 0}
 	}}
 
 	// Wrap to capture env
-	wrappedFactory := func(s dag.Step) executor.Executor {
+	wrappedFactory := func(_ dag.Step) executor.Executor {
 		return &envCapture{inner: mock, captured: &receivedEnv}
 	}
 
@@ -245,7 +233,7 @@ func TestEngine_OutputPassing(t *testing.T) {
 	}
 
 	var consumerEnv []string
-	mock := &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
 		if step.ID == "producer" {
 			return executor.Result{
 				ExitCode: 0,
@@ -299,13 +287,13 @@ func TestEngine_Workdir(t *testing.T) {
 
 	var capturedWorkdir string
 	wrappedMock := &workdirCapture{
-		inner: &mockExecutor{fn: func(ctx context.Context, step dag.Step) executor.Result {
+		inner: &mockExecutor{fn: func(step dag.Step) executor.Result {
 			return executor.Result{ExitCode: 0}
 		}},
 		captured: &capturedWorkdir,
 	}
 
-	eng := New(d, run, func(s dag.Step) executor.Executor { return wrappedMock })
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return wrappedMock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)

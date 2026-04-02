@@ -2,6 +2,7 @@ package dag
 
 import "time"
 
+// DAG represents a directed acyclic graph workflow definition.
 type DAG struct {
 	Name     string            `yaml:"name"`
 	Schedule string            `yaml:"schedule,omitempty"`
@@ -20,16 +21,19 @@ type DAG struct {
 	OnExit    *Hook `yaml:"on_exit,omitempty"`
 }
 
+// Hook defines a lifecycle action triggered on success, failure, or exit.
 type Hook struct {
 	RExpr   string `yaml:"r_expr,omitempty"`
 	Command string `yaml:"command,omitempty"`
 }
 
+// Param defines a named parameter with an optional default value.
 type Param struct {
 	Name    string `yaml:"name"`
 	Default string `yaml:"default,omitempty"`
 }
 
+// Step defines a single unit of work within a DAG.
 type Step struct {
 	ID      string            `yaml:"id"`
 	Script  string            `yaml:"script,omitempty"`
@@ -47,6 +51,7 @@ type Step struct {
 	OnFailure *Hook `yaml:"on_failure,omitempty"`
 }
 
+// Retry configures retry behavior for a step.
 type Retry struct {
 	Limit int `yaml:"limit"`
 }

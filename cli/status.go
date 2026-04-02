@@ -119,9 +119,9 @@ func showStatus(cmd *cobra.Command, args []string) error {
 		if len(errStr) > 40 {
 			errStr = errStr[:37] + "..."
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", e.StepID, si.status, si.duration, si.attempts, errStr)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", e.StepID, si.status, si.duration, si.attempts, errStr)
 	}
-	w.Flush()
+	_ = w.Flush()
 
 	return nil
 }

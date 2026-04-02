@@ -23,7 +23,7 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 }
 
-func serveDaemon(cmd *cobra.Command, args []string) error {
+func serveDaemon(_ *cobra.Command, _ []string) error {
 	applyOverrides()
 	dagDir := state.DAGDir()
 
@@ -37,7 +37,7 @@ func serveDaemon(cmd *cobra.Command, args []string) error {
 	if err := scheduler.WritePID(); err != nil {
 		return fmt.Errorf("write PID file: %w", err)
 	}
-	defer scheduler.RemovePID()
+	defer func() { _ = scheduler.RemovePID() }()
 
 	fmt.Printf("Starting scheduler\n")
 	fmt.Printf("DAG directory: %s\n", dagDir)

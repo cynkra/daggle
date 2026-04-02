@@ -13,6 +13,7 @@ import (
 // InlineRExecutor writes an R expression to a temp file and runs it via Rscript.
 type InlineRExecutor struct{}
 
+// Run writes the R expression to a temp file and executes it via Rscript.
 func (e *InlineRExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result {
 	// Write the R expression to a temp file in the log directory for debuggability
 	tmpFile := filepath.Join(logDir, step.ID+".inline.R")
