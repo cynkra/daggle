@@ -314,6 +314,104 @@ func (w *workdirCapture) Run(ctx context.Context, step dag.Step, logDir string, 
 	return w.inner.Run(ctx, step, logDir, workdir, env)
 }
 
+func TestEngine_RenvEnvInjection(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+		},
+	}
+
+	var receivedEnv []string
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		return executor.Result{ExitCode: 0}
+	}}
+	factory := func(_ dag.Step) executor.Executor {
+		return &envCapture{inner: mock, captured: &receivedEnv}
+	}
+
+	eng := New(d, run, factory)
+	eng.SetRenvLibPath("/project/renv/library/R-4.4/aarch64-apple-darwin20")
+	if err := eng.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	envMap := envToMap(receivedEnv)
+	if envMap["R_LIBS_USER"] != "/project/renv/library/R-4.4/aarch64-apple-darwin20" {
+		t.Errorf("R_LIBS_USER = %q, want renv library path", envMap["R_LIBS_USER"])
+	}
+}
+
+func TestEngine_RenvEnvOptOut(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Env:  map[string]string{"R_LIBS_USER": "/custom/path"},
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+		},
+	}
+
+	var receivedEnv []string
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		return executor.Result{ExitCode: 0}
+	}}
+	factory := func(_ dag.Step) executor.Executor {
+		return &envCapture{inner: mock, captured: &receivedEnv}
+	}
+
+	eng := New(d, run, factory)
+	eng.SetRenvLibPath("/project/renv/library/R-4.4/aarch64-apple-darwin20")
+	if err := eng.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	envMap := envToMap(receivedEnv)
+	if envMap["R_LIBS_USER"] != "/custom/path" {
+		t.Errorf("R_LIBS_USER = %q, want /custom/path (user override should win)", envMap["R_LIBS_USER"])
+	}
+}
+
+func TestEngine_NoRenvByDefault(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+		},
+	}
+
+	var receivedEnv []string
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		return executor.Result{ExitCode: 0}
+	}}
+	factory := func(_ dag.Step) executor.Executor {
+		return &envCapture{inner: mock, captured: &receivedEnv}
+	}
+
+	eng := New(d, run, factory)
+	if err := eng.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	envMap := envToMap(receivedEnv)
+	if _, ok := envMap["R_LIBS_USER"]; ok {
+		t.Error("R_LIBS_USER should not be set when no renv lib path configured")
+	}
+}
+
+func envToMap(env []string) map[string]string {
+	m := make(map[string]string)
+	for _, e := range env {
+		parts := strings.SplitN(e, "=", 2)
+		if len(parts) == 2 {
+			m[parts[0]] = parts[1]
+		}
+	}
+	return m
+}
+
 func TestRetryDelay(t *testing.T) {
 	// Default (nil retry) = linear
 	if d := retryDelay(3, nil); d != 3*time.Second {

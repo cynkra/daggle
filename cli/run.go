@@ -16,6 +16,7 @@ import (
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/engine"
 	"github.com/cynkra/daggle/executor"
+	"github.com/cynkra/daggle/renv"
 	"github.com/cynkra/daggle/state"
 	"github.com/spf13/cobra"
 )
@@ -72,21 +73,41 @@ func runDAG(_ *cobra.Command, args []string) error {
 
 	// Build reproducibility metadata
 	dagHash, _ := dag.HashFile(dagPath)
+	rVersion := detectRVersion()
+	rPlatform := renv.DetectRPlatform()
 	meta := &state.RunMeta{
 		RunID:         run.ID,
 		DAGName:       expanded.Name,
 		DAGHash:       dagHash,
 		DAGPath:       dagPath,
 		StartTime:     time.Now(),
-		RVersion:      detectRVersion(),
+		RVersion:      rVersion,
+		RPlatform:     rPlatform,
 		Platform:      runtime.GOOS + "/" + runtime.GOARCH,
 		Params:        params,
 		DaggleVersion: Version,
 	}
 
+	// Detect renv
+	projectDir := resolveProjectDir(expanded)
+	renvInfo := renv.Detect(projectDir, rVersion, rPlatform)
+	if renvInfo.Detected {
+		meta.RenvDetected = true
+		meta.RenvLibrary = renvInfo.LibraryPath
+		if renvInfo.LibraryReady {
+			fmt.Printf("Detected renv.lock — using library: %s\n", renvInfo.LibraryPath)
+		} else {
+			fmt.Printf("Warning: renv.lock found but library directory does not exist: %s\n", renvInfo.LibraryPath)
+			fmt.Printf("  Run renv::restore() to install packages.\n")
+		}
+	}
+
 	// Execute
 	eng := engine.New(expanded, run, executor.New)
 	eng.SetMeta(meta)
+	if renvInfo.Detected && renvInfo.LibraryReady {
+		eng.SetRenvLibPath(renvInfo.LibraryPath)
+	}
 
 	if err := eng.Run(ctx); err != nil {
 		fmt.Printf("\nDAG %q failed: %v\n", expanded.Name, err)
@@ -142,6 +163,13 @@ func detectRVersion() string {
 		}
 	}
 	return s
+}
+
+func resolveProjectDir(d *dag.DAG) string {
+	if d.Workdir != "" {
+		return d.Workdir
+	}
+	return d.SourceDir
 }
 
 func applyOverrides() {

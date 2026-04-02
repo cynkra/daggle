@@ -28,6 +28,9 @@ type Engine struct {
 	meta    *state.RunMeta
 	logger  *slog.Logger
 
+	// renvLibPath, if non-empty, is injected as R_LIBS_USER for all steps.
+	renvLibPath string
+
 	// outputs collects ::daggle-output:: values from completed steps.
 	// Keys are namespaced: DAGGLE_OUTPUT_<STEP_ID>_<KEY>
 	mu      sync.Mutex
@@ -51,6 +54,11 @@ func (e *Engine) SetMeta(meta *state.RunMeta) {
 	e.meta = meta
 }
 
+// SetRenvLibPath configures the renv library path to inject as R_LIBS_USER.
+func (e *Engine) SetRenvLibPath(p string) {
+	e.renvLibPath = p
+}
+
 // Run executes the DAG by walking tiers in topological order.
 // Steps within a tier run in parallel. If any step fails (after retries),
 // remaining tiers are skipped and the run is marked as failed.
@@ -68,8 +76,8 @@ func (e *Engine) Run(ctx context.Context) error {
 		_ = state.WriteMeta(e.runInfo.Dir, e.meta)
 	}
 
-	// Build environment: DAG-level env + daggle metadata
-	env := buildEnv(e.dag, e.runInfo)
+	// Build environment: DAG-level env + daggle metadata + renv
+	env := buildEnv(e.dag, e.runInfo, e.renvLibPath)
 
 	var runErr error
 	for tierIdx, tier := range tiers {
@@ -279,8 +287,8 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 		cmd.Dir = e.dag.SourceDir
 	}
 
-	// Provide env with run metadata + outputs
-	cmd.Env = append(os.Environ(), buildEnv(e.dag, e.runInfo)...)
+	// Provide env with run metadata + renv + outputs
+	cmd.Env = append(os.Environ(), buildEnv(e.dag, e.runInfo, e.renvLibPath)...)
 	e.mu.Lock()
 	for k, v := range e.outputs {
 		cmd.Env = append(cmd.Env, k+"="+v)
@@ -300,7 +308,7 @@ func sanitize(s string) string {
 	return r.Replace(s)
 }
 
-func buildEnv(d *dag.DAG, runInfo *state.RunInfo) []string {
+func buildEnv(d *dag.DAG, runInfo *state.RunInfo, renvLibPath string) []string {
 	var env []string
 	for k, v := range d.Env {
 		env = append(env, k+"="+v)
@@ -310,6 +318,12 @@ func buildEnv(d *dag.DAG, runInfo *state.RunInfo) []string {
 		"DAGGLE_DAG_NAME="+d.Name,
 		"DAGGLE_RUN_DIR="+runInfo.Dir,
 	)
+	// Inject R_LIBS_USER for renv, unless user explicitly set it in DAG env
+	if renvLibPath != "" {
+		if _, userSet := d.Env["R_LIBS_USER"]; !userSet {
+			env = append(env, "R_LIBS_USER="+renvLibPath)
+		}
+	}
 	return env
 }
 

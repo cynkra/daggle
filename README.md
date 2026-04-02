@@ -306,7 +306,9 @@ retry:
 
 **Error reporting** — When an R step fails, daggle extracts the R error message from stderr and shows it in `daggle status`, so you don't have to dig through log files.
 
-**Reproducibility** — Each run writes a `meta.json` with the DAG file hash, R version, platform, daggle version, and parameters used. This makes it easy to trace what produced a given result.
+**renv integration** — daggle auto-detects `renv.lock` in the project directory and sets `R_LIBS_USER` so R steps use the project's renv library automatically. If `renv.lock` is found but the library directory is missing, daggle warns you to run `renv::restore()`. To use a custom library path, set `R_LIBS_USER` in the DAG or step `env:` — daggle will not override it.
+
+**Reproducibility** — Each run writes a `meta.json` with the DAG file hash, R version, platform, daggle version, renv detection status, and parameters used. This makes it easy to trace what produced a given result.
 
 **Run history** — Every run creates a directory under `~/.local/share/daggle/runs/<dag>/<date>/run_<id>/` containing:
 - `events.jsonl` — Lifecycle events (started, completed, failed, retried)
