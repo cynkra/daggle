@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/schochastics/rdag/dag"
+	"github.com/cynkra/daggle/dag"
 	"github.com/spf13/cobra"
 )
 

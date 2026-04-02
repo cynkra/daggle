@@ -8,7 +8,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/schochastics/rdag/state"
+	"github.com/cynkra/daggle/state"
 )
 
 // PIDPath returns the path to the scheduler PID file.

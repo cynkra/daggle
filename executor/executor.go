@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/schochastics/rdag/dag"
+	"github.com/cynkra/daggle/dag"
 )
 
 // Result holds the outcome of executing a step.
@@ -14,7 +14,7 @@ type Result struct {
 	Stderr   string // path to stderr log file
 	Duration time.Duration
 	Err      error
-	Outputs  map[string]string // parsed ::rdag-output:: values
+	Outputs  map[string]string // parsed ::daggle-output:: values
 }
 
 // Executor runs a single DAG step.

@@ -1,0 +1,23 @@
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - gosimple
+    - gocritic
+    - revive
+    - misspell
+
+linters-settings:
+  revive:
+    rules:
+      - name: blank-imports
+      - name: exported
+      - name: unused-parameter
+      - name: unreachable-code
+
+issues:
+  exclude-dirs:
+    - testdata

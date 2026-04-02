@@ -27,8 +27,8 @@ Phase 1 delivers a fully functional DAG scheduler for R: define workflows in YAM
 
 ### Inter-step communication
 
-- **Output markers** — Steps emit `::rdag-output name=key::value` on stdout. rdag parses these, strips them from terminal output (keeps in log files), and passes to downstream steps as `RDAG_OUTPUT_<STEP_ID>_<KEY>` environment variables
-- **Environment propagation** — DAG-level env, step-level env, and rdag metadata (`RDAG_RUN_ID`, `RDAG_DAG_NAME`, `RDAG_RUN_DIR`) are available to all steps
+- **Output markers** — Steps emit `::daggle-output name=key::value` on stdout. daggle parses these, strips them from terminal output (keeps in log files), and passes to downstream steps as `DAGGLE_OUTPUT_<STEP_ID>_<KEY>` environment variables
+- **Environment propagation** — DAG-level env, step-level env, and daggle metadata (`DAGGLE_RUN_ID`, `DAGGLE_DAG_NAME`, `DAGGLE_RUN_DIR`) are available to all steps
 
 ### Lifecycle hooks
 
@@ -39,41 +39,41 @@ Phase 1 delivers a fully functional DAG scheduler for R: define workflows in YAM
 
 ### Cron scheduler
 
-- **`rdag serve`** — Daemon that monitors DAG files for `schedule:` fields and triggers runs on cron expressions
+- **`daggle serve`** — Daemon that monitors DAG files for `schedule:` fields and triggers runs on cron expressions
 - Uses `robfig/cron/v3` for cron parsing (standard 5-field expressions plus `@every`, `@hourly`, etc.)
 - **Skip-on-overlap** — If a DAG is still running when its next tick fires, the run is skipped
 - **Max concurrent** — Limits to 4 simultaneous DAG runs
 - **Hot reload** — Re-scans DAG directory every 30s, detects new/changed/removed DAGs via SHA-256 content hashing
-- **PID file** — Written to `~/.local/share/rdag/proc/scheduler.pid` for process management
+- **PID file** — Written to `~/.local/share/daggle/proc/scheduler.pid` for process management
 - **Graceful shutdown** — On SIGTERM/SIGINT: stops scheduling new runs, waits up to 5 minutes for in-flight runs to complete
 
 ### State & persistence
 
 - **JSONL events** — Each run records lifecycle events (run_started, step_started, step_completed, step_failed, step_retrying, run_completed, run_failed) to `events.jsonl`
 - **Log capture** — stdout and stderr captured to per-step log files
-- **XDG-compliant** — Config in `~/.config/rdag/`, data in `~/.local/share/rdag/`
-- **Run directories** — `~/.local/share/rdag/runs/<dag>/<date>/run_<xid>/` with xid-based sortable IDs
+- **XDG-compliant** — Config in `~/.config/daggle/`, data in `~/.local/share/daggle/`
+- **Run directories** — `~/.local/share/daggle/runs/<dag>/<date>/run_<xid>/` with xid-based sortable IDs
 
 ### DAG discovery
 
-- **Project-local** — `.rdag/` directory in current working directory is auto-discovered
-- **Global** — `~/.config/rdag/dags/` as fallback
+- **Project-local** — `.daggle/` directory in current working directory is auto-discovered
+- **Global** — `~/.config/daggle/dags/` as fallback
 - **Explicit** — `--dags-dir` flag overrides all
 
 ### CLI
 
 | Command | Description |
 |---------|-------------|
-| `rdag run <dag> [-p key=value]` | Run a DAG immediately with optional parameter overrides |
-| `rdag validate <dag\|path>` | Parse, validate, and show execution plan (tiers) |
-| `rdag status <dag> [--run-id]` | Show step-by-step results of latest or specific run |
-| `rdag list` | List all DAGs with step count, last run time, and status |
-| `rdag serve` | Start the cron scheduler daemon |
+| `daggle run <dag> [-p key=value]` | Run a DAG immediately with optional parameter overrides |
+| `daggle validate <dag\|path>` | Parse, validate, and show execution plan (tiers) |
+| `daggle status <dag> [--run-id]` | Show step-by-step results of latest or specific run |
+| `daggle list` | List all DAGs with step count, last run time, and status |
+| `daggle serve` | Start the cron scheduler daemon |
 
 ## Architecture
 
 ```
-cmd/rdag/main.go     — entry point
+cmd/daggle/main.go     — entry point
 cli/                 — cobra commands (run, validate, status, list, serve)
 dag/                 — YAML parsing, validation, topo sort, template expansion
 executor/            — process supervision (Rscript, inline R, shell)

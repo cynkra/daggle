@@ -1,26 +1,31 @@
-# rdag
+# daggle
+
+[![CI](https://github.com/cynkra/daggle/actions/workflows/ci.yml/badge.svg)](https://github.com/cynkra/daggle/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cynkra/daggle)](https://goreportcard.com/report/github.com/cynkra/daggle)
+[![Go Reference](https://pkg.go.dev/badge/github.com/cynkra/daggle.svg)](https://pkg.go.dev/github.com/cynkra/daggle)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 A lightweight DAG scheduler for R. Define multi-step R workflows in YAML, run them with dependency resolution, parallel execution, retries, timeouts, and cron scheduling — all from a single binary.
 
-rdag sits between "cron + Rscript" and heavy workflow engines. No database, no message broker, no code changes to your existing scripts. The only prerequisite is R.
+daggle sits between "cron + Rscript" and heavy workflow engines. No database, no message broker, no code changes to your existing scripts. The only prerequisite is R.
 
 ## Install
 
 ```bash
-go install github.com/schochastics/rdag/cmd/rdag@latest
+go install github.com/cynkra/daggle/cmd/daggle@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/schochastics/rdag.git
-cd rdag
-go build -o rdag ./cmd/rdag/
+git clone https://github.com/cynkra/daggle.git
+cd daggle
+go build -o daggle ./cmd/daggle/
 ```
 
 ## Quick start
 
-Create a DAG file at `~/.config/rdag/dags/hello.yaml` (or in a `.rdag/` directory in your project):
+Create a DAG file at `~/.config/daggle/dags/hello.yaml` (or in a `.daggle/` directory in your project):
 
 ```yaml
 name: hello
@@ -45,16 +50,16 @@ steps:
 
 ```bash
 # Validate the DAG
-rdag validate hello
+daggle validate hello
 
 # Run it
-rdag run hello -p who=David
+daggle run hello -p who=David
 
 # Check results
-rdag status hello
+daggle status hello
 
 # List all DAGs
-rdag list
+daggle list
 ```
 
 ## DAG definition
@@ -71,7 +76,7 @@ Every step is assumed to be R unless stated otherwise. Three step types are supp
 
 ```yaml
 name: my-pipeline               # required
-schedule: "30 6 * * MON-FRI"    # optional cron schedule for rdag serve
+schedule: "30 6 * * MON-FRI"    # optional cron schedule for daggle serve
 workdir: /opt/projects/etl      # optional working directory override
 
 env:                            # environment variables for all steps
@@ -104,14 +109,14 @@ steps:
     r_expr: |                  # inline R code
       data <- readRDS("data/raw.rds")
       stopifnot(nrow(data) > 0)
-      cat("::rdag-output name=row_count::", nrow(data), "\n")
+      cat("::daggle-output name=row_count::", nrow(data), "\n")
     depends: [extract]          # runs after extract completes
     on_failure:
       r_expr: 'warning("Validation failed")'
 
   - id: report
     script: etl/report.R
-    args: ["--rows", "$RDAG_OUTPUT_VALIDATE_ROW_COUNT"]
+    args: ["--rows", "$DAGGLE_OUTPUT_VALIDATE_ROW_COUNT"]
     depends: [validate]
     workdir: /tmp/reports        # step-level workdir override
 
@@ -137,17 +142,17 @@ Steps can pass data to downstream steps using stdout markers:
 
 ```r
 # In step "extract":
-cat("::rdag-output name=row_count::", nrow(data), "\n")
-cat("::rdag-output name=output_path::", path, "\n")
+cat("::daggle-output name=row_count::", nrow(data), "\n")
+cat("::daggle-output name=output_path::", path, "\n")
 ```
 
 Downstream steps receive these as environment variables, namespaced by step ID:
 
 ```yaml
 - id: report
-  # Available as $RDAG_OUTPUT_EXTRACT_ROW_COUNT and $RDAG_OUTPUT_EXTRACT_OUTPUT_PATH
+  # Available as $DAGGLE_OUTPUT_EXTRACT_ROW_COUNT and $DAGGLE_OUTPUT_EXTRACT_OUTPUT_PATH
   r_expr: |
-    rows <- as.integer(Sys.getenv("RDAG_OUTPUT_EXTRACT_ROW_COUNT"))
+    rows <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
     cat(sprintf("Processing %d rows\n", rows))
   depends: [extract]
 ```
@@ -181,7 +186,7 @@ Hooks receive all run metadata and accumulated step outputs as environment varia
 
 ## Cron scheduling
 
-Add a `schedule:` field to any DAG and run `rdag serve` to start the scheduler:
+Add a `schedule:` field to any DAG and run `daggle serve` to start the scheduler:
 
 ```yaml
 name: daily-report
@@ -192,7 +197,7 @@ steps:
 ```
 
 ```bash
-rdag serve
+daggle serve
 ```
 
 The scheduler:
@@ -207,17 +212,17 @@ The scheduler:
 ## CLI reference
 
 ```
-rdag run <dag-name> [flags]     Run a DAG immediately
-  -p, --param key=value         Override a parameter (repeatable)
+daggle run <dag-name> [flags]     Run a DAG immediately
+  -p, --param key=value           Override a parameter (repeatable)
 
-rdag validate <dag-name|path>   Validate a DAG definition and show execution plan
+daggle validate <dag-name|path>   Validate a DAG definition and show execution plan
 
-rdag status <dag-name> [flags]  Show status of the latest run
-  --run-id <id>                 Show a specific run instead
+daggle status <dag-name> [flags]  Show status of the latest run
+  --run-id <id>                   Show a specific run instead
 
-rdag list                       List all available DAGs with last run status
+daggle list                       List all available DAGs with last run status
 
-rdag serve                      Start the cron scheduler daemon
+daggle serve                      Start the cron scheduler daemon
 ```
 
 Global flags:
@@ -229,31 +234,31 @@ Global flags:
 
 ## How it works
 
-**Dependency resolution** — Steps declare dependencies via `depends:`. rdag performs a topological sort and groups steps into tiers. Steps within a tier run in parallel.
+**Dependency resolution** — Steps declare dependencies via `depends:`. daggle performs a topological sort and groups steps into tiers. Steps within a tier run in parallel.
 
 **Working directory** — Steps execute in the DAG file's directory by default. Override at DAG level (`workdir:`) or step level. Precedence: step > DAG > DAG file directory.
 
-**Timeouts** — Each step can specify a `timeout`. On expiry, rdag sends SIGTERM to the entire process group, waits 5 seconds, then SIGKILL. No orphaned R processes.
+**Timeouts** — Each step can specify a `timeout`. On expiry, daggle sends SIGTERM to the entire process group, waits 5 seconds, then SIGKILL. No orphaned R processes.
 
 **Retries** — Steps with `retry.limit` are re-executed on failure, with linear backoff between attempts.
 
-**Run history** — Every run creates a directory under `~/.local/share/rdag/runs/<dag>/<date>/run_<id>/` containing:
+**Run history** — Every run creates a directory under `~/.local/share/daggle/runs/<dag>/<date>/run_<id>/` containing:
 - `events.jsonl` — Lifecycle events (started, completed, failed, retried)
 - `<step-id>.stdout.log` / `<step-id>.stderr.log` — Captured output per step
 
 ## DAG discovery
 
-rdag looks for DAG files in this order:
+daggle looks for DAG files in this order:
 
 1. `--dags-dir` flag (explicit override)
-2. `.rdag/` in the current working directory (project-local)
-3. `~/.config/rdag/dags/` (global default)
+2. `.daggle/` in the current working directory (project-local)
+3. `~/.config/daggle/dags/` (global default)
 
 Project-local discovery means DAGs can live alongside the R project they orchestrate:
 
 ```
 my-project/
-  .rdag/
+  .daggle/
     daily-etl.yaml
     pkg-check.yaml
   R/
@@ -265,11 +270,11 @@ my-project/
 ## File layout
 
 ```
-~/.config/rdag/              # XDG_CONFIG_HOME/rdag
-  dags/                      # Global DAG definitions
+~/.config/daggle/              # XDG_CONFIG_HOME/daggle
+  dags/                        # Global DAG definitions
 
-~/.local/share/rdag/         # XDG_DATA_HOME/rdag
-  runs/                      # Run history
+~/.local/share/daggle/         # XDG_DATA_HOME/daggle
+  runs/                        # Run history
     my-pipeline/
       2026-04-01/
         run_abc123/
@@ -277,11 +282,11 @@ my-project/
           extract.stdout.log
           extract.stderr.log
   proc/
-    scheduler.pid            # Scheduler PID file
+    scheduler.pid              # Scheduler PID file
 ```
 
-Override with `RDAG_CONFIG_DIR` / `RDAG_DATA_DIR` environment variables or `--dags-dir` / `--data-dir` flags.
+Override with `DAGGLE_CONFIG_DIR` / `DAGGLE_DATA_DIR` environment variables or `--dags-dir` / `--data-dir` flags.
 
 ## License
 
-MIT
+GPL-3.0 — see [LICENSE](LICENSE) for details.

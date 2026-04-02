@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/schochastics/rdag/scheduler"
-	"github.com/schochastics/rdag/state"
+	"github.com/cynkra/daggle/scheduler"
+	"github.com/cynkra/daggle/state"
 	"github.com/spf13/cobra"
 )
 

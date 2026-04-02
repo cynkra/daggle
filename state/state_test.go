@@ -7,7 +7,7 @@ import (
 
 func TestCreateRun(t *testing.T) {
 	tmpDir := t.TempDir()
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	run, err := CreateRun("test-dag")
 	if err != nil {
@@ -60,7 +60,7 @@ func TestEventRoundTrip(t *testing.T) {
 
 func TestListRuns(t *testing.T) {
 	tmpDir := t.TempDir()
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Create a few runs
 	for i := 0; i < 3; i++ {
@@ -106,8 +106,8 @@ func TestRunStatus(t *testing.T) {
 }
 
 func TestXDGPaths(t *testing.T) {
-	t.Setenv("RDAG_CONFIG_DIR", "/custom/config")
-	t.Setenv("RDAG_DATA_DIR", "/custom/data")
+	t.Setenv("DAGGLE_CONFIG_DIR", "/custom/config")
+	t.Setenv("DAGGLE_DATA_DIR", "/custom/data")
 
 	if got := ConfigDir(); got != "/custom/config" {
 		t.Errorf("ConfigDir = %q, want %q", got, "/custom/config")

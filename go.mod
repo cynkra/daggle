@@ -1,4 +1,4 @@
-module github.com/schochastics/rdag
+module github.com/cynkra/daggle
 
 go 1.26.1
 

@@ -19,7 +19,7 @@ Both quality checks run in parallel. If completeness drops below 90%, the pipeli
 
 ```bash
 cd examples/penguin-monitor
-rdag run pipeline.yaml
+daggle run pipeline.yaml
 ```
 
 ## Run on schedule
@@ -28,7 +28,7 @@ The pipeline includes `schedule: "@every 6h"`. Start the scheduler to run it aut
 
 ```bash
 cd examples/penguin-monitor
-rdag serve
+daggle serve
 ```
 
 ## Output

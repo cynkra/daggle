@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/schochastics/rdag/dag"
+	"github.com/cynkra/daggle/dag"
 )
 
 func TestShellExecutor_Success(t *testing.T) {
@@ -69,18 +69,18 @@ func TestShellExecutor_Timeout(t *testing.T) {
 
 func TestShellExecutor_EnvVars(t *testing.T) {
 	logDir := t.TempDir()
-	step := dag.Step{ID: "test-env", Command: "echo $RDAG_TEST_VAR"}
+	step := dag.Step{ID: "test-env", Command: "echo $DAGGLE_TEST_VAR"}
 
 	exec := &ShellExecutor{}
-	result := exec.Run(context.Background(), step, logDir, "", []string{"RDAG_TEST_VAR=hello_rdag"})
+	result := exec.Run(context.Background(), step, logDir, "", []string{"DAGGLE_TEST_VAR=hello_daggle"})
 
 	if result.Err != nil {
 		t.Fatalf("unexpected error: %v", result.Err)
 	}
 
 	stdout, _ := os.ReadFile(filepath.Join(logDir, "test-env.stdout.log"))
-	if string(stdout) != "hello_rdag\n" {
-		t.Errorf("stdout = %q, want %q", string(stdout), "hello_rdag\n")
+	if string(stdout) != "hello_daggle\n" {
+		t.Errorf("stdout = %q, want %q", string(stdout), "hello_daggle\n")
 	}
 }
 
@@ -109,7 +109,7 @@ func TestShellExecutor_OutputMarkers(t *testing.T) {
 	logDir := t.TempDir()
 	step := dag.Step{
 		ID:      "test-output",
-		Command: `echo "::rdag-output name=row_count::42" && echo "normal line" && echo "::rdag-output name=file_path::/tmp/data.csv"`,
+		Command: `echo "::daggle-output name=row_count::42" && echo "normal line" && echo "::daggle-output name=file_path::/tmp/data.csv"`,
 	}
 
 	exec := &ShellExecutor{}

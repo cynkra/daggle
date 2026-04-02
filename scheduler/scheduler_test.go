@@ -10,7 +10,7 @@ import (
 
 func TestPIDFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Should not be running initially
 	if IsRunning() {
@@ -50,7 +50,7 @@ func TestScheduler_ScanDAGs(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
 	os.MkdirAll(dagDir, 0755)
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Create a DAG with a schedule
 	writeDAG(t, dagDir, "scheduled.yaml", `
@@ -87,7 +87,7 @@ func TestScheduler_HotReload(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
 	os.MkdirAll(dagDir, 0755)
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New(dagDir)
 
@@ -135,7 +135,7 @@ func TestScheduler_SkipOverlap(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
 	os.MkdirAll(dagDir, 0755)
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Create a DAG that sleeps
 	writeDAG(t, dagDir, "slow.yaml", `
@@ -187,7 +187,7 @@ func TestScheduler_MaxConcurrent(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
 	os.MkdirAll(dagDir, 0755)
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New(dagDir)
 	sched.maxConcurrent = 2
@@ -234,7 +234,7 @@ func TestScheduler_StartStop(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
 	os.MkdirAll(dagDir, 0755)
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New(dagDir)
 

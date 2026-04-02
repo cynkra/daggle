@@ -16,12 +16,12 @@ import (
 
 const gracePeriod = 5 * time.Second
 
-var outputMarkerRe = regexp.MustCompile(`^::rdag-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
+var outputMarkerRe = regexp.MustCompile(`^::daggle-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
 
 // runProcess executes a command, captures stdout/stderr to log files, and enforces
 // timeout via the provided context. On cancellation, it sends SIGTERM to the process
 // group, waits a grace period, then sends SIGKILL.
-// It also parses ::rdag-output:: markers from stdout.
+// It also parses ::daggle-output:: markers from stdout.
 func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir string, env []string) Result {
 	start := time.Now()
 
@@ -52,7 +52,7 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 	}
 	defer stderrFile.Close()
 
-	// Use pipes so we can parse stdout line-by-line for ::rdag-output:: markers
+	// Use pipes so we can parse stdout line-by-line for ::daggle-output:: markers
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return Result{ExitCode: -1, Err: err, Duration: time.Since(start)}

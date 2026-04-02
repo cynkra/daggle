@@ -10,7 +10,7 @@ prepare → fit-lda ────┐
         → fit-knn ────┘
 ```
 
-The three model fits run in parallel (same tier), and `compare` collects their accuracy scores via `::rdag-output::` markers.
+The three model fits run in parallel (same tier), and `compare` collects their accuracy scores via `::daggle-output::` markers.
 
 ## Requirements
 
@@ -20,7 +20,7 @@ The three model fits run in parallel (same tier), and `compare` collects their a
 
 ```bash
 cd examples/penguin-models
-rdag run pipeline.yaml
+daggle run pipeline.yaml
 ```
 
 ## Output

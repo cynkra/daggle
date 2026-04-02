@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/schochastics/rdag/dag"
+	"github.com/cynkra/daggle/dag"
 )
 
 // InlineRExecutor writes an R expression to a temp file and runs it via Rscript.

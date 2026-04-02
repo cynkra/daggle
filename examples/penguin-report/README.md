@@ -20,7 +20,7 @@ setup → extract → clean → summarize ─┐
 
 ```bash
 cd examples/penguin-report
-rdag run pipeline.yaml
+daggle run pipeline.yaml
 ```
 
 ## Output

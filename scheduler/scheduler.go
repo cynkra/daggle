@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/robfig/cron/v3"
-	"github.com/schochastics/rdag/dag"
-	"github.com/schochastics/rdag/engine"
-	"github.com/schochastics/rdag/executor"
-	"github.com/schochastics/rdag/state"
+	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/engine"
+	"github.com/cynkra/daggle/executor"
+	"github.com/cynkra/daggle/state"
 )
 
 const (

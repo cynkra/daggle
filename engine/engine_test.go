@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/schochastics/rdag/dag"
-	"github.com/schochastics/rdag/executor"
-	"github.com/schochastics/rdag/state"
+	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/executor"
+	"github.com/cynkra/daggle/state"
 )
 
 // mockExecutor returns a configurable executor for testing.
@@ -38,7 +38,7 @@ func failExecutor() executor.Executor {
 func setupRun(t *testing.T) *state.RunInfo {
 	t.Helper()
 	tmpDir := t.TempDir()
-	t.Setenv("RDAG_DATA_DIR", tmpDir)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 	run, err := state.CreateRun("test-dag")
 	if err != nil {
 		t.Fatalf("CreateRun: %v", err)
@@ -220,8 +220,8 @@ func TestEngine_EnvPropagation(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 
-	// Check that RDAG_RUN_ID and RDAG_DAG_NAME are set
-	_ = os.Getenv("RDAG_RUN_ID") // just verify no panic
+	// Check that DAGGLE_RUN_ID and DAGGLE_DAG_NAME are set
+	_ = os.Getenv("DAGGLE_RUN_ID") // just verify no panic
 }
 
 type envCapture struct {
@@ -278,11 +278,11 @@ func TestEngine_OutputPassing(t *testing.T) {
 		}
 	}
 
-	if envMap["RDAG_OUTPUT_PRODUCER_ROW_COUNT"] != "42" {
-		t.Errorf("RDAG_OUTPUT_PRODUCER_ROW_COUNT = %q, want %q", envMap["RDAG_OUTPUT_PRODUCER_ROW_COUNT"], "42")
+	if envMap["DAGGLE_OUTPUT_PRODUCER_ROW_COUNT"] != "42" {
+		t.Errorf("DAGGLE_OUTPUT_PRODUCER_ROW_COUNT = %q, want %q", envMap["DAGGLE_OUTPUT_PRODUCER_ROW_COUNT"], "42")
 	}
-	if envMap["RDAG_OUTPUT_PRODUCER_FILE_PATH"] != "/tmp/data.csv" {
-		t.Errorf("RDAG_OUTPUT_PRODUCER_FILE_PATH = %q, want %q", envMap["RDAG_OUTPUT_PRODUCER_FILE_PATH"], "/tmp/data.csv")
+	if envMap["DAGGLE_OUTPUT_PRODUCER_FILE_PATH"] != "/tmp/data.csv" {
+		t.Errorf("DAGGLE_OUTPUT_PRODUCER_FILE_PATH = %q, want %q", envMap["DAGGLE_OUTPUT_PRODUCER_FILE_PATH"], "/tmp/data.csv")
 	}
 }
 

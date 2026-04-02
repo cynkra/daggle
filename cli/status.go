@@ -5,7 +5,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/schochastics/rdag/state"
+	"github.com/cynkra/daggle/state"
 	"github.com/spf13/cobra"
 )
 

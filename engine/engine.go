@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/schochastics/rdag/dag"
-	"github.com/schochastics/rdag/executor"
-	"github.com/schochastics/rdag/state"
+	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/executor"
+	"github.com/cynkra/daggle/state"
 )
 
 // ExecutorFactory creates an executor for a given step.
@@ -27,8 +27,8 @@ type Engine struct {
 	runInfo *state.RunInfo
 	logger  *slog.Logger
 
-	// outputs collects ::rdag-output:: values from completed steps.
-	// Keys are namespaced: RDAG_OUTPUT_<STEP_ID>_<KEY>
+	// outputs collects ::daggle-output:: values from completed steps.
+	// Keys are namespaced: DAGGLE_OUTPUT_<STEP_ID>_<KEY>
 	mu      sync.Mutex
 	outputs map[string]string
 }
@@ -57,7 +57,7 @@ func (e *Engine) Run(ctx context.Context) error {
 	e.events.Write(state.Event{Type: state.EventRunStarted})
 	e.logger.Info("run started", "dag", e.dag.Name, "run_id", e.runInfo.ID)
 
-	// Build environment: DAG-level env + rdag metadata
+	// Build environment: DAG-level env + daggle metadata
 	env := buildEnv(e.dag, e.runInfo)
 
 	var runErr error
@@ -208,7 +208,7 @@ func (e *Engine) collectOutputs(stepID string, outputs map[string]string) {
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	prefix := "RDAG_OUTPUT_" + strings.ToUpper(strings.ReplaceAll(stepID, "-", "_")) + "_"
+	prefix := "DAGGLE_OUTPUT_" + strings.ToUpper(strings.ReplaceAll(stepID, "-", "_")) + "_"
 	for k, v := range outputs {
 		key := prefix + strings.ToUpper(k)
 		e.outputs[key] = v
@@ -282,9 +282,9 @@ func buildEnv(d *dag.DAG, runInfo *state.RunInfo) []string {
 		env = append(env, k+"="+v)
 	}
 	env = append(env,
-		"RDAG_RUN_ID="+runInfo.ID,
-		"RDAG_DAG_NAME="+d.Name,
-		"RDAG_RUN_DIR="+runInfo.Dir,
+		"DAGGLE_RUN_ID="+runInfo.ID,
+		"DAGGLE_DAG_NAME="+d.Name,
+		"DAGGLE_RUN_DIR="+runInfo.Dir,
 	)
 	return env
 }

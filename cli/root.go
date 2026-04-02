@@ -10,9 +10,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "rdag",
+	Use:   "daggle",
 	Short: "A lightweight DAG scheduler for R",
-	Long:  "rdag is a local-first, file-based DAG scheduler designed for R workflows.",
+	Long:  "daggle is a local-first, file-based DAG scheduler designed for R workflows.",
 }
 
 func init() {

@@ -18,7 +18,7 @@ steps:
       saveRDS(penguins, "penguins_snapshot.rds")
 
       cat(sprintf("Loaded %d rows at %s\n", nrow(penguins), Sys.time()))
-      cat("::rdag-output name=n_rows::", nrow(penguins), "\n")
+      cat("::daggle-output name=n_rows::", nrow(penguins), "\n")
 
   - id: check-completeness
     r_expr: |
@@ -38,7 +38,7 @@ steps:
         stop(sprintf("Data completeness %.1f%% is below 90%% threshold!", pct_complete))
       }
 
-      cat("::rdag-output name=completeness::", pct_complete, "\n")
+      cat("::daggle-output name=completeness::", pct_complete, "\n")
     depends: [load]
 
   - id: check-distributions
@@ -62,7 +62,7 @@ steps:
       }
 
       cat(sprintf("\nTotal outliers detected: %d\n", outlier_count))
-      cat("::rdag-output name=outlier_count::", outlier_count, "\n")
+      cat("::daggle-output name=outlier_count::", outlier_count, "\n")
 
       # Check species balance
       counts <- table(penguins$species)
@@ -77,10 +77,10 @@ steps:
 
   - id: report
     r_expr: |
-      completeness <- Sys.getenv("RDAG_OUTPUT_CHECK_COMPLETENESS_COMPLETENESS")
-      outliers <- Sys.getenv("RDAG_OUTPUT_CHECK_DISTRIBUTIONS_OUTLIER_COUNT")
-      n_rows <- Sys.getenv("RDAG_OUTPUT_LOAD_N_ROWS")
-      run_id <- Sys.getenv("RDAG_RUN_ID")
+      completeness <- Sys.getenv("DAGGLE_OUTPUT_CHECK_COMPLETENESS_COMPLETENESS")
+      outliers <- Sys.getenv("DAGGLE_OUTPUT_CHECK_DISTRIBUTIONS_OUTLIER_COUNT")
+      n_rows <- Sys.getenv("DAGGLE_OUTPUT_LOAD_N_ROWS")
+      run_id <- Sys.getenv("DAGGLE_RUN_ID")
 
       report <- data.frame(
         timestamp = Sys.time(),

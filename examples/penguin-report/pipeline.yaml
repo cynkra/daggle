@@ -20,7 +20,7 @@ steps:
       cat(sprintf("Loaded %d rows, %d columns\n", nrow(raw), ncol(raw)))
       cat(sprintf("Species: %s\n", paste(unique(raw$species), collapse = ", ")))
       saveRDS(raw, file.path(Sys.getenv("DATA_DIR"), "raw_penguins.rds"))
-      cat("::rdag-output name=n_raw::", nrow(raw), "\n")
+      cat("::daggle-output name=n_raw::", nrow(raw), "\n")
     depends: [setup]
 
   - id: clean
@@ -35,8 +35,8 @@ steps:
                   nrow(raw) - nrow(clean), nrow(clean)))
 
       saveRDS(clean, file.path(Sys.getenv("DATA_DIR"), "clean_penguins.rds"))
-      cat("::rdag-output name=n_clean::", nrow(clean), "\n")
-      cat("::rdag-output name=n_dropped::", nrow(raw) - nrow(clean), "\n")
+      cat("::daggle-output name=n_clean::", nrow(clean), "\n")
+      cat("::daggle-output name=n_dropped::", nrow(raw) - nrow(clean), "\n")
     depends: [extract]
 
   - id: summarize
@@ -61,7 +61,7 @@ steps:
       print(summary_df, row.names = FALSE)
       write.csv(summary_df, file.path(Sys.getenv("OUTPUT_DIR"), "species_summary.csv"),
                 row.names = FALSE)
-      cat("::rdag-output name=n_species::", nrow(summary_df), "\n")
+      cat("::daggle-output name=n_species::", nrow(summary_df), "\n")
     depends: [clean]
 
   - id: plot

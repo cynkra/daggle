@@ -4,7 +4,7 @@ import (
 	"context"
 	"os/exec"
 
-	"github.com/schochastics/rdag/dag"
+	"github.com/cynkra/daggle/dag"
 )
 
 // ScriptExecutor runs an R script via Rscript.

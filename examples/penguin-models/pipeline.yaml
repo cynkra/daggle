@@ -31,8 +31,8 @@ steps:
       saveRDS(test, file.path(Sys.getenv("DATA_DIR"), "test.rds"))
 
       cat(sprintf("Train: %d rows, Test: %d rows\n", nrow(train), nrow(test)))
-      cat("::rdag-output name=n_train::", nrow(train), "\n")
-      cat("::rdag-output name=n_test::", nrow(test), "\n")
+      cat("::daggle-output name=n_train::", nrow(train), "\n")
+      cat("::daggle-output name=n_test::", nrow(test), "\n")
 
   - id: fit-lda
     r_expr: |
@@ -46,7 +46,7 @@ steps:
 
       saveRDS(model, file.path(Sys.getenv("MODEL_DIR"), "lda_model.rds"))
       cat(sprintf("LDA accuracy: %.1f%%\n", accuracy * 100))
-      cat("::rdag-output name=accuracy::", round(accuracy, 4), "\n")
+      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")
     depends: [prepare]
 
   - id: fit-tree
@@ -61,7 +61,7 @@ steps:
 
       saveRDS(model, file.path(Sys.getenv("MODEL_DIR"), "tree_model.rds"))
       cat(sprintf("Decision tree accuracy: %.1f%%\n", accuracy * 100))
-      cat("::rdag-output name=accuracy::", round(accuracy, 4), "\n")
+      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")
     depends: [prepare]
 
   - id: fit-knn
@@ -82,14 +82,14 @@ steps:
       accuracy <- mean(preds == test$species)
 
       cat(sprintf("KNN (k=5) accuracy: %.1f%%\n", accuracy * 100))
-      cat("::rdag-output name=accuracy::", round(accuracy, 4), "\n")
+      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")
     depends: [prepare]
 
   - id: compare
     r_expr: |
-      lda_acc <- as.numeric(Sys.getenv("RDAG_OUTPUT_FIT_LDA_ACCURACY"))
-      tree_acc <- as.numeric(Sys.getenv("RDAG_OUTPUT_FIT_TREE_ACCURACY"))
-      knn_acc <- as.numeric(Sys.getenv("RDAG_OUTPUT_FIT_KNN_ACCURACY"))
+      lda_acc <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_LDA_ACCURACY"))
+      tree_acc <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_TREE_ACCURACY"))
+      knn_acc <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_KNN_ACCURACY"))
 
       results <- data.frame(
         model = c("LDA", "Decision Tree", "KNN (k=5)"),
