@@ -298,6 +298,39 @@ steps:
 
 Triggers when another DAG completes or fails. Enables multi-DAG workflows without sub-DAG composition.
 
+### Condition polling
+
+```yaml
+name: process-new-data
+trigger:
+  condition:
+    command: 'test -f /data/ready.flag'
+    poll_interval: 5m
+steps:
+  - id: process
+    script: etl/process.R
+```
+
+Evaluates a shell command or R expression (`r_expr:`) on an interval. Triggers when it succeeds (exit code 0). Subsumes database polling, API readiness checks, and any other evaluatable condition.
+
+### Git changes
+
+```yaml
+name: local-ci
+trigger:
+  git:
+    branch: main
+    poll_interval: 30s
+steps:
+  - id: test
+    test: "."
+  - id: check
+    check: "."
+    depends: [test]
+```
+
+Polls the local git repository for new commits. Triggers when the commit hash changes. Useful for local CI workflows.
+
 ### Combined triggers
 
 Triggers are additive — any matching trigger starts a run:

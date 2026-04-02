@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -485,6 +486,159 @@ steps:
 	if running != 0 {
 		t.Errorf("running = %d, want 0 (on-fail should not trigger on success)", running)
 	}
+}
+
+func TestScheduler_ConditionTrigger(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	flagFile := filepath.Join(tmpDir, "ready.flag")
+	_ = os.MkdirAll(dagDir, 0755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// DAG with condition trigger: fires when flag file exists
+	writeDAG(t, dagDir, "conditional.yaml", `
+name: conditional
+trigger:
+  condition:
+    command: test -f `+flagFile+`
+    poll_interval: 200ms
+steps:
+  - id: process
+    command: sleep 10
+`)
+
+	sched := New(dagDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = sched.syncDAGs(ctx)
+
+	// No flag file yet — should not trigger
+	time.Sleep(500 * time.Millisecond)
+	sched.mu.Lock()
+	running := len(sched.running)
+	sched.mu.Unlock()
+	if running != 0 {
+		t.Fatalf("running = %d, want 0 (condition not met yet)", running)
+	}
+
+	// Create flag file — should trigger on next poll
+	_ = os.WriteFile(flagFile, []byte("ready"), 0644)
+	time.Sleep(500 * time.Millisecond)
+
+	sched.mu.Lock()
+	running = len(sched.running)
+	sched.mu.Unlock()
+	if running != 1 {
+		t.Errorf("running = %d, want 1 (condition should have fired)", running)
+	}
+
+	// Clean up
+	sched.mu.Lock()
+	for _, cancelFn := range sched.running {
+		cancelFn()
+	}
+	sched.mu.Unlock()
+	time.Sleep(200 * time.Millisecond)
+}
+
+func TestScheduler_GitTrigger(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	repoDir := filepath.Join(tmpDir, "repo")
+	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(repoDir, 0755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// Init a git repo with an initial commit
+	for _, cmd := range []string{
+		"git -C " + repoDir + " init",
+		"git -C " + repoDir + " config user.email test@test.com",
+		"git -C " + repoDir + " config user.name test",
+	} {
+		if out, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
+			t.Fatalf("%s: %v\n%s", cmd, err, out)
+		}
+	}
+	_ = os.WriteFile(filepath.Join(repoDir, "file.txt"), []byte("v1"), 0644)
+	for _, cmd := range []string{
+		"git -C " + repoDir + " add .",
+		"git -C " + repoDir + " commit -m initial",
+	} {
+		if out, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
+			t.Fatalf("%s: %v\n%s", cmd, err, out)
+		}
+	}
+
+	// DAG with git trigger pointing at the repo
+	writeDAG(t, dagDir, "git-watch.yaml", `
+name: git-watch
+trigger:
+  git:
+    branch: HEAD
+    poll_interval: 200ms
+steps:
+  - id: deploy
+    command: sleep 10
+`)
+	// Set SourceDir to repoDir so the git trigger uses it
+	// We do this by placing the DAG in the repo dir instead
+	_ = os.Remove(filepath.Join(dagDir, "git-watch.yaml"))
+	dagDir = repoDir
+	writeDAG(t, repoDir, "git-watch.yaml", `
+name: git-watch
+trigger:
+  git:
+    branch: HEAD
+    poll_interval: 200ms
+steps:
+  - id: deploy
+    command: sleep 10
+`)
+
+	sched := New(repoDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = sched.syncDAGs(ctx)
+
+	// First poll learns the current hash — no trigger
+	time.Sleep(500 * time.Millisecond)
+	sched.mu.Lock()
+	running := len(sched.running)
+	sched.mu.Unlock()
+	if running != 0 {
+		t.Fatalf("running = %d, want 0 (no new commits yet)", running)
+	}
+
+	// Make a new commit
+	_ = os.WriteFile(filepath.Join(repoDir, "file.txt"), []byte("v2"), 0644)
+	for _, cmd := range []string{
+		"git -C " + repoDir + " add .",
+		"git -C " + repoDir + " commit -m second",
+	} {
+		if out, err := exec.Command("sh", "-c", cmd).CombinedOutput(); err != nil {
+			t.Fatalf("%s: %v\n%s", cmd, err, out)
+		}
+	}
+
+	// Wait for poll to detect the new commit
+	time.Sleep(500 * time.Millisecond)
+
+	sched.mu.Lock()
+	running = len(sched.running)
+	sched.mu.Unlock()
+	if running != 1 {
+		t.Errorf("running = %d, want 1 (git trigger should have fired)", running)
+	}
+
+	// Clean up
+	sched.mu.Lock()
+	for _, cancelFn := range sched.running {
+		cancelFn()
+	}
+	sched.mu.Unlock()
+	time.Sleep(200 * time.Millisecond)
 }
 
 func writeDAG(t *testing.T, dir, name, content string) {

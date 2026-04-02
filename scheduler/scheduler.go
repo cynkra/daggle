@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -247,6 +248,22 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 			}
 		}
 
+		// Set up condition trigger
+		if d.Trigger.Condition != nil {
+			cancelFn := s.setupConditionTrigger(ctx, d, dagPath)
+			if cancelFn != nil {
+				newEntry.cancelFns = append(newEntry.cancelFns, cancelFn)
+			}
+		}
+
+		// Set up git trigger
+		if d.Trigger.Git != nil {
+			cancelFn := s.setupGitTrigger(ctx, d, dagPath)
+			if cancelFn != nil {
+				newEntry.cancelFns = append(newEntry.cancelFns, cancelFn)
+			}
+		}
+
 		// Register on_dag listener
 		if d.Trigger.OnDAG != nil {
 			upstream := d.Trigger.OnDAG.Name
@@ -362,6 +379,113 @@ func (s *Scheduler) setupWatchTrigger(ctx context.Context, d *dag.DAG, dagPath s
 				s.logger.Info("file change detected, triggering run", "dag", d.Name)
 				s.triggerRun(dagPath, "watch")
 				debounceC = nil
+			}
+		}
+	}()
+
+	return cancel
+}
+
+// setupConditionTrigger starts a polling goroutine that evaluates an R expression or
+// shell command periodically and triggers a run when it succeeds (exit code 0).
+func (s *Scheduler) setupConditionTrigger(ctx context.Context, d *dag.DAG, dagPath string) context.CancelFunc {
+	c := d.Trigger.Condition
+
+	pollInterval := 5 * time.Minute
+	if c.PollInterval != "" {
+		if parsed, err := time.ParseDuration(c.PollInterval); err == nil {
+			pollInterval = parsed
+		}
+	}
+
+	condCtx, cancel := context.WithCancel(ctx)
+
+	s.logger.Info("condition trigger started", "dag", d.Name, "poll_interval", pollInterval)
+
+	go func() {
+		ticker := time.NewTicker(pollInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-condCtx.Done():
+				return
+			case <-ticker.C:
+				var cmd *exec.Cmd
+				if c.Command != "" {
+					cmd = exec.CommandContext(condCtx, "sh", "-c", c.Command)
+				} else if c.RExpr != "" {
+					cmd = exec.CommandContext(condCtx, "Rscript", "-e", c.RExpr)
+				} else {
+					continue
+				}
+				if err := cmd.Run(); err == nil {
+					s.logger.Info("condition met, triggering run", "dag", d.Name)
+					s.triggerRun(dagPath, "condition")
+				}
+			}
+		}
+	}()
+
+	return cancel
+}
+
+// setupGitTrigger starts a polling goroutine that checks for new commits or tags
+// and triggers a run when changes are detected.
+func (s *Scheduler) setupGitTrigger(ctx context.Context, d *dag.DAG, dagPath string) context.CancelFunc {
+	g := d.Trigger.Git
+
+	pollInterval := 30 * time.Second
+	if g.PollInterval != "" {
+		if parsed, err := time.ParseDuration(g.PollInterval); err == nil {
+			pollInterval = parsed
+		}
+	}
+
+	// Resolve git repo directory (use DAG source dir)
+	repoDir := d.SourceDir
+	if repoDir == "" {
+		repoDir = s.dagDir
+	}
+
+	branch := g.Branch
+	if branch == "" {
+		branch = "HEAD"
+	}
+
+	gitCtx, cancel := context.WithCancel(ctx)
+
+	s.logger.Info("git trigger started", "dag", d.Name, "branch", branch, "poll_interval", pollInterval)
+
+	go func() {
+		var lastHash string
+
+		ticker := time.NewTicker(pollInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-gitCtx.Done():
+				return
+			case <-ticker.C:
+				// Get current commit hash
+				cmd := exec.CommandContext(gitCtx, "git", "-C", repoDir, "rev-parse", branch)
+				out, err := cmd.Output()
+				if err != nil {
+					continue
+				}
+				currentHash := strings.TrimSpace(string(out))
+
+				if lastHash == "" {
+					lastHash = currentHash
+					continue
+				}
+
+				if currentHash != lastHash {
+					s.logger.Info("git change detected, triggering run", "dag", d.Name, "branch", branch)
+					lastHash = currentHash
+					s.triggerRun(dagPath, "git")
+				}
 			}
 		}
 	}()
