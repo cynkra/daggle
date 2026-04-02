@@ -462,11 +462,12 @@ func (s *Scheduler) setupConditionTrigger(ctx context.Context, d *dag.DAG, dagPa
 				return
 			case <-ticker.C:
 				var cmd *exec.Cmd
-				if c.Command != "" {
+				switch {
+				case c.Command != "":
 					cmd = exec.CommandContext(condCtx, "sh", "-c", c.Command)
-				} else if c.RExpr != "" {
+				case c.RExpr != "":
 					cmd = exec.CommandContext(condCtx, "Rscript", "-e", c.RExpr)
-				} else {
+				default:
 					continue
 				}
 				if err := cmd.Run(); err == nil {

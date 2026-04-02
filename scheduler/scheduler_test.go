@@ -550,9 +550,7 @@ steps:
 
 func TestScheduler_GitTrigger(t *testing.T) {
 	tmpDir := t.TempDir()
-	dagDir := filepath.Join(tmpDir, "dags")
 	repoDir := filepath.Join(tmpDir, "repo")
-	_ = os.MkdirAll(dagDir, 0755)
 	_ = os.MkdirAll(repoDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
@@ -576,21 +574,7 @@ func TestScheduler_GitTrigger(t *testing.T) {
 		}
 	}
 
-	// DAG with git trigger pointing at the repo
-	writeDAG(t, dagDir, "git-watch.yaml", `
-name: git-watch
-trigger:
-  git:
-    branch: HEAD
-    poll_interval: 200ms
-steps:
-  - id: deploy
-    command: sleep 10
-`)
-	// Set SourceDir to repoDir so the git trigger uses it
-	// We do this by placing the DAG in the repo dir instead
-	_ = os.Remove(filepath.Join(dagDir, "git-watch.yaml"))
-	dagDir = repoDir
+	// Place the DAG in the repo dir so the git trigger uses it as SourceDir
 	writeDAG(t, repoDir, "git-watch.yaml", `
 name: git-watch
 trigger:
@@ -689,7 +673,7 @@ steps:
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusAccepted {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusAccepted)
 	}
@@ -744,7 +728,7 @@ steps:
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("no sig: status = %d, want %d", resp.StatusCode, http.StatusForbidden)
 	}
@@ -756,7 +740,7 @@ steps:
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("wrong sig: status = %d, want %d", resp.StatusCode, http.StatusForbidden)
 	}
@@ -773,7 +757,7 @@ steps:
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusAccepted {
 		t.Errorf("correct sig: status = %d, want %d", resp.StatusCode, http.StatusAccepted)
 	}

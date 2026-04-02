@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-const defaultWebhookPort = 7654
-
 // webhookEntry tracks a webhook-enabled DAG.
 type webhookEntry struct {
 	dagPath string
@@ -21,7 +19,7 @@ type webhookEntry struct {
 
 // startWebhookServer starts an HTTP server for webhook triggers.
 // It blocks until the server is shut down via the returned close function.
-func (s *Scheduler) startWebhookServer(webhooks map[string]webhookEntry) (addr string, closeFn func(), err error) {
+func (s *Scheduler) startWebhookServer(_ map[string]webhookEntry) (addr string, closeFn func(), err error) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /webhook/{dag}", func(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +52,7 @@ func (s *Scheduler) startWebhookServer(webhooks map[string]webhookEntry) (addr s
 		s.triggerRun(entry.dagPath, "webhook")
 
 		w.WriteHeader(http.StatusAccepted)
-		fmt.Fprintf(w, `{"status":"accepted","dag":%q}`, dagName)
+		_, _ = fmt.Fprintf(w, `{"status":"accepted","dag":%q}`, dagName)
 	})
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
