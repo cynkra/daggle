@@ -298,6 +298,22 @@ steps:
 
 Triggers when another DAG completes or fails. Enables multi-DAG workflows without sub-DAG composition.
 
+### Webhook
+
+```yaml
+name: deploy-on-push
+trigger:
+  webhook:
+    secret: "${WEBHOOK_SECRET}"
+steps:
+  - id: deploy
+    connect:
+      type: quarto
+      path: reports/dashboard.qmd
+```
+
+Triggers on HTTP POST to `/webhook/{dag-name}`. When `daggle serve` detects webhook triggers, it starts an HTTP server on a local port. Validate requests with HMAC-SHA256 via the `X-Daggle-Signature` header (format: `sha256=<hex>`).
+
 ### Condition polling
 
 ```yaml

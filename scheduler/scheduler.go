@@ -70,6 +70,9 @@ type Scheduler struct {
 	maxConcurrent  int
 	onDAGListeners map[string][]onDAGListener        // upstreamDAGName -> downstream listeners
 	completions    chan dagCompletionEvent
+	webhooks       map[string]webhookEntry            // dagName -> webhook config
+	webhookCloseFn func()                             // close the webhook server
+	webhookAddr    string                             // address the webhook server is listening on
 }
 
 // New creates a new Scheduler that watches the given DAG directory.
@@ -83,6 +86,7 @@ func New(dagDir string) *Scheduler {
 		maxConcurrent:  defaultMaxConcurrent,
 		onDAGListeners: make(map[string][]onDAGListener),
 		completions:    make(chan dagCompletionEvent, 64),
+		webhooks:       make(map[string]webhookEntry),
 	}
 }
 
@@ -122,10 +126,14 @@ func (s *Scheduler) shutdown() {
 	// Stop cron (no new triggers)
 	cronCtx := s.cron.Stop()
 
-	// Cancel all non-cron trigger goroutines
+	// Cancel all non-cron trigger goroutines and stop webhook server
 	s.mu.Lock()
 	for _, entry := range s.registered {
 		entry.teardown()
+	}
+	if s.webhookCloseFn != nil {
+		s.webhookCloseFn()
+		s.webhookCloseFn = nil
 	}
 	s.mu.Unlock()
 
@@ -178,6 +186,7 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 
 	seen := make(map[string]bool)
 	newListeners := make(map[string][]onDAGListener)
+	newWebhooks := make(map[string]webhookEntry)
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -277,6 +286,14 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 			})
 		}
 
+		// Register webhook
+		if d.Trigger.Webhook != nil {
+			newWebhooks[d.Name] = webhookEntry{
+				dagPath: dagPath,
+				secret:  d.Trigger.Webhook.Secret,
+			}
+		}
+
 		s.mu.Lock()
 		s.registered[d.Name] = newEntry
 		s.mu.Unlock()
@@ -292,9 +309,33 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 			s.logger.Info("unregistered DAG", "dag", name)
 		}
 	}
-	// Update on_dag listeners
+	// Update on_dag listeners and webhooks
 	s.onDAGListeners = newListeners
+	s.webhooks = newWebhooks
+
+	// Start/stop webhook server based on whether any webhooks are configured
+	needServer := len(newWebhooks) > 0
+	hasServer := s.webhookCloseFn != nil
 	s.mu.Unlock()
+
+	if needServer && !hasServer {
+		addr, closeFn, err := s.startWebhookServer(newWebhooks)
+		if err != nil {
+			s.logger.Error("failed to start webhook server", "error", err)
+		} else {
+			s.mu.Lock()
+			s.webhookCloseFn = closeFn
+			s.webhookAddr = addr
+			s.mu.Unlock()
+			s.logger.Info("webhook server started", "addr", addr)
+		}
+	} else if !needServer && hasServer {
+		s.mu.Lock()
+		s.webhookCloseFn()
+		s.webhookCloseFn = nil
+		s.mu.Unlock()
+		s.logger.Info("webhook server stopped (no webhook triggers)")
+	}
 
 	return nil
 }

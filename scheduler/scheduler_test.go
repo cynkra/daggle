@@ -2,9 +2,15 @@ package scheduler
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -633,6 +639,147 @@ steps:
 	}
 
 	// Clean up
+	sched.mu.Lock()
+	for _, cancelFn := range sched.running {
+		cancelFn()
+	}
+	sched.mu.Unlock()
+	time.Sleep(200 * time.Millisecond)
+}
+
+func TestScheduler_WebhookTrigger(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	writeDAG(t, dagDir, "webhook.yaml", `
+name: webhook-dag
+trigger:
+  webhook: {}
+steps:
+  - id: deploy
+    command: sleep 10
+`)
+
+	sched := New(dagDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = sched.syncDAGs(ctx)
+
+	// Webhook server should have started
+	sched.mu.Lock()
+	hasServer := sched.webhookCloseFn != nil
+	sched.mu.Unlock()
+	if !hasServer {
+		t.Fatal("expected webhook server to be started")
+	}
+
+	// Send POST to trigger the DAG
+	sched.mu.Lock()
+	addr := sched.webhookAddr
+	sched.mu.Unlock()
+
+	resp, err := http.Post(
+		fmt.Sprintf("http://%s/webhook/webhook-dag", addr),
+		"application/json",
+		strings.NewReader("{}"),
+	)
+	if err != nil {
+		t.Fatalf("POST failed: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusAccepted {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusAccepted)
+	}
+
+	time.Sleep(200 * time.Millisecond)
+
+	sched.mu.Lock()
+	running := len(sched.running)
+	sched.mu.Unlock()
+	if running != 1 {
+		t.Errorf("running = %d, want 1", running)
+	}
+
+	// Clean up
+	sched.mu.Lock()
+	for _, cancelFn := range sched.running {
+		cancelFn()
+	}
+	sched.mu.Unlock()
+	time.Sleep(200 * time.Millisecond)
+}
+
+func TestScheduler_WebhookHMACValidation(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	writeDAG(t, dagDir, "secure.yaml", `
+name: secure-dag
+trigger:
+  webhook:
+    secret: my-secret-key
+steps:
+  - id: deploy
+    command: sleep 10
+`)
+
+	sched := New(dagDir)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = sched.syncDAGs(ctx)
+
+	sched.mu.Lock()
+	addr := sched.webhookAddr
+	sched.mu.Unlock()
+	baseURL := fmt.Sprintf("http://%s/webhook/secure-dag", addr)
+
+	// Request without signature → 403
+	resp, err := http.Post(baseURL, "application/json", strings.NewReader("{}"))
+	if err != nil {
+		t.Fatalf("POST failed: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("no sig: status = %d, want %d", resp.StatusCode, http.StatusForbidden)
+	}
+
+	// Request with wrong signature → 403
+	req, _ := http.NewRequest("POST", baseURL, strings.NewReader("{}"))
+	req.Header.Set("X-Daggle-Signature", "sha256=0000000000000000000000000000000000000000000000000000000000000000")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST failed: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("wrong sig: status = %d, want %d", resp.StatusCode, http.StatusForbidden)
+	}
+
+	// Request with correct signature → 202
+	body := []byte("{}")
+	mac := hmac.New(sha256.New, []byte("my-secret-key"))
+	mac.Write(body)
+	sig := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+
+	req, _ = http.NewRequest("POST", baseURL, strings.NewReader("{}"))
+	req.Header.Set("X-Daggle-Signature", sig)
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST failed: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusAccepted {
+		t.Errorf("correct sig: status = %d, want %d", resp.StatusCode, http.StatusAccepted)
+	}
+
+	// Clean up
+	time.Sleep(200 * time.Millisecond)
 	sched.mu.Lock()
 	for _, cancelFn := range sched.running {
 		cancelFn()
