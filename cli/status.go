@@ -113,6 +113,13 @@ func showStatus(_ *cobra.Command, args []string) error {
 			si.attempts = e.Attempt
 		case state.EventStepRetrying:
 			si.status = "retrying"
+		case state.EventStepWaitApproval:
+			si.status = "waiting"
+			si.err = e.Message
+		case state.EventStepApproved:
+			si.status = "approved"
+		case state.EventStepRejected:
+			si.status = "rejected"
 		}
 	}
 

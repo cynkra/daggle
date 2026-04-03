@@ -128,6 +128,9 @@ type Step struct {
 	Coverage    string `yaml:"coverage,omitempty"`
 	Validate    string `yaml:"validate,omitempty"`
 
+	// Approval gate
+	Approve *ApproveStep `yaml:"approve,omitempty"`
+
 	// Sub-DAG composition
 	Call *CallStep `yaml:"call,omitempty"`
 
@@ -168,6 +171,13 @@ type ConnectDeploy struct {
 	Path        string `yaml:"path"`                  // content directory or file
 	Name        string `yaml:"name,omitempty"`         // content name on Connect
 	ForceUpdate *bool  `yaml:"force_update,omitempty"` // default true
+}
+
+// ApproveStep pauses execution until a human approves or rejects.
+type ApproveStep struct {
+	Message string `yaml:"message,omitempty"`
+	Timeout string `yaml:"timeout,omitempty"` // e.g. "24h", default: no timeout
+	Notify  *Hook  `yaml:"notify,omitempty"`
 }
 
 // CallStep configures sub-DAG composition.
@@ -256,6 +266,8 @@ func StepType(s Step) string {
 		return "coverage"
 	case s.Validate != "":
 		return "validate"
+	case s.Approve != nil:
+		return "approve"
 	case s.Call != nil:
 		return "call"
 	case s.Pin != nil:

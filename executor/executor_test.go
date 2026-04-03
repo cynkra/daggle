@@ -291,6 +291,72 @@ func TestRPkgExecutor_NewStepTypes(t *testing.T) {
 	}
 }
 
+func TestApproveExecutor_Approved(t *testing.T) {
+	logDir := t.TempDir()
+	step := dag.Step{
+		ID:      "review",
+		Approve: &dag.ApproveStep{Message: "Please review"},
+	}
+
+	// Write approval event after a short delay
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		_ = WriteApprovalEvent(logDir, "review", true)
+	}()
+
+	exec := &ApproveExecutor{}
+	result := exec.Run(context.Background(), step, logDir, "", nil)
+
+	if result.Err != nil {
+		t.Fatalf("expected approval success, got: %v", result.Err)
+	}
+	if result.ExitCode != 0 {
+		t.Errorf("exit code = %d, want 0", result.ExitCode)
+	}
+}
+
+func TestApproveExecutor_Rejected(t *testing.T) {
+	logDir := t.TempDir()
+	step := dag.Step{
+		ID:      "review",
+		Approve: &dag.ApproveStep{Message: "Please review"},
+	}
+
+	// Write rejection event after a short delay
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		_ = WriteApprovalEvent(logDir, "review", false)
+	}()
+
+	exec := &ApproveExecutor{}
+	result := exec.Run(context.Background(), step, logDir, "", nil)
+
+	if result.Err == nil {
+		t.Fatal("expected rejection error, got nil")
+	}
+	if result.ExitCode != 1 {
+		t.Errorf("exit code = %d, want 1", result.ExitCode)
+	}
+}
+
+func TestApproveExecutor_Timeout(t *testing.T) {
+	logDir := t.TempDir()
+	step := dag.Step{
+		ID:      "review",
+		Approve: &dag.ApproveStep{Message: "Review", Timeout: "1s"},
+	}
+
+	exec := &ApproveExecutor{}
+	result := exec.Run(context.Background(), step, logDir, "", nil)
+
+	if result.Err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if !strings.Contains(result.Err.Error(), "timed out") {
+		t.Errorf("error = %q, want timeout message", result.Err.Error())
+	}
+}
+
 func TestNew_Phase4StepTypes(t *testing.T) {
 	tests := []struct {
 		step dag.Step
