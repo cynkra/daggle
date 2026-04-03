@@ -128,6 +128,9 @@ type Step struct {
 	Coverage    string `yaml:"coverage,omitempty"`
 	Validate    string `yaml:"validate,omitempty"`
 
+	// Sub-DAG composition
+	Call *CallStep `yaml:"call,omitempty"`
+
 	// Additional R step types
 	Pin        *PinDeploy     `yaml:"pin,omitempty"`
 	Vetiver    *VetiverDeploy `yaml:"vetiver,omitempty"`
@@ -161,6 +164,12 @@ type ConnectDeploy struct {
 	Path        string `yaml:"path"`                  // content directory or file
 	Name        string `yaml:"name,omitempty"`         // content name on Connect
 	ForceUpdate *bool  `yaml:"force_update,omitempty"` // default true
+}
+
+// CallStep configures sub-DAG composition.
+type CallStep struct {
+	DAG    string            `yaml:"dag"`              // name of another DAG to execute
+	Params map[string]string `yaml:"params,omitempty"` // parameter overrides for the sub-DAG
 }
 
 // StepCondition defines when a step should run.
@@ -243,6 +252,8 @@ func StepType(s Step) string {
 		return "coverage"
 	case s.Validate != "":
 		return "validate"
+	case s.Call != nil:
+		return "call"
 	case s.Pin != nil:
 		return "pin"
 	case s.Vetiver != nil:

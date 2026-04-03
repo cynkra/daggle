@@ -73,6 +73,8 @@ func New(step dag.Step) Executor {
 		return &RmdExecutor{}
 	case "validate":
 		return &ValidateExecutor{}
+	case "call":
+		return &CallExecutor{}
 	case "pin":
 		return &PinExecutor{}
 	case "vetiver":
