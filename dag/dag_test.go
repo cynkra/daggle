@@ -1,6 +1,8 @@
 package dag
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -285,6 +287,72 @@ func TestValidate_TriggerBlock(t *testing.T) {
 	d.Trigger = &Trigger{Watch: &WatchTrigger{Path: "/data", Debounce: "not-a-duration"}}
 	if err := Validate(d); err == nil {
 		t.Error("watch with invalid debounce should fail")
+	}
+}
+
+func TestResolveWorkdir(t *testing.T) {
+	tests := []struct {
+		name string
+		dag  DAG
+		step Step
+		want string
+	}{
+		{"step wins", DAG{Workdir: "/dag", SourceDir: "/src"}, Step{Workdir: "/step"}, "/step"},
+		{"dag wins over source", DAG{Workdir: "/dag", SourceDir: "/src"}, Step{}, "/dag"},
+		{"source fallback", DAG{SourceDir: "/src"}, Step{}, "/src"},
+		{"empty", DAG{}, Step{}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.dag.ResolveWorkdir(tt.step); got != tt.want {
+				t.Errorf("ResolveWorkdir() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHashFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.yaml")
+
+	content := []byte("name: test\nsteps:\n  - id: a\n    command: echo\n")
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	h1, err := HashFile(path)
+	if err != nil {
+		t.Fatalf("HashFile: %v", err)
+	}
+	if len(h1) != 64 { // SHA-256 hex = 64 chars
+		t.Errorf("hash length = %d, want 64", len(h1))
+	}
+
+	// Same content = same hash
+	h2, err := HashFile(path)
+	if err != nil {
+		t.Fatalf("HashFile: %v", err)
+	}
+	if h1 != h2 {
+		t.Error("same file should produce same hash")
+	}
+
+	// Modified content = different hash
+	if err := os.WriteFile(path, []byte("name: changed\n"), 0644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	h3, err := HashFile(path)
+	if err != nil {
+		t.Fatalf("HashFile: %v", err)
+	}
+	if h1 == h3 {
+		t.Error("different content should produce different hash")
+	}
+
+	// Nonexistent file
+	_, err = HashFile(filepath.Join(dir, "nonexistent"))
+	if err == nil {
+		t.Error("expected error for nonexistent file")
 	}
 }
 

@@ -3,6 +3,7 @@ package state
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 func TestCreateRun(t *testing.T) {
@@ -134,6 +135,56 @@ func TestMetaRoundTrip(t *testing.T) {
 	}
 	if read.RVersion != "4.4.1" {
 		t.Errorf("RVersion = %q, want %q", read.RVersion, "4.4.1")
+	}
+}
+
+func TestLatestRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// Create first run
+	first, err := CreateRun("test-dag")
+	if err != nil {
+		t.Fatalf("CreateRun: %v", err)
+	}
+
+	latest, err := LatestRun("test-dag")
+	if err != nil {
+		t.Fatalf("LatestRun: %v", err)
+	}
+	if latest == nil {
+		t.Fatal("LatestRun returned nil")
+	}
+	if latest.ID != first.ID {
+		t.Errorf("LatestRun.ID = %q, want %q", latest.ID, first.ID)
+	}
+
+	// Create second run after a delay so xid timestamps differ (xid has second-level resolution)
+	time.Sleep(1100 * time.Millisecond)
+	second, err := CreateRun("test-dag")
+	if err != nil {
+		t.Fatalf("CreateRun: %v", err)
+	}
+
+	latest, err = LatestRun("test-dag")
+	if err != nil {
+		t.Fatalf("LatestRun: %v", err)
+	}
+	if latest.ID != second.ID {
+		t.Errorf("LatestRun.ID = %q, want %q (should be most recent)", latest.ID, second.ID)
+	}
+}
+
+func TestLatestRun_NoRuns(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	latest, err := LatestRun("nonexistent-dag")
+	if err != nil {
+		t.Fatalf("LatestRun: %v", err)
+	}
+	if latest != nil {
+		t.Errorf("expected nil for nonexistent DAG, got %+v", latest)
 	}
 }
 

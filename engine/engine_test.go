@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -410,6 +411,99 @@ func envToMap(env []string) map[string]string {
 		}
 	}
 	return m
+}
+
+func TestEngine_Hooks(t *testing.T) {
+	run := setupRun(t)
+	marker := filepath.Join(t.TempDir(), "hook_ran")
+
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+		},
+		OnSuccess: &dag.Hook{Command: fmt.Sprintf("touch %s", marker)},
+	}
+
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// Give hook a moment to complete
+	time.Sleep(100 * time.Millisecond)
+
+	if _, err := os.Stat(marker); os.IsNotExist(err) {
+		t.Error("on_success hook did not run (marker file not created)")
+	}
+}
+
+func TestEngine_OnFailureHook(t *testing.T) {
+	run := setupRun(t)
+	marker := filepath.Join(t.TempDir(), "failure_hook_ran")
+
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "fail"},
+		},
+		OnFailure: &dag.Hook{Command: fmt.Sprintf("touch %s", marker)},
+	}
+
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		return executor.Result{ExitCode: 1, Err: fmt.Errorf("step failed")}
+	}}
+
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	_ = eng.Run(context.Background())
+
+	time.Sleep(100 * time.Millisecond)
+
+	if _, err := os.Stat(marker); os.IsNotExist(err) {
+		t.Error("on_failure hook did not run (marker file not created)")
+	}
+}
+
+func TestEngine_WriteMeta(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+		},
+	}
+
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng.SetMeta(&state.RunMeta{
+		RunID:    run.ID,
+		DAGName:  "test",
+		DAGHash:  "abc123",
+		RVersion: "4.4.1",
+	})
+
+	if err := eng.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	meta, err := state.ReadMeta(run.Dir)
+	if err != nil {
+		t.Fatalf("ReadMeta: %v", err)
+	}
+	if meta.Status != "completed" {
+		t.Errorf("meta.Status = %q, want %q", meta.Status, "completed")
+	}
+	if meta.DAGHash != "abc123" {
+		t.Errorf("meta.DAGHash = %q, want %q", meta.DAGHash, "abc123")
+	}
 }
 
 func TestRetryDelay(t *testing.T) {

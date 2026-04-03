@@ -231,3 +231,107 @@ func TestNew(t *testing.T) {
 func typeString(e Executor) string {
 	return fmt.Sprintf("%T", e)
 }
+
+func TestRPkgExecutor_GenerateRCode(t *testing.T) {
+	tests := []struct {
+		action  string
+		want    []string // substrings that must appear in generated code
+		notWant []string // substrings that must not appear
+	}{
+		{"test", []string{"devtools::test", "requireNamespace", "devtools", "daggle-output name=test_failures"}, nil},
+		{"check", []string{"rcmdcheck::rcmdcheck", "requireNamespace", "rcmdcheck", "daggle-output name=check_errors"}, nil},
+		{"document", []string{"roxygen2::roxygenize", "requireNamespace", "roxygen2"}, nil},
+		{"lint", []string{"lintr::lint_package", "requireNamespace", "lintr", "daggle-output name=lint_issues"}, nil},
+		{"style", []string{"styler::style_pkg", "requireNamespace", "styler", "daggle-output name=files_changed"}, nil},
+		{"coverage", []string{"covr::package_coverage", "requireNamespace", "covr", "daggle-output name=coverage_pct"}, nil},
+		{"renv_restore", []string{"renv::restore", "requireNamespace", "renv", "prompt = FALSE"}, nil},
+		{"unknown_action", []string{"stop", "unknown rpkg action"}, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.action, func(t *testing.T) {
+			e := &RPkgExecutor{Action: tt.action}
+			code := e.generateRCode(".")
+			for _, want := range tt.want {
+				if !strings.Contains(code, want) {
+					t.Errorf("generateRCode(%q) missing %q in:\n%s", tt.action, want, code)
+				}
+			}
+			for _, notWant := range tt.notWant {
+				if strings.Contains(code, notWant) {
+					t.Errorf("generateRCode(%q) should not contain %q", tt.action, notWant)
+				}
+			}
+		})
+	}
+}
+
+func TestRPkgExecutor_ResolvePkgPath(t *testing.T) {
+	tests := []struct {
+		action string
+		step   dag.Step
+		want   string
+	}{
+		{"test", dag.Step{Test: "."}, "."},
+		{"test", dag.Step{Test: "true"}, "."},
+		{"test", dag.Step{Test: "/custom/path"}, "/custom/path"},
+		{"lint", dag.Step{Lint: "."}, "."},
+		{"lint", dag.Step{Lint: "pkg/"}, "pkg/"},
+		{"coverage", dag.Step{Coverage: ""}, "."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.action+"_"+tt.want, func(t *testing.T) {
+			e := &RPkgExecutor{Action: tt.action}
+			if got := e.resolvePkgPath(tt.step); got != tt.want {
+				t.Errorf("resolvePkgPath() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGenerateConnectR(t *testing.T) {
+	tests := []struct {
+		name string
+		c    *dag.ConnectDeploy
+		want []string
+	}{
+		{
+			"shiny",
+			&dag.ConnectDeploy{Type: "shiny", Path: "app/", Name: "my-app"},
+			[]string{"rsconnect::deployApp", "my-app", "CONNECT_SERVER", "CONNECT_API_KEY", "daggle-output name=connect_url"},
+		},
+		{
+			"quarto",
+			&dag.ConnectDeploy{Type: "quarto", Path: "report.qmd"},
+			[]string{"rsconnect::deployDoc", "report.qmd", "daggle-output name=connect_app"},
+		},
+		{
+			"plumber",
+			&dag.ConnectDeploy{Type: "plumber", Path: "api/", Name: "my-api"},
+			[]string{"rsconnect::deployAPI", "my-api"},
+		},
+		{
+			"default name from path",
+			&dag.ConnectDeploy{Type: "shiny", Path: "apps/dashboard/"},
+			[]string{"dashboard"}, // default name = last path component
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code := generateConnectR(tt.c)
+			for _, want := range tt.want {
+				if !strings.Contains(code, want) {
+					t.Errorf("generateConnectR(%s) missing %q in:\n%s", tt.name, want, code)
+				}
+			}
+		})
+	}
+
+	// Test force_update = false
+	f := false
+	code := generateConnectR(&dag.ConnectDeploy{Type: "shiny", Path: "app/", ForceUpdate: &f})
+	if !strings.Contains(code, "FALSE") {
+		t.Error("force_update=false should generate FALSE")
+	}
+}
