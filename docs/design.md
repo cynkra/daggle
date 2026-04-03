@@ -123,6 +123,7 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 4 — Power Features & Advanced Steps:**
 - New step types: `pin:`, `vetiver:`, `shinytest:`, `pkgdown:`, `install:`, `targets:`, `benchmark:`, `revdepcheck:`
+- Human-in-the-loop approval gates (`approve:` step type)
 - Sub-DAG composition (`call:` step)
 - Conditional steps (`when:` field)
 - Matrix runs (parameter grid execution)
