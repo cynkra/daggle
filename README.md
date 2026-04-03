@@ -11,11 +11,23 @@ daggle sits between "cron + Rscript" and heavy workflow engines. No database, no
 
 ## Install
 
+**Install script** (Linux and macOS):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cynkra/daggle/main/install.sh | sh
+```
+
+Set `DAGGLE_INSTALL_DIR` to change the install location (default: `/usr/local/bin`).
+
+**Download binary** from [GitHub Releases](https://github.com/cynkra/daggle/releases) — pre-built for Linux and macOS (amd64 and arm64).
+
+**From source** (requires Go 1.22+):
+
 ```bash
 go install github.com/cynkra/daggle/cmd/daggle@latest
 ```
 
-Or build from source:
+Or clone and build:
 
 ```bash
 git clone https://github.com/cynkra/daggle.git
