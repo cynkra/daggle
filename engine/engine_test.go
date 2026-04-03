@@ -506,6 +506,43 @@ func TestEngine_WriteMeta(t *testing.T) {
 	}
 }
 
+func TestEngine_CancelBetweenTiers(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+			{ID: "b", Command: "echo b", Depends: []string{"a"}},
+		},
+	}
+
+	var executed []string
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
+		executed = append(executed, step.ID)
+		// After step "a" runs, write cancel file
+		if step.ID == "a" {
+			_ = os.WriteFile(filepath.Join(run.Dir, "cancel.requested"), []byte("cancel"), 0644)
+		}
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected cancel error, got nil")
+	}
+	if err.Error() != "run cancelled" {
+		t.Errorf("error = %q, want %q", err.Error(), "run cancelled")
+	}
+
+	// Step b should not have executed
+	for _, id := range executed {
+		if id == "b" {
+			t.Error("step b should not have executed after cancel")
+		}
+	}
+}
+
 func TestRetryDelay(t *testing.T) {
 	// Default (nil retry) = linear
 	if d := retryDelay(3, nil); d != 3*time.Second {

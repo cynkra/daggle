@@ -81,6 +81,17 @@ func (e *Engine) Run(ctx context.Context) error {
 
 	var runErr error
 	for tierIdx, tier := range tiers {
+		// Check for cancel request between tiers
+		if e.isCancelled() {
+			e.writeEvent(state.Event{
+				Type:  state.EventRunFailed,
+				Error: "run cancelled",
+			})
+			e.logger.Info("run cancelled", "dag", e.dag.Name)
+			runErr = fmt.Errorf("run cancelled")
+			break
+		}
+
 		e.logger.Info("executing tier", "tier", tierIdx, "steps", stepIDs(tier))
 
 		if err := e.runTier(ctx, tier, env); err != nil {
@@ -301,6 +312,12 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	if err := cmd.Run(); err != nil {
 		e.logger.Error("hook failed", "hook", name, "error", err)
 	}
+}
+
+// isCancelled checks if a cancel.requested file exists in the run directory.
+func (e *Engine) isCancelled() bool {
+	_, err := os.Stat(filepath.Join(e.runInfo.Dir, "cancel.requested"))
+	return err == nil
 }
 
 func sanitize(s string) string {
