@@ -112,17 +112,9 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 3 — Triggers & New Step Types:** Unified trigger block (schedule, file watcher, webhook, DAG completion, condition polling, git), new step types (rmd, renv_restore, coverage, validate), cancellation (daggle stop), overlap policies (skip, cancel), graceful daemon lifecycle, daggle doctor diagnostics.
 
-### Planned
+**Phase 4 — Power Features & Advanced Steps:** New step types (approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck), conditional steps (when), preconditions, matrix runs, human-in-the-loop approval gates, sub-DAG composition, DAG templates (daggle init), R version enforcement, error_on field, base.yaml defaults, daggle cancel/clean/history/stats commands, duration trends.
 
-**Phase 4 — Power Features & Advanced Steps:**
-- New step types: `pin:`, `vetiver:`, `shinytest:`, `pkgdown:`, `install:`, `targets:`, `benchmark:`, `revdepcheck:`
-- Human-in-the-loop approval gates (`approve:` step type)
-- Sub-DAG composition (`call:` step)
-- Conditional steps (`when:` field)
-- Matrix runs (parameter grid execution)
-- Format-aware artifact tracking
-- DAG templates (`daggle init`)
-- Duration trends and stats from event history
+### Planned
 
 **Phase 5 — Companion R Package:**
 - `daggle` R package (GitHub-only initially, CRAN later if warranted)

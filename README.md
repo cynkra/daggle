@@ -81,6 +81,16 @@ Every step is assumed to be R unless stated otherwise. The following step types 
 | Restore renv | `renv_restore:` | Runs `renv::restore()` to install packages |
 | Coverage | `coverage:` | Runs `covr::package_coverage()` with percentage output |
 | Validate | `validate:` | Runs a data validation R script via Rscript |
+| Approval gate | `approve:` | Pauses execution until human approves via CLI |
+| Sub-DAG | `call:` | Executes another DAG as a sub-step |
+| Pin | `pin:` | Publishes data/models via `pins::pin_write()` |
+| Vetiver | `vetiver:` | MLOps model versioning and deployment |
+| Shiny test | `shinytest:` | Runs `shinytest2::test_app()` |
+| Pkgdown | `pkgdown:` | Builds package website via `pkgdown::build_site()` |
+| Install | `install:` | Installs packages via `pak` or `install.packages()` |
+| Targets | `targets:` | Runs `targets::tar_make()` pipeline |
+| Benchmark | `benchmark:` | Runs bench scripts from a directory |
+| Revdepcheck | `revdepcheck:` | Runs `revdepcheck::revdep_check()` |
 | Deploy | `connect:` | Deploys to Posit Connect (Shiny, Quarto, Plumber) |
 
 ### Full YAML reference
@@ -401,6 +411,27 @@ daggle serve                      Start the scheduler daemon
 daggle stop                       Stop the scheduler daemon
 
 daggle doctor                     Check system health (R, renv, scheduler, DAGs)
+
+daggle history <dag-name> [flags] Show run history for a DAG
+  --last <N>                      Number of recent runs (default: 10)
+
+daggle stats <dag-name> [flags]   Show duration trends and success rate
+  --last <N>                      Number of recent runs to analyze (default: 20)
+
+daggle cancel <dag-name> [flags]  Cancel an in-flight DAG run
+  --run-id <id>                   Specific run ID (default: latest)
+
+daggle clean [flags]              Remove old run directories and logs
+  --older-than <duration>         Required: e.g. 30d, 24h
+
+daggle approve <dag-name> [flags] Approve a waiting DAG run to continue
+  --run-id <id>                   Specific run ID (default: latest)
+
+daggle reject <dag-name> [flags]  Reject a waiting DAG run
+  --run-id <id>                   Specific run ID (default: latest)
+
+daggle init <template>            Generate a DAG from a built-in template
+                                  Templates: pkg-check, pkg-release, data-pipeline
 ```
 
 Global flags:
@@ -409,6 +440,59 @@ Global flags:
 --dags-dir <path>    Override DAG definitions directory
 --data-dir <path>    Override data/runs directory
 ```
+
+## Approval gates
+
+Pause execution until a human reviews and approves:
+
+```yaml
+steps:
+  - id: fit-model
+    script: models/fit.R
+  - id: review
+    approve:
+      message: "Review model metrics before deploying"
+      timeout: 24h
+    depends: [fit-model]
+  - id: deploy
+    connect:
+      type: plumber
+      path: api/
+    depends: [review]
+```
+
+```bash
+daggle status my-pipeline   # shows "waiting" with approval message
+daggle approve my-pipeline  # continue execution
+daggle reject my-pipeline   # fail the step
+```
+
+## Conditional steps
+
+Skip steps based on conditions:
+
+```yaml
+- id: deploy-prod
+  script: deploy.R
+  when:
+    command: 'test "$DAGGLE_ENV" = production'
+  depends: [test]
+```
+
+## Matrix runs
+
+Run the same step across a parameter grid:
+
+```yaml
+- id: fit-model
+  script: models/fit.R
+  matrix:
+    algo: [lm, glm, gam]
+    dataset: [train, full]
+  args: ["--algo", "{{ .Matrix.algo }}", "--data", "{{ .Matrix.dataset }}"]
+```
+
+This expands into 6 parallel step instances, each with `DAGGLE_MATRIX_ALGO` and `DAGGLE_MATRIX_DATASET` environment variables.
 
 ## How it works
 
