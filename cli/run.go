@@ -49,6 +49,13 @@ func runDAG(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("parse DAG %q: %w", dagName, err)
 	}
 
+	// Apply base.yaml defaults if present
+	baseDefaults, err := dag.LoadBaseDefaults(filepath.Dir(dagPath))
+	if err != nil {
+		return fmt.Errorf("load base.yaml: %w", err)
+	}
+	dag.ApplyBaseDefaults(d, baseDefaults)
+
 	// Parse param overrides
 	params := parseParams(runParams)
 
