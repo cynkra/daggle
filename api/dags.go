@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -183,21 +182,3 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// detectRVersion runs Rscript --version and extracts the version string.
-func detectRVersion() string {
-	out, err := exec.Command("Rscript", "--version").CombinedOutput()
-	if err != nil {
-		return ""
-	}
-	s := strings.TrimSpace(string(out))
-	for _, line := range strings.Split(s, "\n") {
-		if idx := strings.Index(line, "version "); idx >= 0 {
-			rest := line[idx+8:]
-			if sp := strings.IndexByte(rest, ' '); sp > 0 {
-				return rest[:sp]
-			}
-			return rest
-		}
-	}
-	return s
-}
