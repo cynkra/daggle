@@ -506,6 +506,79 @@ func TestEngine_WriteMeta(t *testing.T) {
 	}
 }
 
+func TestEngine_WhenConditionSkip(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a", When: &dag.StepCondition{Command: "false"}},
+		},
+	}
+
+	var executed []string
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
+		executed = append(executed, step.ID)
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	// Step should not have executed (skipped due to condition)
+	if len(executed) != 0 {
+		t.Errorf("expected no steps executed, got %v", executed)
+	}
+}
+
+func TestEngine_WhenConditionRun(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a", When: &dag.StepCondition{Command: "true"}},
+		},
+	}
+
+	var executed []string
+	mock := &mockExecutor{fn: func(step dag.Step) executor.Result {
+		executed = append(executed, step.ID)
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if len(executed) != 1 || executed[0] != "a" {
+		t.Errorf("expected step a to execute, got %v", executed)
+	}
+}
+
+func TestEngine_PreconditionFail(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a", Preconditions: []dag.Precondition{{Command: "false"}}},
+		},
+	}
+
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error from failed precondition")
+	}
+}
+
 func TestEngine_CancelBetweenTiers(t *testing.T) {
 	run := setupRun(t)
 	d := &dag.DAG{

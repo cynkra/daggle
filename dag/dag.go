@@ -141,6 +141,12 @@ type Step struct {
 	// Posit Connect deployment
 	Connect *ConnectDeploy `yaml:"connect,omitempty"`
 
+	// Conditional execution: skip step if condition is false
+	When *StepCondition `yaml:"when,omitempty"`
+
+	// Preconditions: health checks before running the step
+	Preconditions []Precondition `yaml:"preconditions,omitempty"`
+
 	// Error sensitivity: "error" (default), "warning", "message"
 	ErrorOn string `yaml:"error_on,omitempty"`
 
@@ -155,6 +161,18 @@ type ConnectDeploy struct {
 	Path        string `yaml:"path"`                  // content directory or file
 	Name        string `yaml:"name,omitempty"`         // content name on Connect
 	ForceUpdate *bool  `yaml:"force_update,omitempty"` // default true
+}
+
+// StepCondition defines when a step should run.
+type StepCondition struct {
+	RExpr   string `yaml:"r_expr,omitempty"`
+	Command string `yaml:"command,omitempty"`
+}
+
+// Precondition defines a health check that must pass before a step runs.
+type Precondition struct {
+	RExpr   string `yaml:"r_expr,omitempty"`
+	Command string `yaml:"command,omitempty"`
 }
 
 // PinDeploy configures publishing data/models via the pins package.

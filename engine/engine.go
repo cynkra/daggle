@@ -150,7 +150,31 @@ func (e *Engine) runTier(ctx context.Context, steps []dag.Step, env []string) er
 	return firstErr
 }
 
+// EventStepSkipped is emitted when a step is skipped due to a `when` condition.
+const eventStepSkipped = "step_skipped"
+
 func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error {
+	// Check `when` condition — skip (not fail) if false
+	if step.When != nil {
+		if skip, err := e.evaluateCondition(ctx, step.When, env); err != nil {
+			return fmt.Errorf("step %q when condition failed: %w", step.ID, err)
+		} else if skip {
+			e.writeEvent(state.Event{Type: eventStepSkipped, StepID: step.ID})
+			e.logger.Info("step skipped (condition not met)", "step", step.ID)
+			return nil
+		}
+	}
+
+	// Check preconditions — fail if not met
+	for i, pre := range step.Preconditions {
+		cond := &dag.StepCondition{RExpr: pre.RExpr, Command: pre.Command}
+		if fail, err := e.evaluateCondition(ctx, cond, env); err != nil {
+			return fmt.Errorf("step %q precondition %d failed: %w", step.ID, i+1, err)
+		} else if fail {
+			return fmt.Errorf("step %q precondition %d not met", step.ID, i+1)
+		}
+	}
+
 	ex := e.execFn(step)
 	if ex == nil {
 		return fmt.Errorf("no executor for step %q", step.ID)
@@ -312,6 +336,46 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	if err := cmd.Run(); err != nil {
 		e.logger.Error("hook failed", "hook", name, "error", err)
 	}
+}
+
+// evaluateCondition runs a when/precondition check.
+// Returns (shouldSkip, error). shouldSkip is true if the command exits non-zero (condition not met).
+func (e *Engine) evaluateCondition(ctx context.Context, cond *dag.StepCondition, env []string) (bool, error) {
+	var cmd *exec.Cmd
+	switch {
+	case cond.RExpr != "":
+		tmpFile := filepath.Join(e.runInfo.Dir, "condition_"+sanitize(cond.RExpr[:min(len(cond.RExpr), 20)])+".R")
+		if err := os.WriteFile(tmpFile, []byte(fmt.Sprintf("if (!(%s)) quit(status = 1, save = 'no')\n", cond.RExpr)), 0644); err != nil {
+			return false, err
+		}
+		cmd = exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
+	case cond.Command != "":
+		cmd = exec.CommandContext(ctx, "sh", "-c", cond.Command)
+	default:
+		return false, nil
+	}
+
+	cmd.Env = append(os.Environ(), env...)
+	if e.dag.Workdir != "" {
+		cmd.Dir = e.dag.Workdir
+	} else if e.dag.SourceDir != "" {
+		cmd.Dir = e.dag.SourceDir
+	}
+
+	if err := cmd.Run(); err != nil {
+		if _, ok := err.(*exec.ExitError); ok {
+			return true, nil // condition not met, skip
+		}
+		return false, err // actual error
+	}
+	return false, nil // condition met, don't skip
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // isCancelled checks if a cancel.requested file exists in the run directory.
