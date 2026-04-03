@@ -110,16 +110,9 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 2 — Usable Daily Driver:** Quarto step type, R package dev steps (test/check/document/lint/style), Posit Connect deployment, exponential backoff retries, R error extraction in status, reproducibility metadata (meta.json), YAML JSON Schema, renv autodetection.
 
-### Planned
+**Phase 3 — Triggers & New Step Types:** Unified trigger block (schedule, file watcher, webhook, DAG completion, condition polling, git), new step types (rmd, renv_restore, coverage, validate), cancellation (daggle stop), overlap policies (skip, cancel), graceful daemon lifecycle, daggle doctor diagnostics.
 
-**Phase 3 — Triggers & New Step Types:**
-- Unified `trigger:` block replacing top-level `schedule:`
-- File watcher, webhook, DAG completion, condition polling, git triggers
-- New step types: `rmd:`, `renv_restore:`, `coverage:`, `validate:`
-- Cancellation and in-flight run management (`daggle stop`)
-- Concurrent run policies (skip, queue, cancel)
-- Graceful daemon lifecycle (SIGHUP reload, systemd/launchd integration)
-- `daggle doctor` diagnostics
+### Planned
 
 **Phase 4 — Power Features & Advanced Steps:**
 - New step types: `pin:`, `vetiver:`, `shinytest:`, `pkgdown:`, `install:`, `targets:`, `benchmark:`, `revdepcheck:`
@@ -131,24 +124,34 @@ R-specific steps check for their required packages at runtime and fail with a cl
 - DAG templates (`daggle init`)
 - Duration trends and stats from event history
 
-**Phase 5 — Web UI & API:**
+**Phase 5 — Companion R Package:**
+- `daggle` R package (GitHub-only initially, CRAN later if warranted)
+- Read helpers: `daggle::run_id()`, `daggle::dag_name()`, `daggle::run_dir()`, `daggle::get_output(step, key)`
+- Write helpers: `daggle::output(name, value)`
+- Approval helpers: `daggle::approve(dag, run_id)`, `daggle::reject(dag, run_id)`
+- Scope: read, write, and approve — never parsing YAML, running DAGs, or managing state
+
+**Phase 6 — Web UI & API:**
 - REST API for triggering and monitoring runs
 - Embedded web UI (HTML/JS/CSS via `go:embed`) — DAG list, run history, log tailing, DAG visualization
+- Approval review dashboard with approve/reject buttons and upstream context
 
-**Phase 6 — Enterprise (if needed):**
+**Phase 7 — Enterprise (if needed):**
 - Distributed workers
 - Queue system with concurrency limits
 - RBAC
 - Prometheus metrics
 - SSH remote execution
+- R session pooling (keep warm Rscript processes for fast inline expressions)
 
 ## Open design questions
 
 These are topics where the design is not yet settled:
 
-- **R version enforcement** — how strict? Warn vs. fail? Semver ranges?
-- **`error_on:` field** — should steps be able to treat R warnings as failures?
-- **`base.yaml` defaults** — how should shared DAG defaults merge? Shallow merge? Deep merge?
-- **Windows support** — the process model uses Unix-only APIs (process groups, SIGTERM). Is Windows a target?
-- **Companion R package** — should daggle ship a tiny R package with helpers like `daggle::output(key, value)`?
-- **DAG templates** — what templates should `daggle init` provide?
+- **~~R version enforcement~~** — **Resolved.** Syntax: `r_version: ">=4.1.0"` (single constraint). Warn by default, `r_version_strict: true` to fail. Check at DAG start via `Rscript --version`. Phase 4.
+- **~~`error_on:` field~~** — **Resolved.** Step-level `error_on:` with three levels: `error` (default), `warning`, `message`. Applies to all R step types. Implemented via `withCallingHandlers()` wrapper. For `script:` steps, generate a thin wrapper that sources the user script inside the handler. Phase 4.
+- **~~`base.yaml` defaults~~** — **Resolved.** `base.yaml` in the DAGs directory. Shallow merge: `env` maps merged (DAG wins on conflict), scalars (`workdir`, `timeout`) overridden by DAG. Mergeable fields: `env`, `on_success`, `on_failure`, `on_exit`, default `timeout`, default `retry`. Steps are never merged. No-op if `base.yaml` absent. Phase 4.
+- **~~Windows support~~** — **Not supported.** The process model uses Unix-only APIs (process groups, SIGTERM). macOS and Linux only. Revisit if user demand appears.
+- **~~Companion R package~~** — **Resolved.** Phase 5 is dedicated to the companion R package. Scope: read + write helpers only (output, env var readers). Details to be designed after Phase 4.
+- **~~DAG templates~~** — **Resolved.** Three templates for Phase 4: `pkg-check`, `pkg-release`, `data-pipeline` (all sketched in features.md).
+- **~~Telemetry~~** — **Dropped.** Rely on GitHub issues for feedback. Not worth the trust cost.

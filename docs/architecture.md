@@ -29,6 +29,8 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
 │  │  QuartoExecutor   (quarto render <path>) │             │
 │  │  RPkgExecutor     (devtools/rcmdcheck/..│             │
 │  │  ConnectExecutor  (rsconnect deploy)     │             │
+│  │  RmdExecutor      (rmarkdown::render()) │             │
+│  │  ValidateExecutor (validation scripts)  │             │
 │  └──────────────────┬──────────────────────┘             │
 │                     │                                     │
 │  ┌──────────────────┼──────────────────────┐             │
@@ -157,18 +159,18 @@ The scheduler (`daggle serve`) runs as a long-lived daemon managing all trigger 
 - **Concurrency limit** — max 4 simultaneous DAG runs (configurable)
 - **Graceful shutdown** — on SIGINT/SIGTERM, stops scheduling and waits up to 5 minutes for in-flight runs
 
-### Trigger types (planned for Phase 3)
+### Trigger types
 
 All triggers live under a unified `trigger:` block in DAG YAML. Triggers are additive — any matching trigger starts a run.
 
 | Trigger | Mechanism | Use case |
 |---------|-----------|----------|
-| `schedule` | Cron expressions (implemented) | Recurring pipelines |
-| `watch` | fsnotify file events | Data drops, config changes |
-| `webhook` | HTTP POST endpoint | GitHub hooks, external systems |
+| `schedule` | Cron expressions via robfig/cron | Recurring pipelines |
+| `watch` | fsnotify file events with debounce | Data drops, config changes |
+| `webhook` | HTTP POST with HMAC-SHA256 validation | GitHub hooks, external systems |
 | `on_dag` | Event listener on DAG completion | Multi-DAG chaining |
-| `condition` | R expr / shell polling | DB changes, API readiness |
-| `git` | Poll git for new commits/tags | Local CI |
+| `condition` | R expr / shell command polling | DB changes, API readiness |
+| `git` | Poll for new commits by branch | Local CI |
 
 ## Dependencies
 
@@ -178,8 +180,9 @@ All triggers live under a unified `trigger:` block in DAG YAML. Triggers are add
 | `github.com/spf13/cobra` | CLI framework |
 | `github.com/rs/xid` | Time-sortable unique run IDs |
 | `github.com/robfig/cron/v3` | Cron expression parsing |
+| `github.com/fsnotify/fsnotify` | File system event watching for trigger.watch |
 
-Total: 4 external Go dependencies. R and quarto are runtime dependencies only.
+Total: 5 external Go dependencies. R and quarto are runtime dependencies only.
 
 ## Design principles
 
@@ -187,5 +190,5 @@ Total: 4 external Go dependencies. R and quarto are runtime dependencies only.
 2. **No database** — files are the database; JSONL events, flat logs, XDG paths
 3. **No embedded R** — daggle supervises `Rscript` processes, never links against R
 4. **Single binary** — `go build` produces one static binary; R is the only prerequisite
-5. **Minimal dependencies** — 4 Go packages; no runtime services (no Redis, no Postgres)
+5. **Minimal dependencies** — 5 Go packages; no runtime services (no Redis, no Postgres)
 6. **Fail loud** — strict YAML parsing (`KnownFields`), R errors surfaced in status, clear messages for missing packages
