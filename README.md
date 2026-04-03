@@ -395,6 +395,7 @@ trigger:
 
 ```bash
 daggle serve
+daggle serve --port 8787   # also start REST API
 ```
 
 The scheduler:
@@ -405,6 +406,32 @@ The scheduler:
 - Hot-reloads DAG files every 30 seconds, or immediately on SIGHUP
 - Shuts down gracefully on SIGINT/SIGTERM (waits for in-flight runs)
 - Writes a PID file for process management (`daggle stop` to shut down)
+- Optionally serves the REST API on `--port` (default: off)
+
+## REST API
+
+Start the API with `daggle serve --port 8787`. See [docs/api.md](docs/api.md) for the full endpoint reference.
+
+```bash
+# List DAGs
+curl http://localhost:8787/api/v1/dags
+
+# Trigger a run
+curl -X POST http://localhost:8787/api/v1/dags/my-pipeline/run \
+  -H 'Content-Type: application/json' \
+  -d '{"params": {"dept": "sales"}}'
+
+# Check status
+curl http://localhost:8787/api/v1/dags/my-pipeline/runs/latest
+
+# Get outputs (flat format, R-friendly)
+curl http://localhost:8787/api/v1/dags/my-pipeline/runs/latest/outputs
+
+# Approve a waiting step
+curl -X POST http://localhost:8787/api/v1/dags/my-pipeline/runs/abc123/steps/review/approve
+```
+
+All list endpoints return flat JSON arrays for easy conversion to R data frames with `jsonlite::fromJSON()`.
 
 ## CLI reference
 
