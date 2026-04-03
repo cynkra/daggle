@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/cynkra/daggle/dag"
@@ -21,6 +22,36 @@ type Result struct {
 // Executor runs a single DAG step.
 type Executor interface {
 	Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result
+}
+
+// wrapErrorOn wraps R code in withCallingHandlers if the step has error_on set
+// to "warning" or "message". This causes R warnings or messages to be promoted to errors.
+func wrapErrorOn(rCode string, errorOn string) string {
+	if errorOn == "" || errorOn == "error" {
+		return rCode
+	}
+
+	var handler string
+	switch errorOn {
+	case "warning":
+		handler = `warning = function(w) {
+      message(paste("Caught warning:", conditionMessage(w)))
+      stop(paste("Step failed due to warning:", conditionMessage(w)), call. = FALSE)
+    }`
+	case "message":
+		handler = `warning = function(w) {
+      message(paste("Caught warning:", conditionMessage(w)))
+      stop(paste("Step failed due to warning:", conditionMessage(w)), call. = FALSE)
+    },
+    message = function(m) {
+      cat(conditionMessage(m))
+      stop(paste("Step failed due to message:", conditionMessage(m)), call. = FALSE)
+    }`
+	default:
+		return rCode
+	}
+
+	return fmt.Sprintf("withCallingHandlers({\n%s\n}, %s)\n", rCode, handler)
 }
 
 // New returns the appropriate executor for the given step type.

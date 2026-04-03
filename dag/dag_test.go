@@ -356,6 +356,88 @@ func TestHashFile(t *testing.T) {
 	}
 }
 
+func TestStepType_NewTypes(t *testing.T) {
+	tests := []struct {
+		step Step
+		want string
+	}{
+		{Step{Rmd: "report.Rmd"}, "rmd"},
+		{Step{RenvRestore: "."}, "renv_restore"},
+		{Step{Coverage: "."}, "coverage"},
+		{Step{Validate: "rules.R"}, "validate"},
+	}
+	for _, tt := range tests {
+		if got := StepType(tt.step); got != tt.want {
+			t.Errorf("StepType(%+v) = %q, want %q", tt.step, got, tt.want)
+		}
+	}
+}
+
+func TestValidate_ErrorOn(t *testing.T) {
+	// Valid error_on values
+	for _, val := range []string{"error", "warning", "message"} {
+		d := &DAG{Name: "t", Steps: []Step{{ID: "a", Command: "echo", ErrorOn: val}}}
+		if err := Validate(d); err != nil {
+			t.Errorf("error_on=%q should be valid: %v", val, err)
+		}
+	}
+
+	// Invalid error_on
+	d := &DAG{Name: "t", Steps: []Step{{ID: "a", Command: "echo", ErrorOn: "panic"}}}
+	if err := Validate(d); err == nil {
+		t.Error("error_on=panic should fail validation")
+	}
+}
+
+func TestValidate_RVersion(t *testing.T) {
+	// Valid constraints
+	for _, v := range []string{">=4.1.0", ">=4.1", "==4.4.1"} {
+		d := &DAG{Name: "t", RVersion: v, Steps: []Step{{ID: "a", Command: "echo"}}}
+		if err := Validate(d); err != nil {
+			t.Errorf("r_version=%q should be valid: %v", v, err)
+		}
+	}
+
+	// Invalid constraints
+	for _, v := range []string{"4.1.0", ">4.1.0", ">=abc"} {
+		d := &DAG{Name: "t", RVersion: v, Steps: []Step{{ID: "a", Command: "echo"}}}
+		if err := Validate(d); err == nil {
+			t.Errorf("r_version=%q should fail validation", v)
+		}
+	}
+}
+
+func TestCheckRVersion(t *testing.T) {
+	tests := []struct {
+		constraint string
+		actual     string
+		wantOK     bool
+	}{
+		{">=4.1.0", "4.4.1", true},
+		{">=4.1.0", "4.1.0", true},
+		{">=4.1.0", "4.0.5", false},
+		{">=4.1", "4.1.0", true},
+		{"==4.4.1", "4.4.1", true},
+		{"==4.4.1", "4.4.0", false},
+		{"", "4.4.1", true},  // empty constraint always passes
+		{">=4.1.0", "", true}, // no R version always passes
+	}
+	for _, tt := range tests {
+		_, ok := CheckRVersion(tt.constraint, tt.actual)
+		if ok != tt.wantOK {
+			t.Errorf("CheckRVersion(%q, %q) = %v, want %v", tt.constraint, tt.actual, ok, tt.wantOK)
+		}
+	}
+}
+
+func TestDAG_VersionField(t *testing.T) {
+	// Version field is optional and accepted
+	d := &DAG{Name: "t", Version: "1", Steps: []Step{{ID: "a", Command: "echo"}}}
+	if err := Validate(d); err != nil {
+		t.Errorf("version field should be valid: %v", err)
+	}
+}
+
 func TestExpandDAG(t *testing.T) {
 	d := &DAG{
 		Name: "test",

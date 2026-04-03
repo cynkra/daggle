@@ -24,6 +24,7 @@ type RunMeta struct {
 	RPlatform     string           `json:"r_platform,omitempty"`
 	RenvDetected   bool             `json:"renv_detected,omitempty"`
 	RenvLibrary    string           `json:"renv_library,omitempty"`
+	RenvLockHash   string           `json:"renv_lock_hash,omitempty"`
 	TriggerSource  string           `json:"trigger_source,omitempty"`
 }
 

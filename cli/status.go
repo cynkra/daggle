@@ -67,7 +67,13 @@ func showStatus(_ *cobra.Command, args []string) error {
 	fmt.Printf("DAG: %s\n", dagName)
 	fmt.Printf("Run: %s\n", run.ID)
 	fmt.Printf("Started: %s\n", run.StartTime.Format("2006-01-02 15:04:05"))
-	fmt.Printf("Status: %s\n\n", status)
+	fmt.Printf("Status: %s\n", status)
+
+	// Show DAG hash from metadata if available
+	if meta, err := state.ReadMeta(run.Dir); err == nil && meta.DAGHash != "" {
+		fmt.Printf("DAG hash: %s\n", meta.DAGHash[:12])
+	}
+	fmt.Println()
 
 	// Build step summary from events
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)

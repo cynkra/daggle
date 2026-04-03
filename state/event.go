@@ -23,6 +23,7 @@ const (
 
 // Event represents a lifecycle event in a DAG run.
 type Event struct {
+	Version     int       `json:"v"`
 	Timestamp   time.Time `json:"ts"`
 	Type        string    `json:"type"`
 	StepID      string    `json:"step_id,omitempty"`
@@ -51,6 +52,9 @@ func (w *EventWriter) Write(e Event) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
+	if e.Version == 0 {
+		e.Version = 1
+	}
 	if e.Timestamp.IsZero() {
 		e.Timestamp = time.Now()
 	}

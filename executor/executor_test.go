@@ -289,6 +289,42 @@ func TestRPkgExecutor_ResolvePkgPath(t *testing.T) {
 	}
 }
 
+func TestWrapErrorOn(t *testing.T) {
+	code := "cat('hello')"
+
+	// No wrapping for default/error
+	if got := wrapErrorOn(code, ""); got != code {
+		t.Error("empty error_on should not wrap")
+	}
+	if got := wrapErrorOn(code, "error"); got != code {
+		t.Error("error_on=error should not wrap")
+	}
+
+	// Warning wrapping
+	wrapped := wrapErrorOn(code, "warning")
+	if !strings.Contains(wrapped, "withCallingHandlers") {
+		t.Error("error_on=warning should wrap in withCallingHandlers")
+	}
+	if !strings.Contains(wrapped, "warning = function") {
+		t.Error("error_on=warning should include warning handler")
+	}
+	if strings.Contains(wrapped, "message = function") {
+		t.Error("error_on=warning should NOT include message handler")
+	}
+
+	// Message wrapping (includes both warning and message handlers)
+	wrapped = wrapErrorOn(code, "message")
+	if !strings.Contains(wrapped, "withCallingHandlers") {
+		t.Error("error_on=message should wrap in withCallingHandlers")
+	}
+	if !strings.Contains(wrapped, "message = function") {
+		t.Error("error_on=message should include message handler")
+	}
+	if !strings.Contains(wrapped, "warning = function") {
+		t.Error("error_on=message should also include warning handler")
+	}
+}
+
 func TestGenerateConnectR(t *testing.T) {
 	tests := []struct {
 		name string

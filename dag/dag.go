@@ -4,12 +4,17 @@ import "time"
 
 // DAG represents a directed acyclic graph workflow definition.
 type DAG struct {
+	Version string            `yaml:"version,omitempty"` // schema version, default "1"
 	Name    string            `yaml:"name"`
 	Trigger *Trigger          `yaml:"trigger,omitempty"`
 	Env     map[string]string `yaml:"env,omitempty"`
 	Params  []Param           `yaml:"params,omitempty"`
 	Steps   []Step            `yaml:"steps"`
 	Workdir string            `yaml:"workdir,omitempty"`
+
+	// R version constraint, e.g. ">=4.1.0"
+	RVersion       string `yaml:"r_version,omitempty"`
+	RVersionStrict bool   `yaml:"r_version_strict,omitempty"`
 
 	// SourceDir is the directory containing the DAG YAML file.
 	// Set by ParseFile, not from YAML. Used as default working directory.
@@ -125,6 +130,9 @@ type Step struct {
 
 	// Posit Connect deployment
 	Connect *ConnectDeploy `yaml:"connect,omitempty"`
+
+	// Error sensitivity: "error" (default), "warning", "message"
+	ErrorOn string `yaml:"error_on,omitempty"`
 
 	// Step-level hooks
 	OnSuccess *Hook `yaml:"on_success,omitempty"`

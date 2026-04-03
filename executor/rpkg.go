@@ -18,7 +18,7 @@ type RPkgExecutor struct {
 // Run generates R code for the given action and executes it via Rscript.
 func (e *RPkgExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result {
 	pkgPath := e.resolvePkgPath(step)
-	rCode := e.generateRCode(pkgPath)
+	rCode := wrapErrorOn(e.generateRCode(pkgPath), step.ErrorOn)
 
 	tmpFile := filepath.Join(logDir, step.ID+".rpkg.R")
 	if err := os.WriteFile(tmpFile, []byte(rCode), 0644); err != nil {

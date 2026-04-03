@@ -86,6 +86,14 @@ func Validate(d *DAG) error {
 			}
 		}
 
+		// Validate error_on
+		if s.ErrorOn != "" {
+			validErrorOn := map[string]bool{"error": true, "warning": true, "message": true}
+			if !validErrorOn[s.ErrorOn] {
+				errs = append(errs, fmt.Sprintf("step %q error_on %q is invalid; must be one of: error, warning, message", s.ID, s.ErrorOn))
+			}
+		}
+
 		// Validate retry
 		if s.Retry != nil {
 			if s.Retry.Limit < 0 {
@@ -99,6 +107,13 @@ func Validate(d *DAG) error {
 					errs = append(errs, fmt.Sprintf("step %q retry max_delay %q is invalid: %v", s.ID, s.Retry.MaxDelay, err))
 				}
 			}
+		}
+	}
+
+	// Validate r_version constraint
+	if d.RVersion != "" {
+		if err := validateRVersionConstraint(d.RVersion); err != nil {
+			errs = append(errs, fmt.Sprintf("r_version %q is invalid: %v", d.RVersion, err))
 		}
 	}
 
@@ -162,4 +177,101 @@ func Validate(d *DAG) error {
 		return fmt.Errorf("validation errors:\n  - %s", strings.Join(errs, "\n  - "))
 	}
 	return nil
+}
+
+// validateRVersionConstraint checks that a version constraint string is valid.
+// Supported forms: ">=4.1.0", "==4.4.1"
+func validateRVersionConstraint(constraint string) error {
+	constraint = strings.TrimSpace(constraint)
+	if strings.HasPrefix(constraint, ">=") {
+		v := strings.TrimPrefix(constraint, ">=")
+		return validateVersionString(v)
+	}
+	if strings.HasPrefix(constraint, "==") {
+		v := strings.TrimPrefix(constraint, "==")
+		return validateVersionString(v)
+	}
+	return fmt.Errorf("must start with >= or ==")
+}
+
+func validateVersionString(v string) error {
+	parts := strings.Split(strings.TrimSpace(v), ".")
+	if len(parts) < 2 || len(parts) > 3 {
+		return fmt.Errorf("version must have 2 or 3 parts (e.g. 4.1 or 4.1.0)")
+	}
+	for _, p := range parts {
+		for _, c := range p {
+			if c < '0' || c > '9' {
+				return fmt.Errorf("version part %q is not numeric", p)
+			}
+		}
+	}
+	return nil
+}
+
+// CheckRVersion checks if an R version satisfies the DAG's constraint.
+// Returns a human-readable message and whether the check passed.
+func CheckRVersion(constraint, actual string) (string, bool) {
+	constraint = strings.TrimSpace(constraint)
+	if constraint == "" || actual == "" {
+		return "", true
+	}
+
+	var op, required string
+	if strings.HasPrefix(constraint, ">=") {
+		op = ">="
+		required = strings.TrimSpace(strings.TrimPrefix(constraint, ">="))
+	} else if strings.HasPrefix(constraint, "==") {
+		op = "=="
+		required = strings.TrimSpace(strings.TrimPrefix(constraint, "=="))
+	} else {
+		return fmt.Sprintf("unknown r_version operator in %q", constraint), false
+	}
+
+	cmp := compareVersions(actual, required)
+	switch op {
+	case ">=":
+		if cmp >= 0 {
+			return "", true
+		}
+		return fmt.Sprintf("R version %s does not satisfy %s (have %s)", constraint, constraint, actual), false
+	case "==":
+		if cmp == 0 {
+			return "", true
+		}
+		return fmt.Sprintf("R version %s does not satisfy %s (have %s)", constraint, constraint, actual), false
+	}
+	return "", true
+}
+
+// compareVersions compares two version strings (e.g. "4.4.1" vs "4.1.0").
+// Returns -1 if a < b, 0 if equal, 1 if a > b.
+func compareVersions(a, b string) int {
+	pa := strings.Split(a, ".")
+	pb := strings.Split(b, ".")
+
+	for i := 0; i < 3; i++ {
+		va, vb := 0, 0
+		if i < len(pa) {
+			for _, c := range pa[i] {
+				if c >= '0' && c <= '9' {
+					va = va*10 + int(c-'0')
+				}
+			}
+		}
+		if i < len(pb) {
+			for _, c := range pb[i] {
+				if c >= '0' && c <= '9' {
+					vb = vb*10 + int(c-'0')
+				}
+			}
+		}
+		if va < vb {
+			return -1
+		}
+		if va > vb {
+			return 1
+		}
+	}
+	return 0
 }
