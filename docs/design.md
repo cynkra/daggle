@@ -114,17 +114,17 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 4 — Power Features & Advanced Steps:** New step types (approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck), conditional steps (when), preconditions, matrix runs, human-in-the-loop approval gates, sub-DAG composition, DAG templates (daggle init), R version enforcement, error_on field, base.yaml defaults, daggle cancel/clean/history/stats commands, duration trends.
 
+**Phase 5a — REST API:** 15 endpoints for DAG management, run triggering/monitoring, step logs/approval, outputs, cleanup. Flat JSON responses for R data.frame compatibility. Runs alongside scheduler via `daggle serve --port`.
+
 ### Planned
 
-**Phase 5 — Companion R Package:**
+**Phase 5b — Companion R Package:**
 - `daggle` R package (GitHub-only initially, CRAN later if warranted)
-- Read helpers: `daggle::run_id()`, `daggle::dag_name()`, `daggle::run_dir()`, `daggle::get_output(step, key)`
-- Write helpers: `daggle::output(name, value)`
-- Approval helpers: `daggle::approve(dag, run_id)`, `daggle::reject(dag, run_id)`
-- Scope: read, write, and approve — never parsing YAML, running DAGs, or managing state
+- In-step helpers: `daggle::output()`, `daggle::run_id()`, `daggle::get_output()`
+- API wrappers: `daggle::trigger()`, `daggle::status()`, `daggle::approve()`, `daggle::reject()`
+- Scope: read, write, approve, and API calls — never parsing YAML or managing state
 
-**Phase 6 — Web UI & API:**
-- REST API for triggering and monitoring runs
+**Phase 6 — Web UI:**
 - Embedded web UI (HTML/JS/CSS via `go:embed`) — DAG list, run history, log tailing, DAG visualization
 - Approval review dashboard with approve/reject buttons and upstream context
 
