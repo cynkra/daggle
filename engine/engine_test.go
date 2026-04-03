@@ -187,9 +187,9 @@ func TestEngine_EnvPropagation(t *testing.T) {
 	run := setupRun(t)
 	d := &dag.DAG{
 		Name: "test",
-		Env:  map[string]string{"FOO": "bar"},
+		Env:  dag.EnvMap{"FOO": {Value: "bar"}},
 		Steps: []dag.Step{
-			{ID: "a", Command: "echo", Env: map[string]string{"BAZ": "qux"}},
+			{ID: "a", Command: "echo", Env: dag.EnvMap{"BAZ": {Value: "qux"}}},
 		},
 	}
 
@@ -348,7 +348,7 @@ func TestEngine_RenvEnvOptOut(t *testing.T) {
 	run := setupRun(t)
 	d := &dag.DAG{
 		Name: "test",
-		Env:  map[string]string{"R_LIBS_USER": "/custom/path"},
+		Env:  dag.EnvMap{"R_LIBS_USER": {Value: "/custom/path"}},
 		Steps: []dag.Step{
 			{ID: "a", Command: "echo a"},
 		},

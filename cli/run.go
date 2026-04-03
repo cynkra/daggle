@@ -65,6 +65,25 @@ func runDAG(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("expand templates: %w", err)
 	}
 
+	// Resolve secret references in env vars (${env:}, ${file:}, ${vault:})
+	if err := dag.ResolveEnv(expanded.Env); err != nil {
+		return fmt.Errorf("resolve env: %w", err)
+	}
+	for i := range expanded.Steps {
+		if err := dag.ResolveEnv(expanded.Steps[i].Env); err != nil {
+			return fmt.Errorf("resolve step %q env: %w", expanded.Steps[i].ID, err)
+		}
+	}
+
+	// Build redactor from all secret values
+	envMaps := []dag.EnvMap{expanded.Env}
+	for _, s := range expanded.Steps {
+		if len(s.Env) > 0 {
+			envMaps = append(envMaps, s.Env)
+		}
+	}
+	redactor := dag.NewRedactor(envMaps...)
+
 	// Create run
 	run, err := state.CreateRun(expanded.Name)
 	if err != nil {
@@ -129,6 +148,7 @@ func runDAG(_ *cobra.Command, args []string) error {
 	// Execute
 	eng := engine.New(expanded, run, executor.New)
 	eng.SetMeta(meta)
+	eng.SetRedactor(redactor)
 	if renvInfo.Detected && renvInfo.LibraryReady {
 		eng.SetRenvLibPath(renvInfo.LibraryPath)
 	}

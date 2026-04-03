@@ -31,6 +31,9 @@ type Engine struct {
 	// renvLibPath, if non-empty, is injected as R_LIBS_USER for all steps.
 	renvLibPath string
 
+	// redactor replaces secret values in event error messages.
+	redactor *dag.Redactor
+
 	// outputs collects ::daggle-output:: values from completed steps.
 	// Keys are namespaced: DAGGLE_OUTPUT_<STEP_ID>_<KEY>
 	mu      sync.Mutex
@@ -52,6 +55,11 @@ func New(d *dag.DAG, runInfo *state.RunInfo, execFn ExecutorFactory) *Engine {
 // SetMeta sets the run metadata to be written at start and updated at completion.
 func (e *Engine) SetMeta(meta *state.RunMeta) {
 	e.meta = meta
+}
+
+// SetRedactor sets the secret redactor for sanitizing event messages.
+func (e *Engine) SetRedactor(r *dag.Redactor) {
+	e.redactor = r
 }
 
 // SetRenvLibPath configures the renv library path to inject as R_LIBS_USER.
@@ -190,7 +198,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 	stepEnv := make([]string, len(env))
 	copy(stepEnv, env)
 	for k, v := range step.Env {
-		stepEnv = append(stepEnv, k+"="+v)
+		stepEnv = append(stepEnv, k+"="+v.Value)
 	}
 	e.mu.Lock()
 	for k, v := range e.outputs {
@@ -393,6 +401,10 @@ func sanitize(s string) string {
 }
 
 func (e *Engine) writeEvent(ev state.Event) {
+	if e.redactor != nil {
+		ev.Error = e.redactor.Redact(ev.Error)
+		ev.ErrorDetail = e.redactor.Redact(ev.ErrorDetail)
+	}
 	if err := e.events.Write(ev); err != nil {
 		e.logger.Warn("failed to write event", "type", ev.Type, "error", err)
 	}
@@ -407,7 +419,7 @@ func (e *Engine) writeMeta(dir string, meta *state.RunMeta) {
 func buildEnv(d *dag.DAG, runInfo *state.RunInfo, renvLibPath string) []string {
 	var env []string
 	for k, v := range d.Env {
-		env = append(env, k+"="+v)
+		env = append(env, k+"="+v.Value)
 	}
 	env = append(env,
 		"DAGGLE_RUN_ID="+runInfo.ID,

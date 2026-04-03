@@ -453,6 +453,31 @@ Global flags:
 --data-dir <path>    Override data/runs directory
 ```
 
+## Secrets & sensitive environment variables
+
+Environment values can reference external secret sources instead of hardcoding credentials in YAML:
+
+```yaml
+env:
+  DB_HOST: "postgres.internal"                      # literal value
+  DB_PASS: "${env:DATABASE_PASSWORD}"               # read from process environment
+  API_KEY: "${file:/run/secrets/api_key}"            # read file contents (trimmed)
+  VAULT_SECRET: "${vault:secret/data/myapp#api_key}" # read from HashiCorp Vault KV v2
+```
+
+References are resolved at DAG start (fail-fast). Unresolved references (missing env var, missing file, Vault error) fail the DAG before any step runs.
+
+**Vault authentication** uses standard `VAULT_ADDR` and `VAULT_TOKEN` environment variables (falls back to `~/.vault-token`).
+
+**Redaction:** Values from `${vault:}` and `${file:}` sources are automatically redacted (`***`) in JSONL events and `daggle status` output. For `${env:}` values, mark them explicitly:
+
+```yaml
+env:
+  DB_PASS:
+    value: "${env:DATABASE_PASSWORD}"
+    secret: true
+```
+
 ## Approval gates
 
 Pause execution until a human reviews and approves:

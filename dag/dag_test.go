@@ -19,8 +19,8 @@ func TestParseFile_Simple(t *testing.T) {
 	if len(d.Steps) != 3 {
 		t.Fatalf("steps = %d, want 3", len(d.Steps))
 	}
-	if d.Env["OUTPUT_DIR"] != "/tmp/output" {
-		t.Errorf("env OUTPUT_DIR = %q, want %q", d.Env["OUTPUT_DIR"], "/tmp/output")
+	if d.Env["OUTPUT_DIR"].Value != "/tmp/output" {
+		t.Errorf("env OUTPUT_DIR = %q, want %q", d.Env["OUTPUT_DIR"].Value, "/tmp/output")
 	}
 	if len(d.Params) != 1 || d.Params[0].Name != "department" {
 		t.Errorf("params = %+v, want [{Name:department Default:sales}]", d.Params)
@@ -432,7 +432,7 @@ func TestCheckRVersion(t *testing.T) {
 
 func TestApplyBaseDefaults(t *testing.T) {
 	base := &BaseDefaults{
-		Env:     map[string]string{"BASE_VAR": "base_val", "SHARED": "from_base"},
+		Env:     EnvMap{"BASE_VAR": {Value: "base_val"}, "SHARED": {Value: "from_base"}},
 		Workdir: "/base/workdir",
 		Timeout: "5m",
 		Retry:   &Retry{Limit: 2},
@@ -441,7 +441,7 @@ func TestApplyBaseDefaults(t *testing.T) {
 
 	d := &DAG{
 		Name: "test",
-		Env:  map[string]string{"SHARED": "from_dag", "DAG_VAR": "dag_val"},
+		Env:  EnvMap{"SHARED": {Value: "from_dag"}, "DAG_VAR": {Value: "dag_val"}},
 		Steps: []Step{
 			{ID: "a", Command: "echo", Timeout: "10m"}, // has own timeout
 			{ID: "b", Command: "echo"},                   // inherits base timeout/retry
@@ -451,11 +451,11 @@ func TestApplyBaseDefaults(t *testing.T) {
 	ApplyBaseDefaults(d, base)
 
 	// Env: base merged, DAG wins on conflict
-	if d.Env["BASE_VAR"] != "base_val" {
-		t.Errorf("BASE_VAR = %q, want %q", d.Env["BASE_VAR"], "base_val")
+	if d.Env["BASE_VAR"].Value != "base_val" {
+		t.Errorf("BASE_VAR = %q, want %q", d.Env["BASE_VAR"].Value, "base_val")
 	}
-	if d.Env["SHARED"] != "from_dag" {
-		t.Errorf("SHARED = %q, want %q (DAG should win)", d.Env["SHARED"], "from_dag")
+	if d.Env["SHARED"].Value != "from_dag" {
+		t.Errorf("SHARED = %q, want %q (DAG should win)", d.Env["SHARED"].Value, "from_dag")
 	}
 
 	// Workdir: base fills in when DAG is empty
@@ -515,8 +515,8 @@ timeout: "5m"
 	if b == nil {
 		t.Fatal("expected non-nil base defaults")
 	}
-	if b.Env["SHARED"] != "base" {
-		t.Errorf("env SHARED = %q, want %q", b.Env["SHARED"], "base")
+	if b.Env["SHARED"].Value != "base" {
+		t.Errorf("env SHARED = %q, want %q", b.Env["SHARED"].Value, "base")
 	}
 	if b.Timeout != "5m" {
 		t.Errorf("timeout = %q, want %q", b.Timeout, "5m")
@@ -553,7 +553,7 @@ func TestExpandMatrix(t *testing.T) {
 	for _, s := range expanded[1:3] {
 		modelIDs[s.ID] = true
 		// Should have DAGGLE_MATRIX_ALGO env var
-		if s.Env["DAGGLE_MATRIX_ALGO"] == "" {
+		if s.Env["DAGGLE_MATRIX_ALGO"].Value == "" {
 			t.Errorf("step %q missing DAGGLE_MATRIX_ALGO", s.ID)
 		}
 		// Args should have been interpolated
@@ -581,6 +581,86 @@ func TestMatrixCombinations(t *testing.T) {
 	}
 }
 
+func TestEnvVar_UnmarshalYAML(t *testing.T) {
+	// Plain string form
+	yamlStr := `name: test
+env:
+  PLAIN: literal
+  WITH_REF: "${env:FOO}"
+steps:
+  - id: a
+    command: echo
+`
+	d, err := ParseReader(strings.NewReader(yamlStr))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if d.Env["PLAIN"].Value != "literal" {
+		t.Errorf("PLAIN = %q, want %q", d.Env["PLAIN"].Value, "literal")
+	}
+	if d.Env["PLAIN"].Secret {
+		t.Error("PLAIN should not be secret")
+	}
+	if d.Env["WITH_REF"].Value != "${env:FOO}" {
+		t.Errorf("WITH_REF = %q", d.Env["WITH_REF"].Value)
+	}
+}
+
+func TestEnvVar_UnmarshalYAML_MapForm(t *testing.T) {
+	yamlStr := `name: test
+env:
+  DB_PASS:
+    value: "${env:DATABASE_PASSWORD}"
+    secret: true
+  PLAIN:
+    value: "literal"
+steps:
+  - id: a
+    command: echo
+`
+	d, err := ParseReader(strings.NewReader(yamlStr))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if !d.Env["DB_PASS"].Secret {
+		t.Error("DB_PASS should be secret")
+	}
+	if d.Env["DB_PASS"].Value != "${env:DATABASE_PASSWORD}" {
+		t.Errorf("DB_PASS value = %q", d.Env["DB_PASS"].Value)
+	}
+	if d.Env["PLAIN"].Secret {
+		t.Error("PLAIN should not be secret")
+	}
+}
+
+func TestRedactor(t *testing.T) {
+	env := EnvMap{
+		"PUBLIC":  {Value: "visible"},
+		"SECRET1": {Value: "s3cr3t", Secret: true},
+		"SECRET2": {Value: "p4ssw0rd", Secret: true},
+	}
+	r := NewRedactor(env)
+
+	if !r.HasSecrets() {
+		t.Error("should have secrets")
+	}
+
+	input := "Error: connection failed with password s3cr3t on host p4ssw0rd"
+	redacted := r.Redact(input)
+	if strings.Contains(redacted, "s3cr3t") || strings.Contains(redacted, "p4ssw0rd") {
+		t.Errorf("redacted string still contains secrets: %q", redacted)
+	}
+	if !strings.Contains(redacted, "***") {
+		t.Error("redacted string should contain ***")
+	}
+
+	// Nil redactor is safe
+	var nilR *Redactor
+	if nilR.Redact("test") != "test" {
+		t.Error("nil redactor should pass through")
+	}
+}
+
 func TestDAG_VersionField(t *testing.T) {
 	// Version field is optional and accepted
 	d := &DAG{Name: "t", Version: "1", Steps: []Step{{ID: "a", Command: "echo"}}}
@@ -592,7 +672,7 @@ func TestDAG_VersionField(t *testing.T) {
 func TestExpandDAG(t *testing.T) {
 	d := &DAG{
 		Name: "test",
-		Env:  map[string]string{"DATE": "{{ .Today }}"},
+		Env:  EnvMap{"DATE": {Value: "{{ .Today }}"}},
 		Params: []Param{
 			{Name: "dept", Default: "sales"},
 		},

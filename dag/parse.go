@@ -64,7 +64,7 @@ func ParseReader(r io.Reader) (*DAG, error) {
 // BaseDefaults holds shared defaults from base.yaml.
 // Only fields that make sense to share across DAGs are included.
 type BaseDefaults struct {
-	Env       map[string]string `yaml:"env,omitempty"`
+	Env       EnvMap `yaml:"env,omitempty"`
 	Workdir   string            `yaml:"workdir,omitempty"`
 	Timeout   string            `yaml:"timeout,omitempty"`   // default step timeout
 	Retry     *Retry            `yaml:"retry,omitempty"`     // default step retry
@@ -103,7 +103,7 @@ func ApplyBaseDefaults(d *DAG, b *BaseDefaults) {
 	// Merge env: base values, then DAG values override
 	if len(b.Env) > 0 {
 		if d.Env == nil {
-			d.Env = make(map[string]string)
+			d.Env = make(EnvMap)
 		}
 		for k, v := range b.Env {
 			if _, exists := d.Env[k]; !exists {

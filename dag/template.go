@@ -29,7 +29,7 @@ func NewTemplateContext(d *DAG, paramOverrides map[string]string) TemplateContex
 
 	env := make(map[string]string)
 	for k, v := range d.Env {
-		env[k] = v
+		env[k] = v.Value
 	}
 
 	return TemplateContext{
@@ -48,13 +48,13 @@ func ExpandDAG(d *DAG, paramOverrides map[string]string) (*DAG, error) {
 	expanded.Steps = make([]Step, len(d.Steps))
 
 	// Expand DAG-level env
-	expandedEnv := make(map[string]string, len(d.Env))
+	expandedEnv := make(EnvMap, len(d.Env))
 	for k, v := range d.Env {
-		ev, err := expandString(v, ctx, fmt.Sprintf("env[%s]", k))
+		ev, err := expandString(v.Value, ctx, fmt.Sprintf("env[%s]", k))
 		if err != nil {
 			return nil, err
 		}
-		expandedEnv[k] = ev
+		expandedEnv[k] = EnvVar{Value: ev, Secret: v.Secret}
 	}
 	expanded.Env = expandedEnv
 
@@ -149,13 +149,13 @@ func ExpandDAG(d *DAG, paramOverrides map[string]string) (*DAG, error) {
 
 		// Expand step-level env
 		if len(s.Env) > 0 {
-			es.Env = make(map[string]string, len(s.Env))
+			es.Env = make(EnvMap, len(s.Env))
 			for k, v := range s.Env {
-				ev, err := expandString(v, ctx, fmt.Sprintf("step %q env[%s]", s.ID, k))
+				ev, err := expandString(v.Value, ctx, fmt.Sprintf("step %q env[%s]", s.ID, k))
 				if err != nil {
 					return nil, err
 				}
-				es.Env[k] = ev
+				es.Env[k] = EnvVar{Value: ev, Secret: v.Secret}
 			}
 		}
 

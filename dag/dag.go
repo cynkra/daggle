@@ -1,13 +1,17 @@
 package dag
 
-import "time"
+import (
+	"time"
+
+	"gopkg.in/yaml.v3"
+)
 
 // DAG represents a directed acyclic graph workflow definition.
 type DAG struct {
 	Version string            `yaml:"version,omitempty"` // schema version, default "1"
 	Name    string            `yaml:"name"`
 	Trigger *Trigger          `yaml:"trigger,omitempty"`
-	Env     map[string]string `yaml:"env,omitempty"`
+	Env     EnvMap  `yaml:"env,omitempty"`
 	Params  []Param           `yaml:"params,omitempty"`
 	Steps   []Step            `yaml:"steps"`
 	Workdir string            `yaml:"workdir,omitempty"`
@@ -112,7 +116,7 @@ type Step struct {
 	Depends []string          `yaml:"depends,omitempty"`
 	Timeout string            `yaml:"timeout,omitempty"`
 	Retry   *Retry            `yaml:"retry,omitempty"`
-	Env     map[string]string `yaml:"env,omitempty"`
+	Env     EnvMap            `yaml:"env,omitempty"`
 	Workdir string            `yaml:"workdir,omitempty"`
 
 	// R package development step types
@@ -163,6 +167,65 @@ type Step struct {
 	// Step-level hooks
 	OnSuccess *Hook `yaml:"on_success,omitempty"`
 	OnFailure *Hook `yaml:"on_failure,omitempty"`
+}
+
+// EnvVar represents an environment variable value that may be a secret.
+// In YAML, it can be specified as a plain string or as a map with value + secret fields:
+//
+//	env:
+//	  PLAIN: "literal"
+//	  SECRET:
+//	    value: "${env:DB_PASS}"
+//	    secret: true
+type EnvVar struct {
+	Value  string `yaml:"value"`
+	Secret bool   `yaml:"secret,omitempty"`
+}
+
+// UnmarshalYAML allows EnvVar to be specified as either a plain string or a map.
+func (e *EnvVar) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		e.Value = node.Value
+		return nil
+	}
+	// Map form: {value: "...", secret: true}
+	type envVarMap struct {
+		Value  string `yaml:"value"`
+		Secret bool   `yaml:"secret,omitempty"`
+	}
+	var m envVarMap
+	if err := node.Decode(&m); err != nil {
+		return err
+	}
+	e.Value = m.Value
+	e.Secret = m.Secret
+	return nil
+}
+
+// EnvMap is a map of environment variable names to EnvVar values.
+type EnvMap map[string]EnvVar
+
+// Values returns a plain map[string]string of all env var values.
+func (m EnvMap) Values() map[string]string {
+	if m == nil {
+		return nil
+	}
+	result := make(map[string]string, len(m))
+	for k, v := range m {
+		result[k] = v.Value
+	}
+	return result
+}
+
+// SecretValues returns the actual values of env vars marked as secret.
+func (m EnvMap) SecretValues() []string {
+	var secrets []string
+	for _, v := range m {
+		if v.Secret && v.Value != "" {
+			secrets = append(secrets, v.Value)
+		}
+	}
+	return secrets
 }
 
 // ConnectDeploy configures deployment to Posit Connect.

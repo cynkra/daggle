@@ -35,10 +35,10 @@ func ExpandMatrix(steps []Step) []Step {
 			instanceIDs = append(instanceIDs, instance.ID)
 
 			if instance.Env == nil {
-				instance.Env = make(map[string]string)
+				instance.Env = make(EnvMap)
 			}
 			for k, v := range combo {
-				instance.Env["DAGGLE_MATRIX_"+strings.ToUpper(k)] = v
+				instance.Env["DAGGLE_MATRIX_"+strings.ToUpper(k)] = EnvVar{Value: v}
 			}
 
 			// Make a copy of args to avoid sharing the slice
