@@ -17,7 +17,7 @@ type ConnectExecutor struct{}
 // Run generates R code to deploy to Posit Connect and executes it via Rscript.
 func (e *ConnectExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result {
 	c := step.Connect
-	rCode := generateConnectR(c)
+	rCode := wrapErrorOn(generateConnectR(c), step.ErrorOn)
 
 	tmpFile := filepath.Join(logDir, step.ID+".connect.R")
 	if err := os.WriteFile(tmpFile, []byte(rCode), 0644); err != nil {

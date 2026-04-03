@@ -31,6 +31,10 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
 │  │  ConnectExecutor  (rsconnect deploy)     │             │
 │  │  RmdExecutor      (rmarkdown::render()) │             │
 │  │  ValidateExecutor (validation scripts)  │             │
+│  │  ApproveExecutor  (approval gate)       │             │
+│  │  CallExecutor     (sub-DAG)             │             │
+│  │  PinExecutor      (pins publish)        │             │
+│  │  VetiverExecutor  (MLOps deploy)        │             │
 │  └──────────────────┬──────────────────────┘             │
 │                     │                                     │
 │  ┌──────────────────┼──────────────────────┐             │

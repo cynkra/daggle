@@ -12,17 +12,21 @@ import (
 
 // Event types
 const (
-	EventRunStarted   = "run_started"
-	EventRunCompleted = "run_completed"
-	EventRunFailed    = "run_failed"
-	EventStepStarted  = "step_started"
-	EventStepCompleted = "step_completed"
-	EventStepFailed   = "step_failed"
-	EventStepRetrying = "step_retrying"
+	EventRunStarted         = "run_started"
+	EventRunCompleted       = "run_completed"
+	EventRunFailed          = "run_failed"
+	EventStepStarted        = "step_started"
+	EventStepCompleted      = "step_completed"
+	EventStepFailed         = "step_failed"
+	EventStepRetrying       = "step_retrying"
+	EventStepWaitApproval   = "step_waiting_approval"
+	EventStepApproved       = "step_approved"
+	EventStepRejected       = "step_rejected"
 )
 
 // Event represents a lifecycle event in a DAG run.
 type Event struct {
+	Version     int       `json:"v"`
 	Timestamp   time.Time `json:"ts"`
 	Type        string    `json:"type"`
 	StepID      string    `json:"step_id,omitempty"`
@@ -31,6 +35,8 @@ type Event struct {
 	Error       string    `json:"error,omitempty"`
 	ErrorDetail string    `json:"error_detail,omitempty"`
 	Attempt     int       `json:"attempt,omitempty"`
+	Message     string    `json:"message,omitempty"`    // approval message
+	Approver    string    `json:"approver,omitempty"`   // system user who approved/rejected
 }
 
 // EventWriter provides thread-safe JSONL event writing.
@@ -51,6 +57,9 @@ func (w *EventWriter) Write(e Event) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
+	if e.Version == 0 {
+		e.Version = 1
+	}
 	if e.Timestamp.IsZero() {
 		e.Timestamp = time.Now()
 	}

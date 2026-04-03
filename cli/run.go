@@ -49,6 +49,13 @@ func runDAG(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("parse DAG %q: %w", dagName, err)
 	}
 
+	// Apply base.yaml defaults if present
+	baseDefaults, err := dag.LoadBaseDefaults(filepath.Dir(dagPath))
+	if err != nil {
+		return fmt.Errorf("load base.yaml: %w", err)
+	}
+	dag.ApplyBaseDefaults(d, baseDefaults)
+
 	// Parse param overrides
 	params := parseParams(runParams)
 
@@ -66,6 +73,18 @@ func runDAG(_ *cobra.Command, args []string) error {
 
 	fmt.Printf("Starting DAG %q (run %s)\n", expanded.Name, run.ID)
 	fmt.Printf("Run directory: %s\n\n", run.Dir)
+
+	// Check R version constraint
+	if expanded.RVersion != "" {
+		rVersion := detectRVersion()
+		msg, ok := dag.CheckRVersion(expanded.RVersion, rVersion)
+		if !ok {
+			if expanded.RVersionStrict {
+				return fmt.Errorf("r_version check failed: %s", msg)
+			}
+			fmt.Printf("Warning: %s\n", msg)
+		}
+	}
 
 	// Set up context with signal handling
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -94,6 +113,11 @@ func runDAG(_ *cobra.Command, args []string) error {
 	if renvInfo.Detected {
 		meta.RenvDetected = true
 		meta.RenvLibrary = renvInfo.LibraryPath
+		// Hash renv.lock for reproducibility
+		renvLockPath := filepath.Join(projectDir, "renv.lock")
+		if renvLockHash, err := dag.HashFile(renvLockPath); err == nil {
+			meta.RenvLockHash = renvLockHash
+		}
 		if renvInfo.LibraryReady {
 			fmt.Printf("Detected renv.lock — using library: %s\n", renvInfo.LibraryPath)
 		} else {

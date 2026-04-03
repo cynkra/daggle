@@ -266,6 +266,120 @@ func TestRPkgExecutor_GenerateRCode(t *testing.T) {
 	}
 }
 
+func TestRPkgExecutor_NewStepTypes(t *testing.T) {
+	tests := []struct {
+		action string
+		want   []string
+	}{
+		{"shinytest", []string{"shinytest2::test_app", "requireNamespace", "shinytest2"}},
+		{"pkgdown", []string{"pkgdown::build_site", "requireNamespace", "pkgdown"}},
+		{"install", []string{"pak::pkg_install", "install.packages"}},
+		{"targets", []string{"targets::tar_make", "requireNamespace", "targets"}},
+		{"benchmark", []string{"bench", "requireNamespace", "source"}},
+		{"revdepcheck", []string{"revdepcheck::revdep_check", "requireNamespace"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.action, func(t *testing.T) {
+			e := &RPkgExecutor{Action: tt.action}
+			code := e.generateRCode(".")
+			for _, want := range tt.want {
+				if !strings.Contains(code, want) {
+					t.Errorf("generateRCode(%q) missing %q", tt.action, want)
+				}
+			}
+		})
+	}
+}
+
+func TestApproveExecutor_Approved(t *testing.T) {
+	logDir := t.TempDir()
+	step := dag.Step{
+		ID:      "review",
+		Approve: &dag.ApproveStep{Message: "Please review"},
+	}
+
+	// Write approval event after a short delay
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		_ = WriteApprovalEvent(logDir, "review", true)
+	}()
+
+	exec := &ApproveExecutor{}
+	result := exec.Run(context.Background(), step, logDir, "", nil)
+
+	if result.Err != nil {
+		t.Fatalf("expected approval success, got: %v", result.Err)
+	}
+	if result.ExitCode != 0 {
+		t.Errorf("exit code = %d, want 0", result.ExitCode)
+	}
+}
+
+func TestApproveExecutor_Rejected(t *testing.T) {
+	logDir := t.TempDir()
+	step := dag.Step{
+		ID:      "review",
+		Approve: &dag.ApproveStep{Message: "Please review"},
+	}
+
+	// Write rejection event after a short delay
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		_ = WriteApprovalEvent(logDir, "review", false)
+	}()
+
+	exec := &ApproveExecutor{}
+	result := exec.Run(context.Background(), step, logDir, "", nil)
+
+	if result.Err == nil {
+		t.Fatal("expected rejection error, got nil")
+	}
+	if result.ExitCode != 1 {
+		t.Errorf("exit code = %d, want 1", result.ExitCode)
+	}
+}
+
+func TestApproveExecutor_Timeout(t *testing.T) {
+	logDir := t.TempDir()
+	step := dag.Step{
+		ID:      "review",
+		Approve: &dag.ApproveStep{Message: "Review", Timeout: "1s"},
+	}
+
+	exec := &ApproveExecutor{}
+	result := exec.Run(context.Background(), step, logDir, "", nil)
+
+	if result.Err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if !strings.Contains(result.Err.Error(), "timed out") {
+		t.Errorf("error = %q, want timeout message", result.Err.Error())
+	}
+}
+
+func TestNew_Phase4StepTypes(t *testing.T) {
+	tests := []struct {
+		step dag.Step
+		want string
+	}{
+		{dag.Step{Shinytest: "app/"}, "*executor.RPkgExecutor"},
+		{dag.Step{Pkgdown: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Install: "dplyr"}, "*executor.RPkgExecutor"},
+		{dag.Step{Targets: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Benchmark: "bench/"}, "*executor.RPkgExecutor"},
+		{dag.Step{Revdepcheck: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Pin: &dag.PinDeploy{Board: "local", Name: "data", Object: "data.rds"}}, "*executor.PinExecutor"},
+		{dag.Step{Vetiver: &dag.VetiverDeploy{Action: "pin", Name: "model", Board: "local", Model: "model.rds"}}, "*executor.VetiverExecutor"},
+	}
+	for _, tt := range tests {
+		ex := New(tt.step)
+		got := fmt.Sprintf("%T", ex)
+		if got != tt.want {
+			t.Errorf("New(%v) = %s, want %s", dag.StepType(tt.step), got, tt.want)
+		}
+	}
+}
+
 func TestRPkgExecutor_ResolvePkgPath(t *testing.T) {
 	tests := []struct {
 		action string
@@ -286,6 +400,42 @@ func TestRPkgExecutor_ResolvePkgPath(t *testing.T) {
 				t.Errorf("resolvePkgPath() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestWrapErrorOn(t *testing.T) {
+	code := "cat('hello')"
+
+	// No wrapping for default/error
+	if got := wrapErrorOn(code, ""); got != code {
+		t.Error("empty error_on should not wrap")
+	}
+	if got := wrapErrorOn(code, "error"); got != code {
+		t.Error("error_on=error should not wrap")
+	}
+
+	// Warning wrapping
+	wrapped := wrapErrorOn(code, "warning")
+	if !strings.Contains(wrapped, "withCallingHandlers") {
+		t.Error("error_on=warning should wrap in withCallingHandlers")
+	}
+	if !strings.Contains(wrapped, "warning = function") {
+		t.Error("error_on=warning should include warning handler")
+	}
+	if strings.Contains(wrapped, "message = function") {
+		t.Error("error_on=warning should NOT include message handler")
+	}
+
+	// Message wrapping (includes both warning and message handlers)
+	wrapped = wrapErrorOn(code, "message")
+	if !strings.Contains(wrapped, "withCallingHandlers") {
+		t.Error("error_on=message should wrap in withCallingHandlers")
+	}
+	if !strings.Contains(wrapped, "message = function") {
+		t.Error("error_on=message should include message handler")
+	}
+	if !strings.Contains(wrapped, "warning = function") {
+		t.Error("error_on=message should also include warning handler")
 	}
 }
 

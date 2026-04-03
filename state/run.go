@@ -115,6 +115,17 @@ func RunStatus(runDir string) string {
 	if err != nil || len(events) == 0 {
 		return "unknown"
 	}
+	// Check for waiting approval state
+	hasWaiting := false
+	for _, e := range events {
+		if e.Type == EventStepWaitApproval {
+			hasWaiting = true
+		}
+		if e.Type == EventStepApproved || e.Type == EventStepRejected {
+			hasWaiting = false
+		}
+	}
+
 	last := events[len(events)-1]
 	switch last.Type {
 	case EventRunCompleted:
@@ -122,6 +133,9 @@ func RunStatus(runDir string) string {
 	case EventRunFailed:
 		return "failed"
 	default:
+		if hasWaiting {
+			return "waiting"
+		}
 		return "running"
 	}
 }

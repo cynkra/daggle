@@ -12,13 +12,13 @@ import (
 
 // RPkgExecutor runs R package development actions via Rscript.
 type RPkgExecutor struct {
-	Action string // "test", "check", "document", "lint", "style", "renv_restore", "coverage"
+	Action string // "test", "check", "document", "lint", "style", "renv_restore", "coverage", "shinytest", "pkgdown", "install", "targets", "benchmark", "revdepcheck"
 }
 
 // Run generates R code for the given action and executes it via Rscript.
 func (e *RPkgExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result {
 	pkgPath := e.resolvePkgPath(step)
-	rCode := e.generateRCode(pkgPath)
+	rCode := wrapErrorOn(e.generateRCode(pkgPath), step.ErrorOn)
 
 	tmpFile := filepath.Join(logDir, step.ID+".rpkg.R")
 	if err := os.WriteFile(tmpFile, []byte(rCode), 0644); err != nil {
@@ -46,6 +46,18 @@ func (e *RPkgExecutor) resolvePkgPath(step dag.Step) string {
 		raw = step.RenvRestore
 	case "coverage":
 		raw = step.Coverage
+	case "shinytest":
+		raw = step.Shinytest
+	case "pkgdown":
+		raw = step.Pkgdown
+	case "install":
+		raw = step.Install
+	case "targets":
+		raw = step.Targets
+	case "benchmark":
+		raw = step.Benchmark
+	case "revdepcheck":
+		raw = step.Revdepcheck
 	}
 	if raw == "" || raw == "true" || raw == "." {
 		return "."
@@ -115,6 +127,56 @@ cov <- covr::package_coverage(%q)
 pct <- covr::percent_coverage(cov)
 cat(sprintf("Coverage: %%.1f%%%%\n", pct))
 cat(sprintf("::daggle-output name=coverage_pct::%%.1f\n", pct))
+`, pkgPath)
+
+	case "shinytest":
+		return fmt.Sprintf(`if (!requireNamespace("shinytest2", quietly = TRUE)) stop("step requires the shinytest2 package. Install with: install.packages('shinytest2')")
+cat("Running Shiny app tests...\n")
+results <- shinytest2::test_app(%q)
+cat("Shiny tests complete\n")
+`, pkgPath)
+
+	case "pkgdown":
+		return fmt.Sprintf(`if (!requireNamespace("pkgdown", quietly = TRUE)) stop("step requires the pkgdown package. Install with: install.packages('pkgdown')")
+cat("Building pkgdown site...\n")
+pkgdown::build_site(%q)
+cat("pkgdown site complete\n")
+`, pkgPath)
+
+	case "install":
+		return fmt.Sprintf(`cat("Installing package...\n")
+if (requireNamespace("pak", quietly = TRUE)) {
+  pak::pkg_install(%q, ask = FALSE)
+} else {
+  install.packages(%q, repos = "https://cloud.r-project.org")
+}
+cat("Install complete\n")
+`, pkgPath, pkgPath)
+
+	case "targets":
+		return fmt.Sprintf(`if (!requireNamespace("targets", quietly = TRUE)) stop("step requires the targets package. Install with: install.packages('targets')")
+cat("Running targets pipeline...\n")
+targets::tar_make(store = file.path(%q, "_targets"))
+cat("Targets pipeline complete\n")
+`, pkgPath)
+
+	case "benchmark":
+		return fmt.Sprintf(`if (!requireNamespace("bench", quietly = TRUE)) stop("step requires the bench package. Install with: install.packages('bench')")
+cat("Running benchmarks...\n")
+bench_files <- list.files(%q, pattern = "\\.[Rr]$", full.names = TRUE)
+for (f in bench_files) {
+  cat("Sourcing", f, "\n")
+  source(f)
+}
+cat("Benchmarks complete\n")
+`, pkgPath)
+
+	case "revdepcheck":
+		return fmt.Sprintf(`if (!requireNamespace("revdepcheck", quietly = TRUE)) stop("step requires the revdepcheck package. Install with: install.packages('revdepcheck')")
+cat("Running reverse dependency checks...\n")
+revdepcheck::revdep_check(%q, num_workers = 4)
+results <- revdepcheck::revdep_summary()
+cat("Reverse dependency checks complete\n")
 `, pkgPath)
 
 	default:

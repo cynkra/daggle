@@ -15,11 +15,11 @@ type RmdExecutor struct{}
 
 // Run generates R code to render the Rmd file and executes it via Rscript.
 func (e *RmdExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result {
-	rCode := fmt.Sprintf(`if (!requireNamespace("rmarkdown", quietly = TRUE)) stop("step requires the rmarkdown package. Install with: install.packages('rmarkdown')")
+	rCode := wrapErrorOn(fmt.Sprintf(`if (!requireNamespace("rmarkdown", quietly = TRUE)) stop("step requires the rmarkdown package. Install with: install.packages('rmarkdown')")
 cat("Rendering R Markdown...\n")
 rmarkdown::render(%q)
 cat("Render complete\n")
-`, step.Rmd)
+`, step.Rmd), step.ErrorOn)
 
 	tmpFile := filepath.Join(logDir, step.ID+".rmd.R")
 	if err := os.WriteFile(tmpFile, []byte(rCode), 0644); err != nil {
