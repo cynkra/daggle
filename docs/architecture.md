@@ -55,6 +55,7 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
 
 ```
 cmd/daggle/       Entry point (main.go)
+api/              REST API server: handlers, response types
 cli/              Cobra commands: run, validate, status, list, serve
 dag/              YAML parsing, validation, topo sort, template expansion
 engine/           DAG orchestration: tier walking, retries, hooks, output passing

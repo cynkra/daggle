@@ -3,24 +3,29 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/cynkra/daggle/api"
 	"github.com/cynkra/daggle/scheduler"
 	"github.com/cynkra/daggle/state"
 	"github.com/spf13/cobra"
 )
 
+var apiPort int
+
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "Start the scheduler daemon",
-	Long:  "Start the cron scheduler that monitors DAG files and triggers runs on their defined schedules.",
+	Short: "Start the scheduler daemon and REST API",
+	Long:  "Start the cron scheduler that monitors DAG files and triggers runs on their defined schedules. Optionally starts the REST API server.",
 	Args:  cobra.NoArgs,
 	RunE:  serveDaemon,
 }
 
 func init() {
+	serveCmd.Flags().IntVar(&apiPort, "port", 0, "start REST API on this port (e.g. 8787)")
 	rootCmd.AddCommand(serveCmd)
 }
 
@@ -42,7 +47,7 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 
 	fmt.Printf("Starting scheduler\n")
 	fmt.Printf("DAG directory: %s\n", dagDir)
-	fmt.Printf("PID file: %s\n\n", scheduler.PIDPath())
+	fmt.Printf("PID file: %s\n", scheduler.PIDPath())
 
 	// Set up signal handling: SIGINT/SIGTERM for shutdown
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -66,5 +71,28 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 		}
 	}()
 
+	// Start REST API server if port is specified
+	if apiPort > 0 {
+		apiServer := api.New(dagDir, Version)
+		addr := fmt.Sprintf("127.0.0.1:%d", apiPort)
+		httpServer := &http.Server{
+			Addr:    addr,
+			Handler: apiServer.Handler(),
+		}
+
+		go func() {
+			fmt.Printf("REST API: http://%s/api/v1\n", addr)
+			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				fmt.Printf("API server error: %v\n", err)
+			}
+		}()
+
+		go func() {
+			<-ctx.Done()
+			_ = httpServer.Close()
+		}()
+	}
+
+	fmt.Println()
 	return sched.Start(ctx)
 }
