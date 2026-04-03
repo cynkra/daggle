@@ -63,6 +63,9 @@ func (e *Engine) SetRenvLibPath(p string) {
 // Steps within a tier run in parallel. If any step fails (after retries),
 // remaining tiers are skipped and the run is marked as failed.
 func (e *Engine) Run(ctx context.Context) error {
+	// Expand matrix steps before topo sort
+	e.dag.Steps = dag.ExpandMatrix(e.dag.Steps)
+
 	tiers, err := dag.TopoSort(e.dag.Steps)
 	if err != nil {
 		return fmt.Errorf("topo sort: %w", err)

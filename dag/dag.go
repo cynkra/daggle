@@ -144,6 +144,10 @@ type Step struct {
 	// Posit Connect deployment
 	Connect *ConnectDeploy `yaml:"connect,omitempty"`
 
+	// Matrix: expand step into parameter grid
+	Matrix      map[string][]string `yaml:"matrix,omitempty"`
+	MaxParallel int                 `yaml:"max_parallel,omitempty"`
+
 	// Conditional execution: skip step if condition is false
 	When *StepCondition `yaml:"when,omitempty"`
 
