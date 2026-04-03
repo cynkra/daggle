@@ -221,13 +221,14 @@ func CheckRVersion(constraint, actual string) (string, bool) {
 	}
 
 	var op, required string
-	if strings.HasPrefix(constraint, ">=") {
+	switch {
+	case strings.HasPrefix(constraint, ">="):
 		op = ">="
 		required = strings.TrimSpace(strings.TrimPrefix(constraint, ">="))
-	} else if strings.HasPrefix(constraint, "==") {
+	case strings.HasPrefix(constraint, "=="):
 		op = "=="
 		required = strings.TrimSpace(strings.TrimPrefix(constraint, "=="))
-	} else {
+	default:
 		return fmt.Sprintf("unknown r_version operator in %q", constraint), false
 	}
 
