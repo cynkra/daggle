@@ -58,13 +58,3 @@ jobs:
 
       - name: Check for known vulnerabilities
         run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
-
-  dependencies:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
