@@ -128,6 +128,16 @@ type Step struct {
 	Coverage    string `yaml:"coverage,omitempty"`
 	Validate    string `yaml:"validate,omitempty"`
 
+	// Additional R step types
+	Pin        *PinDeploy     `yaml:"pin,omitempty"`
+	Vetiver    *VetiverDeploy `yaml:"vetiver,omitempty"`
+	Shinytest  string         `yaml:"shinytest,omitempty"`
+	Pkgdown    string         `yaml:"pkgdown,omitempty"`
+	Install    string         `yaml:"install,omitempty"`
+	Targets    string         `yaml:"targets,omitempty"`
+	Benchmark  string         `yaml:"benchmark,omitempty"`
+	Revdepcheck string        `yaml:"revdepcheck,omitempty"`
+
 	// Posit Connect deployment
 	Connect *ConnectDeploy `yaml:"connect,omitempty"`
 
@@ -145,6 +155,23 @@ type ConnectDeploy struct {
 	Path        string `yaml:"path"`                  // content directory or file
 	Name        string `yaml:"name,omitempty"`         // content name on Connect
 	ForceUpdate *bool  `yaml:"force_update,omitempty"` // default true
+}
+
+// PinDeploy configures publishing data/models via the pins package.
+type PinDeploy struct {
+	Board     string `yaml:"board"`               // connect, s3, local, azure
+	Name      string `yaml:"name"`                // pin name
+	Object    string `yaml:"object"`              // path to object file
+	Type      string `yaml:"type,omitempty"`      // rds, csv, parquet, arrow, json
+	Versioned *bool  `yaml:"versioned,omitempty"` // default true
+}
+
+// VetiverDeploy configures MLOps model versioning/deployment.
+type VetiverDeploy struct {
+	Action string `yaml:"action"`          // pin or deploy
+	Model  string `yaml:"model,omitempty"` // path to model file (for pin action)
+	Board  string `yaml:"board,omitempty"` // connect, s3, local
+	Name   string `yaml:"name"`            // model name
 }
 
 // Retry configures retry behavior for a step.
@@ -198,6 +225,22 @@ func StepType(s Step) string {
 		return "coverage"
 	case s.Validate != "":
 		return "validate"
+	case s.Pin != nil:
+		return "pin"
+	case s.Vetiver != nil:
+		return "vetiver"
+	case s.Shinytest != "":
+		return "shinytest"
+	case s.Pkgdown != "":
+		return "pkgdown"
+	case s.Install != "":
+		return "install"
+	case s.Targets != "":
+		return "targets"
+	case s.Benchmark != "":
+		return "benchmark"
+	case s.Revdepcheck != "":
+		return "revdepcheck"
 	case s.Connect != nil:
 		return "connect"
 	default:

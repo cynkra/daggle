@@ -266,6 +266,54 @@ func TestRPkgExecutor_GenerateRCode(t *testing.T) {
 	}
 }
 
+func TestRPkgExecutor_NewStepTypes(t *testing.T) {
+	tests := []struct {
+		action string
+		want   []string
+	}{
+		{"shinytest", []string{"shinytest2::test_app", "requireNamespace", "shinytest2"}},
+		{"pkgdown", []string{"pkgdown::build_site", "requireNamespace", "pkgdown"}},
+		{"install", []string{"pak::pkg_install", "install.packages"}},
+		{"targets", []string{"targets::tar_make", "requireNamespace", "targets"}},
+		{"benchmark", []string{"bench", "requireNamespace", "source"}},
+		{"revdepcheck", []string{"revdepcheck::revdep_check", "requireNamespace"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.action, func(t *testing.T) {
+			e := &RPkgExecutor{Action: tt.action}
+			code := e.generateRCode(".")
+			for _, want := range tt.want {
+				if !strings.Contains(code, want) {
+					t.Errorf("generateRCode(%q) missing %q", tt.action, want)
+				}
+			}
+		})
+	}
+}
+
+func TestNew_Phase4StepTypes(t *testing.T) {
+	tests := []struct {
+		step dag.Step
+		want string
+	}{
+		{dag.Step{Shinytest: "app/"}, "*executor.RPkgExecutor"},
+		{dag.Step{Pkgdown: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Install: "dplyr"}, "*executor.RPkgExecutor"},
+		{dag.Step{Targets: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Benchmark: "bench/"}, "*executor.RPkgExecutor"},
+		{dag.Step{Revdepcheck: "."}, "*executor.RPkgExecutor"},
+		{dag.Step{Pin: &dag.PinDeploy{Board: "local", Name: "data", Object: "data.rds"}}, "*executor.PinExecutor"},
+		{dag.Step{Vetiver: &dag.VetiverDeploy{Action: "pin", Name: "model", Board: "local", Model: "model.rds"}}, "*executor.VetiverExecutor"},
+	}
+	for _, tt := range tests {
+		ex := New(tt.step)
+		got := fmt.Sprintf("%T", ex)
+		if got != tt.want {
+			t.Errorf("New(%v) = %s, want %s", dag.StepType(tt.step), got, tt.want)
+		}
+	}
+}
+
 func TestRPkgExecutor_ResolvePkgPath(t *testing.T) {
 	tests := []struct {
 		action string

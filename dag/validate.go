@@ -35,13 +35,16 @@ func Validate(d *DAG) error {
 			s.Script != "", s.RExpr != "", s.Command != "", s.Quarto != "",
 			s.Test != "", s.Check != "", s.Document != "", s.Lint != "", s.Style != "",
 			s.Rmd != "", s.RenvRestore != "", s.Coverage != "", s.Validate != "",
+			s.Pin != nil, s.Vetiver != nil,
+			s.Shinytest != "", s.Pkgdown != "", s.Install != "", s.Targets != "",
+			s.Benchmark != "", s.Revdepcheck != "",
 			s.Connect != nil,
 		} {
 			if set {
 				typeCount++
 			}
 		}
-		stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, connect"
+		stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect"
 		if typeCount == 0 {
 			errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
 		}
