@@ -116,13 +116,9 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 5a — REST API:** 15 endpoints for DAG management, run triggering/monitoring, step logs/approval, outputs, cleanup. Flat JSON responses for R data.frame compatibility. Runs alongside scheduler via `daggle serve --port`.
 
-### Planned
+**Phase 5b — Companion R Package:** `daggleR` package ([cynkra/daggleR](https://github.com/cynkra/daggleR)). Three categories: in-step helpers (base R only — `output()`, `run_id()`, `dag_name()`, `run_dir()`, `get_output()`), API wrappers (httr2 — `list_dags()`, `get_dag()`, `trigger()`, `list_runs()`, `get_run()`, `get_outputs()`, `get_step_log()`, `cancel_run()`, `health()`, `cleanup()`), and approval helpers (`approve()`, `reject()`). Scope: read, write, approve, and API calls — never parsing YAML or managing state.
 
-**Phase 5b — Companion R Package:**
-- `daggle` R package (GitHub-only initially, CRAN later if warranted)
-- In-step helpers: `daggle::output()`, `daggle::run_id()`, `daggle::get_output()`
-- API wrappers: `daggle::trigger()`, `daggle::status()`, `daggle::approve()`, `daggle::reject()`
-- Scope: read, write, approve, and API calls — never parsing YAML or managing state
+### Planned
 
 **Phase 6 — Web UI:**
 - Embedded web UI (HTML/JS/CSS via `go:embed`) — DAG list, run history, log tailing, DAG visualization
@@ -144,6 +140,6 @@ These are topics where the design is not yet settled:
 - **~~`error_on:` field~~** — **Resolved.** Step-level `error_on:` with three levels: `error` (default), `warning`, `message`. Applies to all R step types. Implemented via `withCallingHandlers()` wrapper. For `script:` steps, generate a thin wrapper that sources the user script inside the handler. Phase 4.
 - **~~`base.yaml` defaults~~** — **Resolved.** `base.yaml` in the DAGs directory. Shallow merge: `env` maps merged (DAG wins on conflict), scalars (`workdir`, `timeout`) overridden by DAG. Mergeable fields: `env`, `on_success`, `on_failure`, `on_exit`, default `timeout`, default `retry`. Steps are never merged. No-op if `base.yaml` absent. Phase 4.
 - **~~Windows support~~** — **Not supported.** The process model uses Unix-only APIs (process groups, SIGTERM). macOS and Linux only. Revisit if user demand appears.
-- **~~Companion R package~~** — **Resolved.** Phase 5 is dedicated to the companion R package. Scope: read + write helpers only (output, env var readers). Details to be designed after Phase 4.
+- **~~Companion R package~~** — **Implemented.** Phase 5b delivered the `daggleR` package ([cynkra/daggleR](https://github.com/cynkra/daggleR)). In-step helpers (base R), API wrappers and approval helpers (httr2). Scope maintained: read, write, approve, and API calls only — never parsing YAML or managing state.
 - **~~DAG templates~~** — **Resolved.** Three templates for Phase 4: `pkg-check`, `pkg-release`, `data-pipeline` (all sketched in features.md).
 - **~~Telemetry~~** — **Dropped.** Rely on GitHub issues for feedback. Not worth the trust cost.

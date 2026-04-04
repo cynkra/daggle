@@ -45,10 +45,18 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
 └───────────────────────────────────────────────────────────┘
          │
          ▼
-   ┌───────────┐
-   │  Rscript   │  ← only external dependency
-   │  quarto    │  ← optional (for quarto: steps)
-   └───────────┘
+   ┌───────────┐         ┌──────────────────────────────┐
+   │  Rscript   │  ← only │  daggleR (companion R pkg)   │
+   │  quarto    │  ext.   │  cynkra/daggleR               │
+   └───────────┘  dep.    │                              │
+                          │  In-step helpers:            │
+                          │    output(), run_id(), ...   │
+                          │    (env vars + stdout)       │
+                          │                              │
+                          │  API wrappers:               │
+                          │    list_dags(), trigger(),...│
+                          │    (httr2 → REST API)        │
+                          └──────────────────────────────┘
 ```
 
 ## Package layout
@@ -188,6 +196,21 @@ All triggers live under a unified `trigger:` block in DAG YAML. Triggers are add
 | `github.com/fsnotify/fsnotify` | File system event watching for trigger.watch |
 
 Total: 5 external Go dependencies. R and quarto are runtime dependencies only.
+
+## Companion R package
+
+The `daggleR` package ([cynkra/daggleR](https://github.com/cynkra/daggleR)) is a thin R wrapper around the daggle protocol. It lives in a separate repository and has no build-time dependency on the Go codebase.
+
+**In-step helpers** (base R, no network) run inside R steps executed by daggle. They read/write the same env vars and stdout markers that daggle uses natively:
+- `output(name, value)` — emits `::daggle-output name=<key>::<value>` to stdout
+- `run_id()`, `dag_name()`, `run_dir()` — read `DAGGLE_RUN_ID`, `DAGGLE_DAG_NAME`, `DAGGLE_RUN_DIR`
+- `get_output(step, key)` — reads `DAGGLE_OUTPUT_<STEP>_<KEY>` env var
+
+**API wrappers** (httr2) talk to the REST API served by `daggle serve --port`:
+- DAG management: `list_dags()`, `get_dag()`
+- Run management: `trigger()`, `list_runs()`, `get_run()`, `get_outputs()`, `get_step_log()`, `cancel_run()`
+- Approval: `approve()`, `reject()`
+- Operations: `health()`, `cleanup()`
 
 ## Design principles
 

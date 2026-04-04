@@ -433,6 +433,49 @@ curl -X POST http://localhost:8787/api/v1/dags/my-pipeline/runs/abc123/steps/rev
 
 All list endpoints return flat JSON arrays for easy conversion to R data frames with `jsonlite::fromJSON()`.
 
+## Companion R package
+
+The [`daggleR`](https://github.com/cynkra/daggleR) package provides R-native access to daggle — both inside running steps and from external R sessions via the REST API.
+
+**Install:**
+
+```r
+pak::pak("cynkra/daggleR")
+```
+
+**In-step helpers** (use inside R steps run by daggle — base R, no network):
+
+```r
+# Emit an output for downstream steps (replaces manual cat("::daggle-output ..."))
+daggleR::output("row_count", nrow(data))
+
+# Read metadata
+daggleR::run_id()
+daggleR::dag_name()
+daggleR::run_dir()
+
+# Read upstream step output
+n <- daggleR::get_output("extract", "row_count")
+```
+
+**API wrappers** (talk to `daggle serve --port 8787`):
+
+```r
+# List and inspect DAGs
+daggleR::list_dags()
+daggleR::get_dag("my-pipeline")
+
+# Trigger a run and check status
+daggleR::trigger("my-pipeline", params = list(dept = "sales"))
+daggleR::get_run("my-pipeline", run_id = "latest")
+daggleR::get_outputs("my-pipeline")
+
+# Approve a waiting step
+daggleR::approve("my-pipeline", run_id = "abc123", step_id = "review")
+```
+
+See the [daggleR repository](https://github.com/cynkra/daggleR) for full documentation.
+
 ## CLI reference
 
 ```
