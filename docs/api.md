@@ -1,6 +1,8 @@
 # REST API
 
-daggle exposes a REST API for triggering runs, checking status, approving gates, and reading outputs. The API runs alongside the scheduler when `daggle serve` is started with the `--port` flag.
+daggle exposes a REST API for triggering runs, checking status, approving gates, and reading outputs. The API runs alongside the scheduler when `daggle serve` is started with the `--port` flag. Opening the port URL in a browser shows a read-only status dashboard.
+
+The API is designed to be wrapped. Build custom dashboards with [daggleR](https://github.com/cynkra/daggleR) + Shiny, or any HTTP client.
 
 ## Base URL
 

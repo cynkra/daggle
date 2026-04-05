@@ -418,13 +418,17 @@ The scheduler:
 - Limits to 4 concurrent DAG runs
 - Writes a PID file (`~/.local/share/daggle/proc/scheduler.pid`) for process management
 - Shuts down gracefully on SIGINT/SIGTERM — stops accepting new runs and waits up to 5 minutes for in-flight runs to finish
-- Optionally serves the REST API when `--port` is specified
+- Optionally serves the REST API and a read-only status dashboard when `--port` is specified
 
 Without `daggle serve`, you can still run DAGs manually with `daggle run` — the scheduler is only needed for automated triggers.
 
+When `--port` is set, opening `http://127.0.0.1:<port>/` in a browser shows a status dashboard with DAG list, run details, and log viewer.
+
 ## REST API
 
-When the scheduler is started with `--port`, it also serves a REST API for programmatic access. See [docs/api.md](docs/api.md) for the full endpoint reference.
+When the scheduler is started with `--port`, it also serves a REST API for programmatic access and a read-only status dashboard. See [docs/api.md](docs/api.md) for the full endpoint reference.
+
+The API is designed to be wrapped — build custom dashboards with daggleR + Shiny, or any HTTP client.
 
 ```bash
 # List DAGs

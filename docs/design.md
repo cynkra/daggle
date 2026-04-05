@@ -118,11 +118,9 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 5b — Companion R Package:** `daggleR` package ([cynkra/daggleR](https://github.com/cynkra/daggleR)). Three categories: in-step helpers (base R only — `output()`, `run_id()`, `dag_name()`, `run_dir()`, `get_output()`), API wrappers (httr2 — `list_dags()`, `get_dag()`, `trigger()`, `list_runs()`, `get_run()`, `get_outputs()`, `get_step_log()`, `cancel_run()`, `health()`, `cleanup()`), and approval helpers (`approve()`, `reject()`). Scope: read, write, approve, and API calls — never parsing YAML or managing state.
 
-### Planned
+**Phase 6 — Minimal Status UI:** Read-only status dashboard embedded in the Go binary via `go:embed`. DAG list, run detail with step status, log viewer. Served alongside the REST API on `daggle serve --port`. No JS framework — Go HTML templates + CSS only. For custom dashboards, use the REST API with daggleR/Shiny or any HTTP client.
 
-**Phase 6 — Web UI:**
-- Embedded web UI (HTML/JS/CSS via `go:embed`) — DAG list, run history, log tailing, DAG visualization
-- Approval review dashboard with approve/reject buttons and upstream context
+### Planned
 
 **Phase 7 — Enterprise (if needed):**
 - Distributed workers
