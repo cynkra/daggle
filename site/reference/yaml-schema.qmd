@@ -1,0 +1,92 @@
+---
+title: "YAML Schema Reference"
+---
+
+Field-by-field reference for daggle DAG definitions. The machine-readable [JSON Schema](https://github.com/cynkra/daggle/raw/main/docs/daggle-schema.json) can be used for editor validation.
+
+## Editor autocomplete
+
+Add this comment as the first line of any DAG YAML file to enable autocomplete in VS Code (requires the [YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml)):
+
+```yaml
+# yaml-language-server: $schema=https://github.com/cynkra/daggle/raw/main/docs/daggle-schema.json
+name: my-dag
+steps:
+  - id: hello
+    command: echo "hello"
+```
+
+## DAG-level fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | yes | -- | Unique DAG identifier. Must match `[a-zA-Z0-9_-]+`. |
+| `version` | string | no | `"1"` | Schema version. Currently only `"1"` is supported. |
+| `steps` | array | yes | -- | Ordered list of step objects. |
+| `trigger` | object | no | (none) | Automated execution triggers. See [trigger fields](#trigger-fields). |
+| `workdir` | string | no | (DAG file dir) | Working directory for all steps. Supports `~` expansion. |
+| `env` | object | no | `{}` | Environment variables inherited by all steps. Values are strings. |
+| `params` | array | no | `[]` | Parameter definitions. Each has `name` (required) and `default` (optional). |
+| `r_version` | string | no | (none) | R version constraint (e.g. `">=4.1.0"`, `"4.4.1"`). |
+| `r_version_strict` | boolean | no | `false` | If `true`, fail when R version does not satisfy `r_version`. Otherwise warn. |
+| `on_success` | hook | no | (none) | Hook executed after all steps succeed. |
+| `on_failure` | hook | no | (none) | Hook executed when the DAG fails. |
+| `on_exit` | hook | no | (none) | Hook executed on DAG exit regardless of outcome. |
+
+## Trigger fields {#trigger-fields}
+
+The `trigger` object controls when the scheduler automatically starts a DAG.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `schedule` | string | no | (none) | Cron expression (5-field). e.g. `"30 6 * * MON-FRI"`. |
+| `watch` | string or array | no | (none) | File glob(s) that trigger a run on change. e.g. `"data/*.csv"`. |
+| `webhook` | boolean | no | `false` | If `true`, enable triggering via the REST API webhook endpoint. |
+
+At least one trigger field must be present when the `trigger` object is specified.
+
+## Step fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `id` | string | yes | -- | Unique step identifier within the DAG. Must match `[a-zA-Z0-9_-]+`. |
+| `script` | string | one of | -- | Path to an R script to execute. |
+| `r_expr` | string | one of | -- | Inline R expression(s). |
+| `command` | string | one of | -- | Shell command to execute. |
+| `sub_dag` | string | one of | -- | Name of another DAG to invoke. |
+| `args` | array | no | `[]` | Command-line arguments. Supports template variables. |
+| `depends` | array | no | `[]` | IDs of upstream steps that must complete first. |
+| `timeout` | duration | no | (none) | Maximum step duration. e.g. `"30s"`, `"5m"`, `"1h"`. |
+| `retry` | object | no | (none) | Retry config: `limit` (int), `backoff` (`"fixed"` or `"exponential"`), `max_delay` (duration). |
+| `env` | object | no | `{}` | Step-level environment variables. Merged with DAG-level `env`. |
+| `workdir` | string | no | (DAG workdir) | Step-level working directory override. |
+| `when` | object | no | (none) | Conditional execution. Fields: `output_contains`, `env_set`, `env_equals`, `expr`. |
+| `preconditions` | array | no | `[]` | Health checks to run before the step. Each has `command` and optional `timeout`. |
+| `error_on` | enum | no | `"error"` | Error sensitivity: `"error"`, `"warning"`, or `"message"`. |
+| `matrix` | object | no | (none) | Parameter grid. Keys are variable names, values are arrays. |
+| `max_parallel` | integer | no | (all) | Maximum concurrent matrix instances. |
+| `approval` | boolean | no | `false` | If `true`, pause and wait for manual approval before executing. |
+| `on_success` | hook | no | (none) | Step-level success hook. |
+| `on_failure` | hook | no | (none) | Step-level failure hook. |
+
+Exactly one step type field (`script`, `r_expr`, `command`, or `sub_dag`) must be specified per step.
+
+## Hook fields
+
+Hooks appear in `on_success`, `on_failure`, and `on_exit` at both DAG and step level. A hook must contain exactly one of:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `command` | string | Shell command to execute. |
+| `r_expr` | string | Inline R expression. |
+| `script` | string | Path to an R script. |
+
+## Template variables
+
+String fields (`args`, `env` values, `workdir`) support Go template syntax:
+
+| Variable | Description |
+|----------|-------------|
+| `{{ .Today }}` | Today's date in `YYYY-MM-DD` format |
+| `{{ .Params.<name> }}` | Value of parameter `<name>` |
+| `{{ .Env.<name> }}` | Value of environment variable `<name>` |

@@ -1,0 +1,64 @@
+---
+title: "File Layout"
+---
+
+daggle uses a fixed directory structure for configuration, DAG definitions, and run data.
+
+## Directory structure
+
+```
+~/.config/daggle/
+  dags/                          # Global DAG definitions
+    my-pipeline.yml
+    nightly-etl.yml
+
+~/.local/share/daggle/
+  runs/                          # Run data, organized by DAG and date
+    <dag>/
+      <YYYY-MM-DD>/
+        run_<id>/
+          meta.json              # Run metadata (params, start time, status)
+          events.jsonl           # Append-only event log (see Event Schema)
+          <step>.stdout.log      # Step stdout (includes output markers)
+          <step>.stderr.log      # Step stderr
+          <step>.inline.R        # Rendered inline R code (for r_expr steps)
+  proc/
+    scheduler.pid                # Scheduler daemon PID file
+
+.daggle/                         # Project-local DAG definitions (repo root)
+  my-dag.yml
+```
+
+## DAG discovery order
+
+When resolving a DAG by name, daggle searches in this order:
+
+1. `--dags-dir` flag (if provided)
+2. `DAGGLE_DAGS_DIR` environment variable (if set)
+3. `.daggle/` in the current working directory (project-local)
+4. `~/.config/daggle/dags/` (global)
+
+The first match wins.
+
+## Run directory contents
+
+Each run gets its own directory under `runs/<dag>/<date>/run_<id>/`.
+
+| File | Description |
+|------|-------------|
+| `meta.json` | Run metadata: DAG name, parameters, start/end timestamps, final status. |
+| `events.jsonl` | Append-only event log. See [Event Schema](events.qmd). |
+| `<step>.stdout.log` | Captured stdout for each step. Includes raw output markers. |
+| `<step>.stderr.log` | Captured stderr for each step. |
+| `<step>.inline.R` | Rendered R source for `r_expr` steps (useful for debugging). |
+
+## Overriding directories
+
+| Mechanism | Config dir | Data dir | DAGs dir |
+|-----------|-----------|----------|----------|
+| CLI flags | -- | `--data-dir` | `--dags-dir` |
+| Environment variables | `DAGGLE_CONFIG_DIR` | `DAGGLE_DATA_DIR` | `DAGGLE_DAGS_DIR` |
+| XDG fallback | `$XDG_CONFIG_HOME/daggle` | `$XDG_DATA_HOME/daggle` | -- |
+| Default | `~/.config/daggle` | `~/.local/share/daggle` | (discovery order) |
+
+Priority is top to bottom: CLI flags override environment variables, which override XDG, which override defaults.

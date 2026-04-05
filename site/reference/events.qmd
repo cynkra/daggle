@@ -1,0 +1,162 @@
+---
+title: "Event Schema"
+---
+
+Each daggle run produces an `events.jsonl` file: one JSON object per line, append-only, and safe for concurrent writes. Every event includes a `v` field indicating the schema version (currently `1`).
+
+## Event types
+
+### dag_started
+
+Emitted when a DAG run begins.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"dag_started"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Unique run identifier |
+| `dag_name` | string | DAG name |
+| `started` | string | ISO 8601 timestamp |
+| `params` | object | Parameters passed to the run |
+| `dag_hash` | string | SHA-256 of the DAG definition at run time |
+
+### step_started
+
+Emitted when a step begins execution.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"step_started"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `step_id` | string | Step identifier |
+| `started` | string | ISO 8601 timestamp |
+| `attempt` | integer | Attempt number (1 for first try) |
+
+### step_completed
+
+Emitted when a step finishes successfully.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"step_completed"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `step_id` | string | Step identifier |
+| `ended` | string | ISO 8601 timestamp |
+| `duration_seconds` | number | Wall-clock duration |
+| `outputs` | object | Key-value pairs emitted via output markers |
+
+### step_failed
+
+Emitted when a step fails.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"step_failed"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `step_id` | string | Step identifier |
+| `ended` | string | ISO 8601 timestamp |
+| `error` | string | Error message |
+| `attempt` | integer | Attempt number |
+
+### step_retried
+
+Emitted when a failed step is scheduled for retry.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"step_retried"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `step_id` | string | Step identifier |
+| `attempt` | integer | Attempt that failed |
+| `next_attempt` | integer | Next attempt number |
+| `delay` | string | Delay before retry (e.g. `"5s"`) |
+
+### step_skipped
+
+Emitted when a step is skipped due to a `when` condition.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"step_skipped"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `step_id` | string | Step identifier |
+| `reason` | string | Why the step was skipped |
+
+### step_waiting_approval
+
+Emitted when a step pauses for manual approval.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"step_waiting_approval"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `step_id` | string | Step identifier |
+| `message` | string | Approval prompt message |
+
+### step_approved
+
+Emitted when a waiting step is approved.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"step_approved"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `step_id` | string | Step identifier |
+| `approved_by` | string | Who approved (user or API) |
+| `timestamp` | string | ISO 8601 timestamp |
+
+### step_rejected
+
+Emitted when a waiting step is rejected.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"step_rejected"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `step_id` | string | Step identifier |
+| `rejected_by` | string | Who rejected (user or API) |
+| `timestamp` | string | ISO 8601 timestamp |
+
+### dag_completed
+
+Emitted when all steps succeed and the DAG finishes.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"dag_completed"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `ended` | string | ISO 8601 timestamp |
+| `duration_seconds` | number | Total DAG wall-clock duration |
+
+### dag_failed
+
+Emitted when the DAG fails.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"dag_failed"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `ended` | string | ISO 8601 timestamp |
+| `error` | string | Error message |
+
+## Example
+
+```jsonl
+{"v":1,"type":"dag_started","run_id":"20260404-091500-abc12","dag_name":"etl-pipeline","started":"2026-04-04T09:15:00Z","params":{"department":"sales"},"dag_hash":"a1b2c3d4..."}
+{"v":1,"type":"step_started","run_id":"20260404-091500-abc12","step_id":"extract","started":"2026-04-04T09:15:00Z","attempt":1}
+{"v":1,"type":"step_completed","run_id":"20260404-091500-abc12","step_id":"extract","ended":"2026-04-04T09:15:42Z","duration_seconds":42.3,"outputs":{"row_count":"15234"}}
+{"v":1,"type":"step_started","run_id":"20260404-091500-abc12","step_id":"transform","started":"2026-04-04T09:15:42Z","attempt":1}
+{"v":1,"type":"step_failed","run_id":"20260404-091500-abc12","step_id":"transform","ended":"2026-04-04T09:16:01Z","error":"column 'revenue' not found","attempt":1}
+{"v":1,"type":"step_retried","run_id":"20260404-091500-abc12","step_id":"transform","attempt":1,"next_attempt":2,"delay":"5s"}
+{"v":1,"type":"dag_failed","run_id":"20260404-091500-abc12","ended":"2026-04-04T09:18:30Z","error":"step 'transform' failed after 3 attempts"}
+```

@@ -1,0 +1,83 @@
+---
+title: "Output Marker Protocol"
+---
+
+Steps pass data to downstream steps by printing structured markers to stdout. daggle parses these markers during execution, strips them from terminal output, and injects the values as environment variables for dependent steps.
+
+## Marker format
+
+```
+::daggle-output name=<key>::<value>
+```
+
+- **Key** must match `[a-zA-Z_][a-zA-Z0-9_]*` (start with letter or underscore, then alphanumeric or underscore).
+- **Value** is everything after the second `::` until the end of the line, with leading and trailing whitespace trimmed.
+- Markers are **single-line only**. For complex or multi-line data, write to a file and pass the file path as the output value.
+
+## Environment variable naming
+
+Downstream steps receive outputs as environment variables following this convention:
+
+```
+DAGGLE_OUTPUT_<STEP_ID>_<KEY>
+```
+
+Both the step ID and key are uppercased. Hyphens in the step ID are replaced with underscores.
+
+For example, step `fit-model` emitting `accuracy` becomes:
+
+```
+DAGGLE_OUTPUT_FIT_MODEL_ACCURACY
+```
+
+## Parsing behavior
+
+- Markers are **stripped from terminal output** so they do not clutter the console.
+- Markers are **preserved in log files** (`<step>.stdout.log`) for debugging and auditing.
+- Only the last value for a given key is kept if a step emits the same key multiple times.
+
+## Examples
+
+### R
+
+```r
+# Emit a single output
+cat("::daggle-output name=row_count::", nrow(data), "\n")
+
+# Emit multiple outputs
+cat("::daggle-output name=mean_score::", mean(scores), "\n")
+cat("::daggle-output name=data_path::", output_file, "\n")
+```
+
+### Shell
+
+```bash
+# From a command step
+echo "::daggle-output name=commit_sha::$(git rev-parse HEAD)"
+
+# Conditional output
+if [ -f "results.csv" ]; then
+  echo "::daggle-output name=results_path::results.csv"
+fi
+```
+
+### Reading outputs downstream
+
+In a YAML step definition:
+
+```yaml
+- id: fit-model
+  r_expr: |
+    cat("::daggle-output name=accuracy::", round(acc, 4), "\n")
+
+- id: report
+  depends: [fit-model]
+  script: report.R
+  args: ["--accuracy", "$DAGGLE_OUTPUT_FIT_MODEL_ACCURACY"]
+```
+
+Or read directly in R:
+
+```r
+accuracy <- Sys.getenv("DAGGLE_OUTPUT_FIT_MODEL_ACCURACY")
+```
