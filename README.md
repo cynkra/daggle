@@ -5,6 +5,8 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/cynkra/daggle.svg)](https://pkg.go.dev/github.com/cynkra/daggle)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
+> **Experimental.** daggle is under active development. Breaking changes to the YAML schema, CLI, and API may happen frequently until a stable 1.0 release.
+
 A lightweight DAG scheduler for R. Define multi-step R workflows in YAML, run them with dependency resolution, parallel execution, retries, timeouts, and cron scheduling — all from a single binary.
 
 daggle sits between "cron + Rscript" and heavy workflow engines. No database, no message broker, no code changes to your existing scripts. The only prerequisite is R.
