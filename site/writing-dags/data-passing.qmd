@@ -1,0 +1,81 @@
+---
+title: "Inter-Step Data Passing"
+---
+
+Steps pass data to downstream steps using stdout markers. daggle parses these markers, strips them from terminal output, and passes the values as environment variables.
+
+## Output marker protocol
+
+Print a line matching this format from any step:
+
+```r
+cat("::daggle-output name=row_count::", nrow(data), "\n")
+```
+
+Format: `::daggle-output name=<key>::<value>`
+
+- **Key:** `[a-zA-Z_][a-zA-Z0-9_]*` (alphanumeric + underscores)
+- **Value:** everything after `::` until the newline, trimmed
+- **Single-line only.** For complex data, write to a file and pass the path.
+
+## Reading outputs
+
+Downstream steps receive outputs as environment variables, namespaced by step ID:
+
+```
+DAGGLE_OUTPUT_<STEP_ID>_<KEY>
+```
+
+Step IDs are uppercased with hyphens replaced by underscores. For example, step `fit-lda` emitting key `accuracy` becomes:
+
+```
+DAGGLE_OUTPUT_FIT_LDA_ACCURACY
+```
+
+In YAML:
+
+```yaml
+- id: extract
+  r_expr: |
+    cat("::daggle-output name=row_count::", nrow(data), "\n")
+
+- id: report
+  r_expr: |
+    rows <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
+    cat(sprintf("Processing %d rows\n", rows))
+  depends: [extract]
+```
+
+## Using daggleR helpers
+
+The [daggleR](../daggler/index.qmd) package provides ergonomic wrappers:
+
+::: {.panel-tabset}
+
+### Raw protocol
+
+```r
+# Emit
+cat(sprintf("::daggle-output name=row_count::%d\n", nrow(data)))
+
+# Read
+n <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
+```
+
+### With daggleR
+
+```r
+# Emit
+daggleR::output("row_count", nrow(data))
+
+# Read
+n <- daggleR::get_output("extract", "row_count")
+```
+
+:::
+
+## Log handling
+
+- Output marker lines are **stripped** from terminal output (you don't see them while watching the run)
+- They are **kept** in log files (`<step>.stdout.log`) for debugging
+- Multiple outputs per step are supported -- emit as many markers as needed

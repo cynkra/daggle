@@ -1,0 +1,52 @@
+---
+title: "Conditional Execution"
+---
+
+daggle provides two mechanisms for conditional step execution: `when` and `preconditions`.
+
+## `when:` -- Skip steps
+
+Skip a step based on an R expression or shell command. If the condition fails, the step is **silently skipped** (not marked as failed).
+
+```yaml
+- id: deploy-prod
+  script: deploy.R
+  when:
+    command: 'test "$DAGGLE_ENV" = production'
+  depends: [test]
+```
+
+With an R expression:
+
+```yaml
+- id: notify
+  r_expr: 'slackr::slackr_msg("Done")'
+  when:
+    r_expr: 'Sys.getenv("SLACK_TOKEN") != ""'
+  depends: [report]
+```
+
+A `when` condition succeeds if exit code is 0 (shell) or the R expression completes without error.
+
+## `preconditions:` -- Fail-fast checks
+
+Health checks that must pass before a step runs. If any precondition fails, the step **fails immediately** (not skipped).
+
+```yaml
+- id: query-db
+  script: etl/query.R
+  preconditions:
+    - command: 'pg_isready -h $DB_HOST'
+    - r_expr: 'stopifnot(requireNamespace("DBI"))'
+```
+
+Use preconditions for expensive steps where you want to check prerequisites first.
+
+## Difference between `when` and `preconditions`
+
+| | `when` | `preconditions` |
+|---|---|---|
+| On failure | Step is **skipped** | Step **fails** |
+| Use case | Optional steps | Required checks before expensive work |
+| Downstream | Skipped steps don't block dependents | Failed steps block dependents |
+| Count | One condition | Array of conditions |

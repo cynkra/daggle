@@ -1,0 +1,58 @@
+---
+title: "Shared Defaults with base.yaml"
+---
+
+Place a `base.yaml` file in the DAGs directory to define shared defaults across all DAGs in that directory.
+
+## Mergeable fields
+
+| Field | Merge behavior |
+|-------|---------------|
+| `env` | Maps merged; DAG values win on conflict |
+| `on_success` | Overridden by DAG if set |
+| `on_failure` | Overridden by DAG if set |
+| `on_exit` | Overridden by DAG if set |
+| `timeout` | Overridden by DAG if set |
+| `retry` | Overridden by DAG if set |
+
+Steps are **never** merged -- each DAG fully owns its steps.
+
+## Example
+
+`base.yaml`:
+
+```yaml
+env:
+  TEAM: "data-engineering"
+  LOG_LEVEL: "info"
+timeout: 30m
+on_failure:
+  command: echo "DAG failed" | mail -s "Alert" team@example.com
+```
+
+`daily-etl.yaml`:
+
+```yaml
+name: daily-etl
+env:
+  DB_HOST: "postgres.internal"
+  LOG_LEVEL: "debug"          # overrides base.yaml
+steps:
+  - id: extract
+    script: extract.R
+```
+
+Effective env for `daily-etl`:
+
+```
+TEAM=data-engineering     # from base.yaml
+DB_HOST=postgres.internal # from DAG
+LOG_LEVEL=debug           # DAG wins
+```
+
+## Behavior
+
+- `base.yaml` is loaded if present, silently ignored if absent
+- Shallow merge only -- no recursive merging of nested objects
+- DAG values always take precedence over base values
+- Works in both global (`~/.config/daggle/dags/`) and project-local (`.daggle/`) directories

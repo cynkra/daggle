@@ -1,0 +1,263 @@
+---
+title: "Step Types"
+---
+
+Every step is assumed to be R unless stated otherwise. Exactly one step type field must be set per step.
+
+## Core
+
+### `script:` -- R script
+
+Runs `Rscript --no-save --no-restore <path> [args]`.
+
+```yaml
+- id: extract
+  script: etl/extract.R
+  args: ["--dept", "sales"]
+```
+
+### `r_expr:` -- Inline R
+
+Writes the expression to a temp `.R` file in the run directory, runs via Rscript.
+
+```yaml
+- id: summarize
+  r_expr: |
+    data <- readRDS("data/clean.rds")
+    cat(sprintf("Rows: %d\n", nrow(data)))
+    cat("::daggle-output name=row_count::", nrow(data), "\n")
+```
+
+### `command:` -- Shell
+
+Runs via `sh -c`. The escape hatch for non-R tasks.
+
+```yaml
+- id: notify
+  command: echo "Pipeline complete" | mail -s "Done" team@example.com
+```
+
+## Documents
+
+### `quarto:` -- Quarto render
+
+Runs `quarto render <path> [args]`. Requires Quarto installed.
+
+```yaml
+- id: report
+  quarto: reports/dashboard.qmd
+  args: ["--to", "html"]
+```
+
+### `rmd:` -- R Markdown
+
+Renders via `rmarkdown::render()`. Requires the `rmarkdown` package.
+
+```yaml
+- id: report
+  rmd: reports/monthly.Rmd
+```
+
+## R package development
+
+### `test:` -- Run tests
+
+Runs `devtools::test()` with structured output. Emits pass/fail/skip counts and coverage as `::daggle-output::` markers. Requires `devtools`.
+
+```yaml
+- id: test
+  test: "."
+```
+
+### `check:` -- R CMD check
+
+Runs `rcmdcheck::rcmdcheck()`. Emits error/warning/note counts. Requires `rcmdcheck`.
+
+```yaml
+- id: check
+  check: "."
+  error_on: warning    # treat check warnings as failures
+```
+
+### `document:` -- Generate docs
+
+Runs `roxygen2::roxygenize()`. Requires `roxygen2`.
+
+```yaml
+- id: docs
+  document: "."
+```
+
+### `lint:` -- Lint code
+
+Runs `lintr::lint_package()`. Emits issue count. Requires `lintr`.
+
+```yaml
+- id: lint
+  lint: "."
+```
+
+### `style:` -- Format code
+
+Runs `styler::style_pkg()`. Requires `styler`.
+
+```yaml
+- id: style
+  style: "."
+```
+
+### `coverage:` -- Code coverage
+
+Runs `covr::package_coverage()`. Emits coverage percentage. Requires `covr`.
+
+```yaml
+- id: coverage
+  coverage: "."
+```
+
+### `pkgdown:` -- Package website
+
+Runs `pkgdown::build_site()`. Requires `pkgdown`.
+
+```yaml
+- id: site
+  pkgdown: "."
+```
+
+### `benchmark:` -- Benchmarks
+
+Runs bench scripts from a directory.
+
+```yaml
+- id: bench
+  benchmark: benchmarks/
+```
+
+### `revdepcheck:` -- Reverse dependency checks
+
+Runs `revdepcheck::revdep_check()`. Requires `revdepcheck`.
+
+```yaml
+- id: revdep
+  revdepcheck: "."
+```
+
+## Environment
+
+### `renv_restore:` -- Restore renv
+
+Runs `renv::restore()` to install packages from `renv.lock`. Requires `renv`.
+
+```yaml
+- id: restore
+  renv_restore: "."
+```
+
+### `install:` -- Install packages
+
+Installs packages via `pak` (preferred) or `install.packages()`.
+
+```yaml
+- id: deps
+  install: "dplyr, ggplot2, tidyr"
+```
+
+## Deployment
+
+### `connect:` -- Posit Connect
+
+Deploys to Posit Connect. Requires `rsconnect`. See [Posit Connect deployment](../deployment/connect.qmd).
+
+```yaml
+- id: deploy
+  connect:
+    type: quarto        # shiny, quarto, or plumber
+    path: reports/dashboard.qmd
+    name: sales-dashboard
+```
+
+### `pin:` -- Publish via pins
+
+Publishes data or models via `pins::pin_write()`. Requires `pins`.
+
+```yaml
+- id: publish
+  pin:
+    board: connect      # connect, s3, local, azure
+    name: sales-data
+    object: output/data.rds
+    type: rds
+```
+
+### `vetiver:` -- MLOps
+
+Model versioning and deployment via `vetiver`. Requires `vetiver`.
+
+```yaml
+- id: version-model
+  vetiver:
+    action: pin          # pin or deploy
+    model: models/fit.rds
+    board: connect
+    name: sales-model
+```
+
+## Workflow
+
+### `approve:` -- Approval gate
+
+Pauses execution until a human approves or rejects. See [Approval Gates](../running/approval.qmd).
+
+```yaml
+- id: review
+  approve:
+    message: "Review model metrics before deploying"
+    timeout: 24h
+```
+
+### `call:` -- Sub-DAG
+
+Executes another DAG as a sub-step. See [Sub-DAG Composition](../running/sub-dags.qmd).
+
+```yaml
+- id: run-etl
+  call:
+    dag: daily-etl
+    params:
+      dept: "{{ .Params.department }}"
+```
+
+### `targets:` -- Targets pipeline
+
+Runs `targets::tar_make()`. Requires `targets`.
+
+```yaml
+- id: pipeline
+  targets: "."
+```
+
+### `shinytest:` -- Shiny app tests
+
+Runs `shinytest2::test_app()`. Requires `shinytest2`.
+
+```yaml
+- id: app-test
+  shinytest: app/
+```
+
+### `validate:` -- Data validation
+
+Runs a validation R script via Rscript.
+
+```yaml
+- id: validate
+  validate: scripts/validate_data.R
+```
+
+## Missing packages
+
+All R step types check for their required package at runtime. If a package is missing, the step fails with a clear message:
+
+```
+step "test" requires the devtools package. Install with: install.packages("devtools")
+```

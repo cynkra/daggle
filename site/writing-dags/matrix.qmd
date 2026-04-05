@@ -1,0 +1,51 @@
+---
+title: "Matrix Runs"
+---
+
+Expand a single step into multiple parallel instances across a parameter grid.
+
+## Defining a matrix
+
+```yaml
+- id: fit-model
+  script: models/fit.R
+  matrix:
+    algo: [lm, glm, gam]
+    dataset: [train, full]
+  args: ["--algo", "{{ .Matrix.algo }}", "--data", "{{ .Matrix.dataset }}"]
+```
+
+This expands into 6 step instances (3 algorithms x 2 datasets), running in parallel.
+
+## Environment variables
+
+Each matrix instance receives its parameters as environment variables:
+
+- `DAGGLE_MATRIX_ALGO` -- `lm`, `glm`, or `gam`
+- `DAGGLE_MATRIX_DATASET` -- `train` or `full`
+
+Format: `DAGGLE_MATRIX_<KEY>` (uppercased).
+
+## Limiting parallelism
+
+By default, all matrix instances run in parallel. Use `max_parallel` to cap concurrency:
+
+```yaml
+- id: fit-model
+  script: models/fit.R
+  matrix:
+    algo: [lm, glm, gam, rf, xgb]
+  max_parallel: 2    # run at most 2 at a time
+```
+
+## Template access
+
+Use `{{ .Matrix.key }}` in any string field:
+
+```yaml
+- id: render
+  quarto: reports/template.qmd
+  matrix:
+    region: [north, south, east, west]
+  args: ["-P", "region:{{ .Matrix.region }}"]
+```

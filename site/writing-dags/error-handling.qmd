@@ -1,0 +1,84 @@
+---
+title: "Error Handling"
+---
+
+## Error sensitivity
+
+By default, R steps fail only on errors (non-zero exit code). The `error_on` field lets you treat warnings or messages as failures too:
+
+```yaml
+- id: check
+  check: "."
+  error_on: warning    # treat R warnings as failures
+```
+
+| Level | Fails on |
+|-------|----------|
+| `error` (default) | R errors (non-zero exit) |
+| `warning` | R errors + warnings |
+| `message` | R errors + warnings + messages |
+
+This is implemented via `withCallingHandlers()` wrapping the generated R code. For `script:` steps, a thin wrapper sources the user script inside the handler.
+
+## R version enforcement
+
+Constrain the R version at DAG level:
+
+```yaml
+r_version: ">=4.1.0"
+```
+
+By default, a version mismatch **warns** but continues. To fail hard:
+
+```yaml
+r_version: ">=4.1.0"
+r_version_strict: true
+```
+
+The check runs at DAG start via `Rscript --version`, before any step executes.
+
+## Retries
+
+Steps can retry on failure with configurable backoff:
+
+```yaml
+- id: query
+  script: etl/query.R
+  retry:
+    limit: 3               # retry up to 3 times
+    backoff: exponential    # 1s, 2s, 4s, 8s...
+    max_delay: 60s          # cap delay at 60 seconds
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `limit` | 0 | Number of retries (total attempts = limit + 1) |
+| `backoff` | `linear` | `linear` or `exponential` |
+| `max_delay` | none | Cap on delay between retries |
+
+## R error extraction
+
+When an R step fails, daggle extracts the actual R error message from stderr and shows it in `daggle status`:
+
+```
+STEP     STATUS  ERROR
+extract  failed  Error in readRDS("missing.rds"): cannot open connection
+```
+
+No need to dig through log files for the error message.
+
+## Timeouts
+
+Each step can specify a timeout. On expiry:
+
+1. SIGTERM sent to the entire process group
+2. 5-second grace period
+3. SIGKILL if still running
+
+```yaml
+- id: long-query
+  script: etl/query.R
+  timeout: 10m
+```
+
+No orphaned R processes -- process group killing ensures child processes are cleaned up too.

@@ -1,0 +1,100 @@
+---
+title: "YAML Reference"
+---
+
+Complete field-by-field reference for daggle DAG definitions. A [JSON Schema](https://github.com/cynkra/daggle/raw/main/docs/daggle-schema.json) is available for editor autocomplete.
+
+## DAG-level fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Unique DAG identifier |
+| `version` | string | no | Schema version (default: `"1"`) |
+| `steps` | array | yes | List of execution steps |
+| `trigger` | object | no | Automated execution triggers |
+| `workdir` | string | no | Working directory for all steps |
+| `env` | object | no | Environment variables for all steps |
+| `params` | array | no | Parameters with optional defaults |
+| `r_version` | string | no | R version constraint (e.g. `">=4.1.0"`) |
+| `r_version_strict` | boolean | no | Fail if R version doesn't match (default: warn) |
+| `on_success` | hook | no | Hook to run when DAG completes |
+| `on_failure` | hook | no | Hook to run when DAG fails |
+| `on_exit` | hook | no | Hook to run on DAG exit (success or failure) |
+
+## Step fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | yes | Unique step identifier |
+| *step type* | varies | yes | Exactly one step type field (see [Step Types](step-types.qmd)) |
+| `args` | string[] | no | Command-line arguments |
+| `depends` | string[] | no | IDs of upstream steps |
+| `timeout` | duration | no | Maximum duration (e.g. `"30s"`, `"5m"`, `"1h"`) |
+| `retry` | object | no | Retry configuration |
+| `env` | object | no | Step-level environment variables |
+| `workdir` | string | no | Step-level working directory |
+| `when` | object | no | Conditional execution |
+| `preconditions` | array | no | Health checks before running |
+| `error_on` | enum | no | Error sensitivity: `"error"`, `"warning"`, `"message"` |
+| `matrix` | object | no | Parameter grid for expansion |
+| `max_parallel` | integer | no | Max parallel matrix instances |
+| `on_success` | hook | no | Step-level success hook |
+| `on_failure` | hook | no | Step-level failure hook |
+
+## Full example
+
+```yaml
+name: my-pipeline
+version: "1"
+r_version: ">=4.1.0"
+
+trigger:
+  schedule: "30 6 * * MON-FRI"
+
+workdir: /opt/projects/etl
+env:
+  DB_HOST: "localhost"
+  REPORT_DATE: "{{ .Today }}"
+
+params:
+  - name: department
+    default: "sales"
+
+on_success:
+  r_expr: 'logger::log_info("Pipeline complete")'
+on_failure:
+  command: echo "Pipeline failed!" | mail -s "Alert" team@example.com
+
+steps:
+  - id: extract
+    script: etl/extract.R
+    args: ["--dept", "{{ .Params.department }}"]
+    timeout: 10m
+    retry:
+      limit: 3
+      backoff: exponential
+      max_delay: 60s
+    env:
+      BATCH_SIZE: "1000"
+
+  - id: validate
+    r_expr: |
+      data <- readRDS("data/raw.rds")
+      stopifnot(nrow(data) > 0)
+      cat("::daggle-output name=row_count::", nrow(data), "\n")
+    depends: [extract]
+    error_on: warning
+
+  - id: report
+    script: etl/report.R
+    args: ["--rows", "$DAGGLE_OUTPUT_VALIDATE_ROW_COUNT"]
+    depends: [validate]
+```
+
+## Editor support
+
+Add this comment to the top of your YAML files for VS Code autocomplete (requires the YAML extension):
+
+```yaml
+# yaml-language-server: $schema=https://github.com/cynkra/daggle/raw/main/docs/daggle-schema.json
+```

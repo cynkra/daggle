@@ -1,0 +1,58 @@
+---
+title: "Parameters"
+---
+
+DAGs can define named parameters with optional defaults. Parameters are overridable at run time via the CLI or API.
+
+## Defining parameters
+
+```yaml
+name: etl-pipeline
+params:
+  - name: department
+    default: "sales"
+  - name: date
+    default: "{{ .Today }}"
+  - name: output_dir
+```
+
+Parameters without a `default` are required -- the DAG fails if they're not provided.
+
+## CLI overrides
+
+```bash
+daggle run etl-pipeline -p department=marketing -p date=2026-01-15
+```
+
+The `-p` / `--param` flag is repeatable.
+
+## API overrides
+
+```bash
+curl -X POST http://localhost:8787/api/v1/dags/etl-pipeline/run \
+  -H 'Content-Type: application/json' \
+  -d '{"params": {"department": "marketing", "date": "2026-01-15"}}'
+```
+
+## Using parameters in YAML
+
+Parameters are available via `{{ .Params.name }}` in any string field:
+
+```yaml
+steps:
+  - id: extract
+    script: etl/extract.R
+    args: ["--dept", "{{ .Params.department }}"]
+    env:
+      REPORT_DATE: "{{ .Params.date }}"
+```
+
+## Default expansion
+
+Defaults support template variables:
+
+```yaml
+params:
+  - name: date
+    default: "{{ .Today }}"    # resolves to current date at run time
+```
