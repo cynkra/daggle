@@ -271,7 +271,7 @@ func (s *Server) uiStepLog(w http.ResponseWriter, r *http.Request) {
 
 // --- Helpers ---
 
-func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
+func renderTemplate(w http.ResponseWriter, _ string, data interface{}) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
 		http.Error(w, "render: "+err.Error(), http.StatusInternalServerError)
