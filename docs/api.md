@@ -8,7 +8,7 @@ daggle exposes a REST API for triggering runs, checking status, approving gates,
 http://localhost:8787/api/v1
 ```
 
-Port is configurable via `daggle serve --port 8787` (default: 8787).
+Port is configurable via `daggle serve --port 8787`. The API is off by default — it only starts when `--port` is explicitly provided.
 
 ## Authentication
 
