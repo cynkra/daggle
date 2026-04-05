@@ -28,6 +28,7 @@ daggle stop
 - Enforces overlap policy per DAG (`skip` or `cancel`)
 - Limits to 4 concurrent DAG runs
 - Writes a PID file at `~/.local/share/daggle/proc/scheduler.pid`
+- Serves a read-only [status dashboard](/ui/) when `--port` is specified — open the port URL in a browser
 - Optionally serves the [REST API](../api/index.qmd) when `--port` is specified
 
 ## Without the scheduler

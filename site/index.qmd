@@ -42,6 +42,11 @@ Declarative DAG definitions: easy to read, diff, and review. A JSON Schema is pr
 Every step is assumed to be R. Auto-detects renv, enforces R version constraints, parses R-specific outputs. 27 step types from `script:` to `targets:` to `connect:`.
 :::
 
+::: {.feature-card}
+### Built-in Dashboard
+`daggle serve --port 8787` serves a read-only status UI alongside the REST API. For custom dashboards, wrap the API with daggleR + Shiny.
+:::
+
 :::
 
 ---

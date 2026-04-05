@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --primary: #2F5D50;
+  --secondary: #1E2D24;
+  --bg: #F2F5F3;
+  --surface: #FFFFFF;
+  --accent: #D6A84F;
+  --teal: #4FD1C5;
+  --text: #1E2D24;
+  --text-muted: #6B7D73;
+  --border: #D0D8D3;
+
+  --status-completed: #4F8A66;
+  --status-running: #4FD1C5;
+  --status-failed: #A94442;
+  --status-idle: #6B7D73;
+  --status-waiting: #D6A84F;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { color: var(--accent); }
+
+/* Header */
+.header {
+  background: var(--secondary);
+  color: #E6F1EC;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header .brand {
+  font-family: 'Cinzel', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #E6F1EC;
+}
+
+.header nav a {
+  color: #9BAFA5;
+  font-size: 0.9rem;
+}
+
+.header nav a:hover { color: #E6F1EC; }
+.header nav a.active { color: var(--teal); }
+
+/* Content */
+.content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.15rem;
+  color: var(--primary);
+  margin: 1.5rem 0 0.75rem;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+th, td {
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #F7FAF8; }
+
+/* Status badges */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: white;
+}
+
+.badge-completed { background: var(--status-completed); }
+.badge-running   { background: var(--status-running); color: var(--secondary); }
+.badge-failed    { background: var(--status-failed); }
+.badge-waiting   { background: var(--status-waiting); color: var(--secondary); }
+.badge-cancelled { background: var(--status-idle); }
+.badge-skipped   { background: var(--status-idle); }
+.badge-retrying  { background: var(--status-waiting); color: var(--secondary); }
+.badge-approved  { background: var(--status-completed); }
+.badge-rejected  { background: var(--status-failed); }
+
+/* Metadata grid */
+.meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.5rem 1.5rem;
+  background: var(--surface);
+  padding: 1rem;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.meta dt { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.meta dd { font-weight: 500; margin-bottom: 0.25rem; }
+
+/* Log viewer */
+.log-section { margin-bottom: 1.5rem; }
+
+.log-content {
+  background: var(--secondary);
+  color: #D4E4DC;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.breadcrumb a { color: var(--primary); }
+.breadcrumb .sep { margin: 0 0.4rem; }
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Utilities */
+.text-muted { color: var(--text-muted); }
+.text-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+.mt-1 { margin-top: 1rem; }

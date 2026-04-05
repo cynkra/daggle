@@ -62,6 +62,9 @@ func (s *Server) registerRoutes() {
 
 	// Maintenance
 	s.mux.HandleFunc("POST /api/v1/runs/cleanup", s.handleCleanup)
+
+	// UI
+	s.registerUI()
 }
 
 // writeJSON writes a JSON response with the given status code.
