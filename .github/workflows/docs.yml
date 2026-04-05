@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
     paths: ['site/**']
+  pull_request:
+    paths: ['site/**']
   workflow_dispatch:
 
 permissions:
