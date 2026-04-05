@@ -1,0 +1,160 @@
+---
+title: "Tutorial: R Package CI"
+---
+
+This tutorial sets up local continuous integration for an R package. Every commit triggers a full check cycle: documentation, linting, testing, coverage, and `R CMD check`.
+
+## Scaffolding
+
+From your package root:
+
+```bash
+daggle init pkg-check
+```
+
+This generates a `pipeline.yaml` with the standard package check steps. Below is the full DAG with a git trigger and failure hooks added.
+
+## The pipeline
+
+```yaml
+name: pkg-check
+trigger:
+  git:
+    branch: main
+    poll_interval: 30s
+
+steps:
+  - id: restore
+    renv_restore: "."
+
+  - id: document
+    document: "."
+    depends: [restore]
+
+  - id: lint
+    lint: "."
+    depends: [document]
+
+  - id: test
+    test: "."
+    depends: [document]
+
+  - id: coverage
+    coverage: "."
+    depends: [test]
+
+  - id: check
+    check: "."
+    error_on: warning
+    depends: [document]
+
+on_failure:
+  r_expr: |
+    dag <- Sys.getenv("DAGGLE_DAG_NAME")
+    run <- Sys.getenv("DAGGLE_RUN_ID")
+    cat(sprintf("FAILED: %s run %s at %s\n", dag, run, Sys.time()))
+```
+
+## How the DAG executes
+
+```
+restore -> document -> lint
+                    -> test -> coverage
+                    -> check
+```
+
+After `document` completes, three branches run in parallel:
+
+- `lint` checks code style
+- `test` runs the test suite, then `coverage` measures what was tested
+- `check` runs `R CMD check`
+
+This parallelism means the total wall time is the longest branch, not the sum of all steps.
+
+## The git trigger
+
+```yaml
+trigger:
+  git:
+    branch: main
+    poll_interval: 30s
+```
+
+When `daggle serve` is running, it polls the local git repo every 30 seconds. If the commit hash on `main` has changed, the DAG runs automatically. This gives you CI behavior without leaving your machine.
+
+Start the scheduler:
+
+```bash
+daggle serve
+```
+
+Now commit and watch the pipeline kick off.
+
+## Structured output from built-in steps
+
+The `test:`, `check:`, and `coverage:` step types automatically emit structured output via `::daggle-output::` markers. You do not need to write any parsing code.
+
+**test** emits:
+
+- `passed` -- number of passing tests
+- `failed` -- number of failing tests
+- `skipped` -- number of skipped tests
+
+**check** emits:
+
+- `errors` -- number of R CMD check errors
+- `warnings` -- number of warnings
+- `notes` -- number of notes
+
+**coverage** emits:
+
+- `coverage` -- overall coverage percentage
+
+Downstream steps or hooks can read these values. For example, a failure hook could include the test counts in a notification:
+
+```yaml
+on_failure:
+  r_expr: |
+    failed <- Sys.getenv("DAGGLE_OUTPUT_TEST_FAILED")
+    errors <- Sys.getenv("DAGGLE_OUTPUT_CHECK_ERRORS")
+    warnings <- Sys.getenv("DAGGLE_OUTPUT_CHECK_WARNINGS")
+    msg <- sprintf("Tests failed: %s | Check errors: %s, warnings: %s",
+                   failed, errors, warnings)
+    cat(msg, "\n")
+```
+
+Not all variables will be set if the corresponding step did not run (e.g., if `restore` failed, none of the downstream outputs exist). Use `nchar(Sys.getenv("...")) > 0` to check before reading.
+
+## Controlling check strictness
+
+The `error_on` field on the `check:` step controls what triggers a failure:
+
+```yaml
+- id: check
+  check: "."
+  error_on: warning    # fail on warnings or errors (default: error)
+```
+
+Options: `error` (default), `warning`, `note`.
+
+## Running manually
+
+You do not need the git trigger to run the pipeline. Run it directly any time:
+
+```bash
+daggle run pkg-check
+```
+
+Or run a subset:
+
+```bash
+daggle run pkg-check --only test
+```
+
+## Viewing results
+
+```bash
+daggle status pkg-check
+daggle logs pkg-check test
+daggle logs pkg-check check
+```

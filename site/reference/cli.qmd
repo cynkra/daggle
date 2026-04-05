@@ -1,0 +1,198 @@
+---
+title: "CLI Reference"
+---
+
+Complete reference for all daggle commands. See also [global flags](#global-flags) that apply to every command.
+
+## daggle run
+
+Run a DAG immediately.
+
+```
+daggle run <dag> [-p key=value]...
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `-p`, `--param` | `key=value` | (none) | Set a parameter value. Repeatable. |
+
+Runs the named DAG synchronously, streaming step output to the terminal. Exit code reflects the DAG outcome: 0 for success, 1 for failure.
+
+## daggle validate
+
+Validate a DAG definition and display the execution plan.
+
+```
+daggle validate <dag|path>
+```
+
+Accepts a DAG name (resolved via discovery) or a direct file path. Checks YAML syntax, schema conformance, dependency cycles, and missing references. Prints the resolved execution plan on success.
+
+## daggle status
+
+Show the status of the latest (or specified) run.
+
+```
+daggle status <dag> [--run-id <id>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--run-id` | string | (latest) | Specific run ID to inspect |
+
+Displays step-by-step status, durations, and any error messages.
+
+## daggle list
+
+List all available DAGs with their last run status.
+
+```
+daggle list
+```
+
+No additional flags. Scans the DAGs directory and displays each DAG name, trigger schedule (if any), and last run outcome.
+
+## daggle serve
+
+Start the scheduler daemon, optionally with the REST API.
+
+```
+daggle serve [--port <n>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--port` | integer | 8787 | Port for the REST API |
+
+Runs in the foreground. The scheduler evaluates cron triggers and file-watch triggers. When `--port` is specified, the REST API is also served.
+
+## daggle stop
+
+Stop the running scheduler daemon.
+
+```
+daggle stop
+```
+
+Reads the PID from `~/.local/share/daggle/proc/scheduler.pid` and sends a graceful shutdown signal.
+
+## daggle doctor
+
+Check system health.
+
+```
+daggle doctor
+```
+
+Verifies R installation, required packages, directory permissions, scheduler status, and configuration validity. Prints a checklist of pass/fail items.
+
+## daggle history
+
+Show run history for a DAG.
+
+```
+daggle history <dag> [--last <N>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--last` | integer | 10 | Number of recent runs to show |
+
+Displays a table of runs with timestamps, durations, and outcomes.
+
+## daggle stats
+
+Show duration trends and success rate for a DAG.
+
+```
+daggle stats <dag> [--last <N>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--last` | integer | 20 | Number of recent runs to analyze |
+
+Displays min/max/median duration, success rate, and a sparkline trend.
+
+## daggle cancel
+
+Cancel an in-flight run.
+
+```
+daggle cancel <dag> [--run-id <id>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--run-id` | string | (latest) | Specific run ID to cancel |
+
+Sends a cancellation signal to the running DAG. Steps already completed are not rolled back.
+
+## daggle clean
+
+Remove old run data.
+
+```
+daggle clean --older-than <duration>
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--older-than` | duration | (required) | Remove runs older than this (e.g. `30d`, `2w`) |
+
+The `--older-than` flag is required to prevent accidental deletion. Removes run directories, logs, and event files.
+
+## daggle approve
+
+Approve a run waiting at an approval gate.
+
+```
+daggle approve <dag> [--run-id <id>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--run-id` | string | (latest) | Specific run ID to approve |
+
+Resumes execution of a DAG paused at a step with `approval: true`.
+
+## daggle reject
+
+Reject a run waiting at an approval gate.
+
+```
+daggle reject <dag> [--run-id <id>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--run-id` | string | (latest) | Specific run ID to reject |
+
+Marks the waiting step as rejected and fails the DAG.
+
+## daggle init
+
+Generate a DAG from a built-in template.
+
+```
+daggle init <template>
+```
+
+Available templates:
+
+| Template | Description |
+|----------|-------------|
+| `pkg-check` | R package check pipeline (build, check, test) |
+| `pkg-release` | R package release workflow |
+| `data-pipeline` | Extract-transform-load data pipeline |
+
+Writes the generated YAML to the current directory.
+
+## Global flags {#global-flags}
+
+These flags apply to all commands and override the corresponding environment variables.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--dags-dir` | path | (discovery order) | Directory containing DAG definitions |
+| `--data-dir` | path | `~/.local/share/daggle` | Directory for run data and state |

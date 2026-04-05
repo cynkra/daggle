@@ -1,0 +1,116 @@
+---
+title: "Triggers"
+---
+
+DAGs can be triggered automatically via the `trigger:` block. Multiple triggers can coexist -- any matching trigger starts a run. Run `daggle serve` to activate triggers.
+
+## Cron schedule
+
+```yaml
+trigger:
+  schedule: "30 6 * * MON-FRI"    # 6:30 AM weekdays
+```
+
+Supports standard 5-field cron expressions plus shorthands: `@every 5m`, `@hourly`, `@daily`, `@weekly`.
+
+## File watcher
+
+```yaml
+trigger:
+  watch:
+    path: /data/incoming/
+    pattern: "*.csv"
+    debounce: 5s
+```
+
+Triggers when files matching the pattern are created or modified. Debounce prevents firing on partial writes.
+
+## Webhook
+
+```yaml
+trigger:
+  webhook:
+    secret: "${env:WEBHOOK_SECRET}"
+```
+
+Triggers on HTTP POST to `/webhook/{dag-name}`. The scheduler starts an HTTP server when webhook triggers are detected.
+
+Validate requests with HMAC-SHA256 via the `X-Daggle-Signature` header (format: `sha256=<hex>`).
+
+**Example: GitHub webhook**
+
+```bash
+curl -X POST http://localhost:8787/webhook/deploy-on-push \
+  -H "X-Daggle-Signature: sha256=$(echo -n '{}' | openssl dgst -sha256 -hmac 'your-secret' | awk '{print $2}')" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+## DAG completion
+
+```yaml
+trigger:
+  on_dag:
+    name: daily-etl
+    status: completed        # completed (default), failed, or any
+    pass_outputs: true       # pass upstream outputs as env vars
+```
+
+Triggers when another DAG completes or fails. Enables multi-DAG workflows without sub-DAG composition.
+
+## Condition polling
+
+```yaml
+trigger:
+  condition:
+    command: 'test -f /data/ready.flag'
+    poll_interval: 5m
+```
+
+Evaluates a shell command or R expression on an interval. Triggers when it succeeds (exit code 0).
+
+```yaml
+trigger:
+  condition:
+    r_expr: 'DBI::dbGetQuery(con, "SELECT COUNT(*) FROM new_data")[[1]] > 0'
+    poll_interval: 10m
+```
+
+## Git changes
+
+```yaml
+trigger:
+  git:
+    branch: main
+    poll_interval: 30s
+```
+
+Polls the local git repository for new commits. Triggers when the commit hash changes.
+
+## Combined triggers
+
+Triggers are additive -- any matching trigger starts a run:
+
+```yaml
+trigger:
+  schedule: "0 6 * * *"
+  watch:
+    path: /data/incoming/
+    pattern: "*.csv"
+    debounce: 5s
+```
+
+## Overlap policy
+
+By default, triggers are skipped if the DAG is already running. Set `overlap: cancel` to kill the old run:
+
+```yaml
+trigger:
+  schedule: "@every 5m"
+  overlap: cancel              # kill old run, start fresh
+```
+
+| Policy | Behavior |
+|--------|----------|
+| `skip` (default) | Ignore trigger while DAG is running |
+| `cancel` | Cancel the running DAG, start a new run |

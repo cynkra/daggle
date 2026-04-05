@@ -1,0 +1,21 @@
+/*-- scss:defaults --*/
+$body-bg: #121A16;
+$body-color: #E6F1EC;
+$link-color: #3E7C6B;
+$link-hover-color: #4FD1C5;
+
+$callout-color-note: #4FD1C5;
+$callout-color-warning: #E6B655;
+$callout-color-important: #A94442;
+$callout-color-tip: #4F8A66;
+
+$code-block-bg: #1B2620;
+
+/*-- scss:rules --*/
+.navbar {
+  background-color: #121A16 !important;
+}
+
+.sidebar {
+  background-color: #1B2620;
+}

@@ -1,0 +1,81 @@
+---
+title: "Lifecycle Hooks"
+---
+
+Hooks run after DAG or step completion. They can be R expressions or shell commands.
+
+## DAG-level hooks
+
+```yaml
+on_success:
+  r_expr: 'slackr::slackr_msg("Pipeline succeeded")'
+on_failure:
+  command: echo "FAILED" >> /var/log/alerts.log
+on_exit:
+  r_expr: 'logger::log_info("Done")'
+```
+
+| Hook | Runs when |
+|------|-----------|
+| `on_success` | DAG completes with all steps passing |
+| `on_failure` | Any step fails (after retries exhausted) |
+| `on_exit` | Always, regardless of outcome |
+
+## Step-level hooks
+
+```yaml
+steps:
+  - id: model
+    script: fit.R
+    on_success:
+      r_expr: 'saveRDS(Sys.time(), "last_success.rds")'
+    on_failure:
+      r_expr: 'saveRDS(last.warning, "debug.rds")'
+```
+
+Step-level hooks have `on_success` and `on_failure` only (no `on_exit`).
+
+## Hook types
+
+Each hook is an R expression **or** a shell command (not both):
+
+```yaml
+on_failure:
+  r_expr: 'slackr::slackr_msg("Step failed")'
+  # OR
+  command: echo "Step failed" | mail -s "Alert" admin@example.com
+```
+
+## Available environment
+
+Hooks receive all run metadata and accumulated step outputs as environment variables:
+
+- `DAGGLE_RUN_ID` -- current run ID
+- `DAGGLE_DAG_NAME` -- DAG name
+- `DAGGLE_RUN_DIR` -- run directory path
+- `DAGGLE_OUTPUT_<STEP>_<KEY>` -- all outputs from completed steps
+
+## Common patterns
+
+**Slack notification:**
+```yaml
+on_failure:
+  r_expr: |
+    slackr::slackr_msg(
+      sprintf("DAG %s failed (run %s)",
+              Sys.getenv("DAGGLE_DAG_NAME"),
+              Sys.getenv("DAGGLE_RUN_ID"))
+    )
+```
+
+**Email alert:**
+```yaml
+on_failure:
+  command: echo "Pipeline failed at $(date)" | mail -s "daggle alert" team@example.com
+```
+
+**Logging:**
+```yaml
+on_exit:
+  r_expr: 'logger::log_info("DAG finished")'
+```

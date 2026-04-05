@@ -1,0 +1,183 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "daggle"
+  favicon: assets/logo/daggle-hero.png
+  repo-url: https://github.com/cynkra/daggle
+  repo-actions: [issue]
+  page-footer:
+    center: "daggle is developed by [cynkra](https://cynkra.com). GPL-3.0 License."
+    right: "[GitHub](https://github.com/cynkra/daggle)"
+
+  navbar:
+    background: dark
+    logo: assets/logo/daggle-hero.png
+    left:
+      - text: "Getting Started"
+        href: getting-started/install.qmd
+      - text: "Writing DAGs"
+        href: writing-dags/yaml-reference.qmd
+      - text: "Running"
+        href: running/manual.qmd
+      - text: "Monitoring"
+        href: monitoring/status.qmd
+      - text: "API"
+        href: api/index.qmd
+      - text: "daggleR"
+        href: daggler/index.qmd
+      - text: "Tutorials"
+        href: tutorials/etl-pipeline.qmd
+      - text: "Reference"
+        href: reference/cli.qmd
+    tools:
+      - icon: github
+        href: https://github.com/cynkra/daggle
+      - icon: sun
+        aria-label: "Toggle dark mode"
+
+  sidebar:
+    - title: "Getting Started"
+      style: floating
+      contents:
+        - text: "Installation"
+          href: getting-started/install.qmd
+        - text: "Your First DAG"
+          href: getting-started/first-dag.qmd
+        - text: "Project-Local DAGs"
+          href: getting-started/project-local.qmd
+
+    - title: "Writing DAGs"
+      style: floating
+      contents:
+        - text: "YAML Reference"
+          href: writing-dags/yaml-reference.qmd
+        - text: "Step Types"
+          href: writing-dags/step-types.qmd
+        - text: "Template Variables"
+          href: writing-dags/templates.qmd
+        - text: "Data Passing"
+          href: writing-dags/data-passing.qmd
+        - text: "Parameters"
+          href: writing-dags/parameters.qmd
+        - text: "Lifecycle Hooks"
+          href: writing-dags/hooks.qmd
+        - text: "Conditional Execution"
+          href: writing-dags/conditionals.qmd
+        - text: "Matrix Runs"
+          href: writing-dags/matrix.qmd
+        - text: "Shared Defaults"
+          href: writing-dags/base-yaml.qmd
+        - text: "Error Handling"
+          href: writing-dags/error-handling.qmd
+
+    - title: "Running"
+      style: floating
+      contents:
+        - text: "Manual Execution"
+          href: running/manual.qmd
+        - text: "Scheduler"
+          href: running/scheduler.qmd
+        - text: "Triggers"
+          href: running/triggers.qmd
+        - text: "Approval Gates"
+          href: running/approval.qmd
+        - text: "Sub-DAG Composition"
+          href: running/sub-dags.qmd
+
+    - title: "Monitoring"
+      style: floating
+      contents:
+        - text: "Status"
+          href: monitoring/status.qmd
+        - text: "History & Trends"
+          href: monitoring/history.qmd
+        - text: "Log Files"
+          href: monitoring/logs.qmd
+        - text: "Diagnostics"
+          href: monitoring/doctor.qmd
+        - text: "Cleanup"
+          href: monitoring/cleanup.qmd
+
+    - title: "Secrets"
+      style: floating
+      contents:
+        - text: "Secrets & Security"
+          href: secrets/index.qmd
+
+    - title: "Deployment"
+      style: floating
+      contents:
+        - text: "Posit Connect"
+          href: deployment/connect.qmd
+        - text: "Pins & Vetiver"
+          href: deployment/pins-vetiver.qmd
+
+    - title: "API"
+      style: floating
+      contents:
+        - text: "Overview"
+          href: api/index.qmd
+        - text: "Endpoints"
+          href: api/endpoints.qmd
+
+    - title: "daggleR"
+      style: floating
+      contents:
+        - text: "Overview"
+          href: daggler/index.qmd
+        - text: "In-Step Helpers"
+          href: daggler/in-step.qmd
+        - text: "API Wrappers"
+          href: daggler/api-wrappers.qmd
+
+    - title: "Tutorials"
+      style: floating
+      contents:
+        - text: "ETL Pipeline"
+          href: tutorials/etl-pipeline.qmd
+        - text: "R Package CI"
+          href: tutorials/r-package-ci.qmd
+        - text: "Model Training"
+          href: tutorials/model-training.qmd
+        - text: "Data Monitoring"
+          href: tutorials/data-monitoring.qmd
+        - text: "Multi-DAG Workflows"
+          href: tutorials/multi-dag.qmd
+        - text: "Using daggleR"
+          href: tutorials/using-daggler.qmd
+
+    - title: "Reference"
+      style: floating
+      contents:
+        - text: "CLI"
+          href: reference/cli.qmd
+        - text: "YAML Schema"
+          href: reference/yaml-schema.qmd
+        - text: "Environment Variables"
+          href: reference/env-vars.qmd
+        - text: "Output Protocol"
+          href: reference/output-protocol.qmd
+        - text: "File Layout"
+          href: reference/file-layout.qmd
+        - text: "Event Schema"
+          href: reference/events.qmd
+
+format:
+  html:
+    theme:
+      light: [cosmo, styles/light.scss]
+      dark: [darkly, styles/dark.scss]
+    mainfont: Inter
+    monofont: JetBrains Mono
+    css: styles/custom.css
+    highlight-style:
+      light: a11y-light
+      dark: a11y-dark
+    code-copy: true
+    toc: true
+    toc-depth: 2
+    callout-appearance: simple
+    mermaid:
+      theme: forest

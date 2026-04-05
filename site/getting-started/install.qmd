@@ -1,0 +1,63 @@
+---
+title: "Installation"
+---
+
+## System requirements
+
+- **R** (required) -- daggle spawns `Rscript` processes to execute R steps
+- **Quarto** (optional) -- only needed for `quarto:` step types
+- **Go 1.22+** (optional) -- only needed if building from source
+- **Platforms:** macOS (arm64, amd64), Linux (arm64, amd64). Windows is not supported.
+
+## Install script
+
+The recommended method for Linux and macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cynkra/daggle/main/install.sh | sh
+```
+
+Set `DAGGLE_INSTALL_DIR` to change the install location (default: `/usr/local/bin`):
+
+```bash
+DAGGLE_INSTALL_DIR=~/.local/bin curl -fsSL https://raw.githubusercontent.com/cynkra/daggle/main/install.sh | sh
+```
+
+## Download binary
+
+Pre-built binaries are available from [GitHub Releases](https://github.com/cynkra/daggle/releases) for:
+
+- Linux amd64 / arm64
+- macOS amd64 / arm64
+
+Download, extract, and move to a directory on your `PATH`.
+
+## From source
+
+Requires Go 1.22+:
+
+```bash
+go install github.com/cynkra/daggle/cmd/daggle@latest
+```
+
+Or clone and build:
+
+```bash
+git clone https://github.com/cynkra/daggle.git
+cd daggle
+go build -o daggle ./cmd/daggle/
+```
+
+## Verify installation
+
+```bash
+daggle doctor
+```
+
+This checks:
+
+- R is installed and reports its version
+- renv status (if applicable)
+- Scheduler status
+- Configuration paths
+- DAG file validity

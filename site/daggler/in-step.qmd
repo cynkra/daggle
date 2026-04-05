@@ -1,0 +1,103 @@
+---
+title: "In-Step Helpers"
+---
+
+In-step helpers run inside R steps executed by daggle. They require no network access and no daggle binary -- they use environment variables and stdout markers to communicate with the daggle runtime. Base R only.
+
+## Functions
+
+### output(name, value)
+
+Emit a named output that downstream steps can read.
+
+```r
+output(name, value)
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `name`    | Output key. Must match `^[a-zA-Z_][a-zA-Z0-9_-]*$`. |
+| `value`   | Value to emit. Coerced to character. |
+
+Prints the marker `::daggle-output name=<key>::<value>` to stdout, which daggle captures. Returns `value` invisibly.
+
+```r
+output("row_count", nrow(data))
+output("output_path", "/tmp/result.parquet")
+```
+
+### run_id()
+
+Returns the current run ID from the `DAGGLE_RUN_ID` environment variable.
+
+```r
+id <- run_id()
+```
+
+### dag_name()
+
+Returns the current DAG name from the `DAGGLE_DAG_NAME` environment variable.
+
+```r
+name <- dag_name()
+```
+
+### run_dir()
+
+Returns the run directory path from the `DAGGLE_RUN_DIR` environment variable.
+
+```r
+dir <- run_dir()
+```
+
+### get_output(step, key)
+
+Read an output emitted by an upstream step. daggle injects outputs as environment variables in the form `DAGGLE_OUTPUT_<STEP>_<KEY>`, where the step and key are uppercased and hyphens are converted to underscores.
+
+```r
+get_output(step, key)
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `step`    | The step ID that produced the output. |
+| `key`     | The output key name. |
+
+```r
+path <- get_output("fetch", "output_path")
+# Reads DAGGLE_OUTPUT_FETCH_OUTPUT_PATH
+
+count <- get_output("data-prep", "row-count")
+# Reads DAGGLE_OUTPUT_DATA_PREP_ROW_COUNT
+```
+
+## Before and after
+
+Without daggleR, you interact with the protocol directly:
+
+**Raw protocol:**
+
+```r
+# Emit an output
+cat("::daggle-output name=row_count::1432\n")
+
+# Read run metadata
+run_id <- Sys.getenv("DAGGLE_RUN_ID")
+
+# Read an upstream output
+path <- Sys.getenv("DAGGLE_OUTPUT_FETCH_OUTPUT_PATH")
+```
+
+**With daggleR:**
+
+```r
+library(daggleR)
+
+output("row_count", 1432)
+
+id <- run_id()
+
+path <- get_output("fetch", "output_path")
+```
+
+daggleR validates the output key format, handles the hyphen-to-underscore conversion for `get_output()`, and provides clear error messages when environment variables are missing.

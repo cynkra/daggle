@@ -1,0 +1,100 @@
+---
+title: "Your First DAG"
+---
+
+This walkthrough creates a simple 3-step pipeline, validates it, runs it, and inspects the results.
+
+## 1. Create a DAG file
+
+Create `~/.config/daggle/dags/hello.yaml`:
+
+```yaml
+name: hello
+params:
+  - name: who
+    default: world
+steps:
+  - id: greet
+    command: echo "Hello, {{ .Params.who }}!"
+
+  - id: analyze
+    r_expr: |
+      cat(paste("R version:", R.version.string, "\n"))
+      cat(paste("2 + 2 =", 2 + 2, "\n"))
+    depends: [greet]
+
+  - id: report
+    r_expr: |
+      cat("All steps complete.\n")
+      cat("::daggle-output name=result::success\n")
+    depends: [analyze]
+```
+
+This DAG has three steps:
+
+- **greet** -- a shell command that prints a greeting
+- **analyze** -- inline R that prints the R version
+- **report** -- inline R that emits an output marker for downstream use
+
+Steps declare dependencies via `depends:`. daggle runs `greet` first, then `analyze`, then `report`.
+
+## 2. Validate
+
+```bash
+daggle validate hello
+```
+
+This parses the YAML, checks for errors (missing IDs, circular dependencies, unknown fields), and shows the execution plan -- which steps run in which tiers.
+
+## 3. Run
+
+```bash
+daggle run hello
+```
+
+Override the `who` parameter:
+
+```bash
+daggle run hello -p who=David
+```
+
+You'll see step output streamed to the terminal. Output markers (`::daggle-output::` lines) are parsed and stripped from terminal output but kept in log files.
+
+## 4. Check status
+
+```bash
+daggle status hello
+```
+
+This shows:
+
+- DAG name, run ID, start time
+- Overall status (completed, failed, running)
+- Per-step breakdown with status, duration, and any R error messages
+- Step outputs (e.g. `result=success` from the report step)
+
+## 5. Inspect run files
+
+Every run creates a directory under `~/.local/share/daggle/runs/`:
+
+```
+~/.local/share/daggle/runs/hello/2026-04-05/run_<id>/
+  events.jsonl         # Lifecycle events (started, completed, failed)
+  meta.json            # R version, DAG hash, platform, parameters
+  greet.stdout.log     # stdout from the greet step
+  greet.stderr.log     # stderr from the greet step
+  analyze.stdout.log
+  analyze.stderr.log
+  report.stdout.log
+  report.stderr.log
+```
+
+- `events.jsonl` -- one JSON object per line, recording every state transition
+- `meta.json` -- reproducibility metadata (what R version, what DAG hash, what parameters)
+- `*.stdout.log` / `*.stderr.log` -- captured output per step
+
+## Next steps
+
+- [Project-local DAGs](project-local.qmd) -- put DAGs alongside your R project
+- [Step types](../writing-dags/step-types.qmd) -- all 27 step types
+- [Triggers](../running/triggers.qmd) -- automate execution with cron, file watchers, webhooks

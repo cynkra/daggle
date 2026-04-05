@@ -1,0 +1,55 @@
+---
+title: "Template Variables"
+---
+
+DAG files support Go `text/template` expressions, expanded at run time.
+
+## Available variables
+
+| Variable | Example value | Description |
+|----------|---------------|-------------|
+| `{{ .Today }}` | `2026-04-05` | Current date (YYYY-MM-DD) |
+| `{{ .Now }}` | `2026-04-05T08:30:00Z` | Current time (RFC3339) |
+| `{{ .Params.name }}` | `sales` | Parameter value (from defaults or `-p` overrides) |
+| `{{ .Env.KEY }}` | `localhost` | DAG-level environment variable |
+| `{{ .Matrix.key }}` | `lm` | Matrix parameter (in matrix-expanded steps) |
+
+## Usage examples
+
+In environment variables:
+
+```yaml
+env:
+  REPORT_DATE: "{{ .Today }}"
+  LOG_FILE: "logs/run_{{ .Now }}.log"
+```
+
+In step arguments:
+
+```yaml
+- id: extract
+  script: etl/extract.R
+  args: ["--dept", "{{ .Params.department }}", "--date", "{{ .Today }}"]
+```
+
+In step fields:
+
+```yaml
+- id: fit
+  script: models/fit.R
+  args: ["--algo", "{{ .Matrix.algo }}"]
+  matrix:
+    algo: [lm, glm, gam]
+```
+
+## Template syntax
+
+daggle uses Go's `text/template` package. A few useful patterns:
+
+```yaml
+# Conditional default
+env:
+  OUTPUT: '{{ if .Params.output }}{{ .Params.output }}{{ else }}results.csv{{ end }}'
+```
+
+Template expressions are expanded before YAML parsing, so they work in any string field.

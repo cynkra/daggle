@@ -1,0 +1,116 @@
+---
+title: "Scheduler"
+---
+
+`daggle serve` starts a long-running daemon that monitors DAG files and executes triggers automatically.
+
+## Starting and stopping
+
+```bash
+# Start the scheduler
+daggle serve
+
+# Start with REST API enabled
+daggle serve --port 8787
+
+# Stop the scheduler
+daggle stop
+```
+
+`daggle stop` sends SIGTERM for graceful shutdown. The scheduler stops accepting new runs and waits up to 5 minutes for in-flight runs to finish.
+
+## What the scheduler does
+
+- Scans the DAG directory for files with `trigger:` blocks
+- Manages all trigger types: cron, file watcher, webhook, DAG completion, condition polling, git
+- Hot-reloads DAG files every 30 seconds (detects changes via SHA-256 hashing)
+- Immediate reload on `kill -HUP <pid>` (SIGHUP)
+- Enforces overlap policy per DAG (`skip` or `cancel`)
+- Limits to 4 concurrent DAG runs
+- Writes a PID file at `~/.local/share/daggle/proc/scheduler.pid`
+- Optionally serves the [REST API](../api/index.qmd) when `--port` is specified
+
+## Without the scheduler
+
+`daggle run` works without `daggle serve` -- the scheduler is only needed for automated triggers. You can use daggle purely as a manual DAG runner.
+
+## Running as a system service
+
+The scheduler doesn't auto-start on host restart. Use your OS service manager for persistent operation.
+
+### macOS (launchd)
+
+Create `~/Library/LaunchAgents/com.cynkra.daggle.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.cynkra.daggle</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/daggle</string>
+    <string>serve</string>
+    <string>--port</string>
+    <string>8787</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/daggle.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/daggle.stderr.log</string>
+</dict>
+</plist>
+```
+
+```bash
+# Load (starts immediately and on login)
+launchctl load ~/Library/LaunchAgents/com.cynkra.daggle.plist
+
+# Unload
+launchctl unload ~/Library/LaunchAgents/com.cynkra.daggle.plist
+
+# Check status
+launchctl list | grep daggle
+```
+
+### Linux (systemd, user-level)
+
+Create `~/.config/systemd/user/daggle.service`:
+
+```ini
+[Unit]
+Description=daggle scheduler
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/daggle serve --port 8787
+ExecStop=/usr/local/bin/daggle stop
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+# Enable and start
+systemctl --user daemon-reload
+systemctl --user enable daggle
+systemctl --user start daggle
+
+# Check status
+systemctl --user status daggle
+
+# View logs
+journalctl --user -u daggle -f
+```
+
+For system-level (all users), place the unit file in `/etc/systemd/system/daggle.service`, add a `User=` directive, and use `systemctl` without `--user`.

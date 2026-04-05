@@ -1,0 +1,90 @@
+---
+title: "Posit Connect"
+---
+
+daggle can deploy content to Posit Connect as a DAG step. This covers Shiny apps, Quarto documents, and Plumber APIs.
+
+## Prerequisites
+
+- The `rsconnect` R package must be installed
+- A Posit Connect server URL and API key
+
+## Authentication
+
+Set the server and API key as environment variables:
+
+```yaml
+env:
+  CONNECT_SERVER: "${env:CONNECT_SERVER}"
+  CONNECT_API_KEY:
+    value: "${env:CONNECT_API_KEY}"
+    secret: true
+```
+
+## Connect step fields
+
+| Field | Required | Description |
+|--------------|----------|---------------------------------------------|
+| type | yes | One of `shiny`, `quarto`, or `plumber` |
+| path | yes | Path to the content directory or document |
+| name | yes | Content name on Connect |
+| force_update | no | Overwrite existing content (default: false) |
+
+## Example: render and deploy a Quarto report
+
+```yaml
+name: weekly-report
+steps:
+  - id: render
+    script: render.R
+    args: ["reports/weekly.qmd"]
+
+  - id: deploy
+    type: connect
+    depends_on: [render]
+    connect:
+      type: quarto
+      path: reports/weekly.qmd
+      name: weekly-report
+      force_update: true
+    env:
+      CONNECT_SERVER: "${env:CONNECT_SERVER}"
+      CONNECT_API_KEY:
+        value: "${env:CONNECT_API_KEY}"
+        secret: true
+```
+
+## Example: deploy a Shiny app
+
+```yaml
+steps:
+  - id: deploy-app
+    type: connect
+    connect:
+      type: shiny
+      path: app/
+      name: sales-dashboard
+      force_update: true
+    env:
+      CONNECT_SERVER: "${env:CONNECT_SERVER}"
+      CONNECT_API_KEY:
+        value: "${env:CONNECT_API_KEY}"
+        secret: true
+```
+
+## Example: deploy a Plumber API
+
+```yaml
+steps:
+  - id: deploy-api
+    type: connect
+    connect:
+      type: plumber
+      path: api/
+      name: prediction-api
+    env:
+      CONNECT_SERVER: "${env:CONNECT_SERVER}"
+      CONNECT_API_KEY:
+        value: "${env:CONNECT_API_KEY}"
+        secret: true
+```

@@ -1,0 +1,78 @@
+---
+title: "REST API"
+---
+
+daggle includes a built-in REST API for programmatic access to DAGs, runs, and outputs. The API starts only when you explicitly provide a port:
+
+```bash
+daggle serve --port 8787
+```
+
+There is no default port. Without `--port`, daggle runs as a scheduler only.
+
+## Base URL
+
+```
+http://localhost:8787/api/v1
+```
+
+## Design decisions
+
+**No authentication.** The API binds to localhost only. Authentication is deferred to a future release.
+
+**Flat JSON arrays.** List endpoints return flat JSON arrays with no wrapper object. This means `jsonlite::fromJSON()` returns a data.frame directly:
+
+```r
+jsonlite::fromJSON("http://localhost:8787/api/v1/dags")
+#>       name steps   schedule last_status            last_run
+#> 1 etl-daily     4 0 3 * * *     success 2025-01-15T03:00:12Z
+#> 2   reports     2      <NA>     running 2025-01-15T10:30:00Z
+```
+
+**"latest" alias.** Use `latest` as a `run_id` in any endpoint to reference the most recent run for that DAG.
+
+**Async triggers.** `POST /dags/{name}/run` returns immediately with a `run_id`. Poll status with `GET /dags/{name}/runs/{run_id}`.
+
+**Secret redaction.** Secret values are never exposed in API responses. See [Secrets](../secrets/index.qmd) for details.
+
+**No pagination.** daggle is local-first and designed for small datasets. All results are returned in a single response.
+
+## Quick start
+
+List all DAGs:
+
+```bash
+curl -s http://localhost:8787/api/v1/dags | jq .
+```
+
+Trigger a run:
+
+```bash
+curl -s -X POST http://localhost:8787/api/v1/dags/etl-daily/run \
+  -H "Content-Type: application/json" \
+  -d '{"params": {"date": "2025-01-15"}}' | jq .
+```
+
+```json
+{
+  "run_id": "20250115T103000-abc12",
+  "status": "running"
+}
+```
+
+Check status:
+
+```bash
+curl -s http://localhost:8787/api/v1/dags/etl-daily/runs/20250115T103000-abc12 | jq .
+```
+
+Or use the `latest` alias:
+
+```bash
+curl -s http://localhost:8787/api/v1/dags/etl-daily/runs/latest | jq .
+```
+
+## Next steps
+
+- [API Endpoints](endpoints.qmd) -- full reference for every endpoint
+- [daggleR API wrappers](../daggler/api-wrappers.qmd) -- call the API from R

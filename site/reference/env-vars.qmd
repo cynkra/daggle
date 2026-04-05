@@ -1,0 +1,46 @@
+---
+title: "Environment Variables"
+---
+
+All environment variables recognized by daggle, grouped by purpose.
+
+## Configuration
+
+These override daggle's default directory locations.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DAGGLE_CONFIG_DIR` | `~/.config/daggle` | Override the configuration directory. |
+| `DAGGLE_DATA_DIR` | `~/.local/share/daggle` | Override the data/runs directory. |
+| `DAGGLE_DAGS_DIR` | (discovery order) | Override the DAGs directory. Bypasses the normal discovery sequence (project-local, config dir). |
+| `DAGGLE_API_URL` | `http://127.0.0.1:8787` | Default base URL for the daggleR package API wrappers. |
+
+## Runtime (available in steps)
+
+These variables are set by the daggle engine and available inside running steps.
+
+| Variable | Description |
+|----------|-------------|
+| `DAGGLE_RUN_ID` | Unique identifier for the current run. |
+| `DAGGLE_DAG_NAME` | Name of the currently executing DAG. |
+| `DAGGLE_RUN_DIR` | Absolute path to the current run's data directory. |
+| `DAGGLE_OUTPUT_<STEP>_<KEY>` | Output value from an upstream step. Step ID is uppercased with hyphens replaced by underscores. See [Output Protocol](output-protocol.qmd). |
+| `DAGGLE_MATRIX_<KEY>` | Current matrix parameter value. Key is uppercased. See [Matrix Runs](../writing-dags/matrix.qmd). |
+
+## Secret resolution
+
+Used when DAG definitions reference secrets via the `${{ secrets.<name> }}` syntax.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULT_ADDR` | (none) | HashiCorp Vault server URL. Required for Vault-backed secrets. |
+| `VAULT_TOKEN` | (none) | Vault authentication token. Falls back to reading `~/.vault-token` if not set. |
+
+## XDG fallbacks
+
+When `DAGGLE_CONFIG_DIR` or `DAGGLE_DATA_DIR` are not set, daggle respects XDG base directory conventions.
+
+| Variable | Used for |
+|----------|----------|
+| `XDG_CONFIG_HOME` | Falls back to `$XDG_CONFIG_HOME/daggle` for configuration. System default: `~/.config`. |
+| `XDG_DATA_HOME` | Falls back to `$XDG_DATA_HOME/daggle` for run data. System default: `~/.local/share`. |

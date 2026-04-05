@@ -7,6 +7,10 @@
   "required": ["name", "steps"],
   "additionalProperties": false,
   "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version (default: '1')"
+    },
     "name": {
       "type": "string",
       "description": "Unique name for the DAG"
@@ -74,10 +78,31 @@
       "type": "string",
       "description": "Working directory override for all steps"
     },
+    "r_version": {
+      "type": "string",
+      "description": "R version constraint (e.g. '>=4.1.0'). Warns if not satisfied; use r_version_strict to fail."
+    },
+    "r_version_strict": {
+      "type": "boolean",
+      "description": "If true, fail the DAG when the R version constraint is not met (default: false, warn only)"
+    },
     "env": {
       "type": "object",
-      "description": "Environment variables available to all steps",
-      "additionalProperties": { "type": "string" }
+      "description": "Environment variables available to all steps. Values can be plain strings or objects with value + secret fields.",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["value"],
+            "additionalProperties": false,
+            "properties": {
+              "value": { "type": "string", "description": "Environment variable value (supports ${env:}, ${file:}, ${vault:} references)" },
+              "secret": { "type": "boolean", "description": "If true, value is redacted in logs and status output" }
+            }
+          }
+        ]
+      }
     },
     "params": {
       "type": "array",
@@ -133,6 +158,64 @@
         "force_update": { "type": "boolean", "description": "Overwrite existing content (default: true)" }
       }
     },
+    "approve": {
+      "type": "object",
+      "description": "Approval gate — pauses execution until a human approves or rejects",
+      "additionalProperties": false,
+      "properties": {
+        "message": { "type": "string", "description": "Message shown to the reviewer" },
+        "timeout": { "type": "string", "description": "How long to wait for approval before failing (e.g. '24h')" },
+        "notify": { "$ref": "#/$defs/hook", "description": "Hook to notify reviewers (e.g. Slack, email)" }
+      }
+    },
+    "call": {
+      "type": "object",
+      "description": "Sub-DAG composition — execute another DAG as a step",
+      "required": ["dag"],
+      "additionalProperties": false,
+      "properties": {
+        "dag": { "type": "string", "description": "Name of another DAG to execute" },
+        "params": {
+          "type": "object",
+          "description": "Parameter overrides for the sub-DAG",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "pin": {
+      "type": "object",
+      "description": "Publish data or models via the pins R package",
+      "required": ["board", "name", "object"],
+      "additionalProperties": false,
+      "properties": {
+        "board": { "type": "string", "description": "Pin board type (connect, s3, local, azure)" },
+        "name": { "type": "string", "description": "Pin name" },
+        "object": { "type": "string", "description": "Path to the object file to pin" },
+        "type": { "type": "string", "description": "Object type (rds, csv, parquet, arrow, json)" },
+        "versioned": { "type": "boolean", "description": "Enable pin versioning (default: true)" }
+      }
+    },
+    "vetiver": {
+      "type": "object",
+      "description": "MLOps model versioning and deployment via vetiver",
+      "required": ["action", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "type": "string", "enum": ["pin", "deploy"], "description": "Whether to version (pin) or deploy the model" },
+        "model": { "type": "string", "description": "Path to model file (for pin action)" },
+        "board": { "type": "string", "description": "Board type (connect, s3, local)" },
+        "name": { "type": "string", "description": "Model name" }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "description": "A condition expressed as an R expression or shell command",
+      "additionalProperties": false,
+      "properties": {
+        "r_expr": { "type": "string", "description": "R expression (succeeds if exit code 0)" },
+        "command": { "type": "string", "description": "Shell command (succeeds if exit code 0)" }
+      }
+    },
     "step": {
       "type": "object",
       "required": ["id"],
@@ -144,15 +227,25 @@
         "r_expr": { "type": "string", "description": "Inline R expression" },
         "command": { "type": "string", "description": "Shell command (runs via sh -c)" },
         "quarto": { "type": "string", "description": "Path to Quarto document or project (runs quarto render)" },
-        "test": { "type": "string", "description": "Run package tests via devtools::test(). Value is package path or 'true' for '.'" },
-        "check": { "type": "string", "description": "Run R CMD check via rcmdcheck. Value is package path or 'true' for '.'" },
-        "document": { "type": "string", "description": "Generate docs via roxygen2::roxygenize(). Value is package path or 'true' for '.'" },
-        "lint": { "type": "string", "description": "Run linter via lintr::lint_package(). Value is package path or 'true' for '.'" },
-        "style": { "type": "string", "description": "Format code via styler::style_pkg(). Value is package path or 'true' for '.'" },
+        "test": { "type": "string", "description": "Run package tests via devtools::test(). Value is package path or '.' for current directory" },
+        "check": { "type": "string", "description": "Run R CMD check via rcmdcheck. Value is package path or '.' for current directory" },
+        "document": { "type": "string", "description": "Generate docs via roxygen2::roxygenize(). Value is package path or '.' for current directory" },
+        "lint": { "type": "string", "description": "Run linter via lintr::lint_package(). Value is package path or '.' for current directory" },
+        "style": { "type": "string", "description": "Format code via styler::style_pkg(). Value is package path or '.' for current directory" },
         "rmd": { "type": "string", "description": "Render R Markdown document via rmarkdown::render(). Value is path to .Rmd file" },
-        "renv_restore": { "type": "string", "description": "Restore renv library via renv::restore(). Value is project path or 'true' for '.'" },
-        "coverage": { "type": "string", "description": "Measure code coverage via covr::package_coverage(). Value is package path or 'true' for '.'" },
+        "renv_restore": { "type": "string", "description": "Restore renv library via renv::restore(). Value is project path or '.' for current directory" },
+        "coverage": { "type": "string", "description": "Measure code coverage via covr::package_coverage(). Value is package path or '.' for current directory" },
         "validate": { "type": "string", "description": "Run a data validation R script via Rscript. Value is path to validation script" },
+        "approve": { "$ref": "#/$defs/approve" },
+        "call": { "$ref": "#/$defs/call" },
+        "pin": { "$ref": "#/$defs/pin" },
+        "vetiver": { "$ref": "#/$defs/vetiver" },
+        "shinytest": { "type": "string", "description": "Run Shiny app tests via shinytest2::test_app(). Value is app directory path" },
+        "pkgdown": { "type": "string", "description": "Build package website via pkgdown::build_site(). Value is package path or '.' for current directory" },
+        "install": { "type": "string", "description": "Install R packages via pak or install.packages(). Value is package name or path" },
+        "targets": { "type": "string", "description": "Run targets pipeline via targets::tar_make(). Value is project path or '.' for current directory" },
+        "benchmark": { "type": "string", "description": "Run bench scripts from a directory. Value is path to benchmark directory" },
+        "revdepcheck": { "type": "string", "description": "Run reverse dependency checks via revdepcheck::revdep_check(). Value is package path or '.' for current directory" },
         "connect": { "$ref": "#/$defs/connect" },
         "args": {
           "type": "array",
@@ -169,9 +262,46 @@
         "env": {
           "type": "object",
           "description": "Step-level environment variable overrides",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "required": ["value"],
+                "additionalProperties": false,
+                "properties": {
+                  "value": { "type": "string" },
+                  "secret": { "type": "boolean" }
+                }
+              }
+            ]
+          }
         },
         "workdir": { "type": "string", "description": "Step-level working directory override" },
+        "when": { "$ref": "#/$defs/condition", "description": "Conditional execution — skip step if condition is false" },
+        "preconditions": {
+          "type": "array",
+          "description": "Health checks that must pass before the step runs",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "matrix": {
+          "type": "object",
+          "description": "Parameter grid — step is expanded into one instance per combination",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "max_parallel": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum parallel instances for matrix expansion"
+        },
+        "error_on": {
+          "type": "string",
+          "enum": ["error", "warning", "message"],
+          "description": "Error sensitivity for R steps (default: error). 'warning' treats R warnings as failures, 'message' treats R messages as failures."
+        },
         "on_success": { "$ref": "#/$defs/hook" },
         "on_failure": { "$ref": "#/$defs/hook" }
       }

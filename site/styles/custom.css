@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Cinzel', serif;
+}
+
+/* Hero section on landing page */
+.hero {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.hero img {
+  max-width: 200px;
+  margin-bottom: 1.5rem;
+}
+
+.hero .tagline {
+  font-family: 'Cinzel', serif;
+  font-size: 1.8rem;
+  color: #2F5D50;
+  margin-bottom: 0.5rem;
+}
+
+.hero .subtitle {
+  font-size: 1.1rem;
+  color: #6B7D73;
+  margin-bottom: 2rem;
+}
+
+.hero .cta-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero .cta-buttons a {
+  padding: 0.6rem 1.5rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.hero .cta-buttons .btn-primary {
+  background-color: #2F5D50;
+  color: white;
+}
+
+.hero .cta-buttons .btn-primary:hover {
+  background-color: #3E7C6B;
+}
+
+.hero .cta-buttons .btn-secondary {
+  border: 2px solid #2F5D50;
+  color: #2F5D50;
+}
+
+.hero .cta-buttons .btn-secondary:hover {
+  background-color: #F2F5F3;
+}
+
+/* Feature cards */
+.feature-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.feature-card {
+  padding: 1.5rem;
+  border: 1px solid #d0d8d3;
+  border-radius: 8px;
+  background: white;
+}
+
+.feature-card h3 {
+  font-size: 1.1rem;
+  margin-top: 0;
+  color: #2F5D50;
+}
+
+/* Status colors */
+.status-completed { color: #4F8A66; }
+.status-running { color: #4FD1C5; }
+.status-failed { color: #A94442; }
+.status-idle { color: #6B7D73; }
+
+/* Dark mode overrides for hero */
+.quarto-dark .hero .tagline { color: #3E7C6B; }
+.quarto-dark .hero .subtitle { color: #E6F1EC; }
+.quarto-dark .feature-card {
+  background: #1B2620;
+  border-color: #2F5D50;
+}
+.quarto-dark .hero .cta-buttons .btn-primary {
+  background-color: #3E7C6B;
+}
+.quarto-dark .hero .cta-buttons .btn-secondary {
+  border-color: #3E7C6B;
+  color: #4FD1C5;
+}

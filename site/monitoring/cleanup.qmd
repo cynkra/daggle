@@ -1,0 +1,40 @@
+---
+title: "Cleanup & Maintenance"
+---
+
+Old run directories accumulate over time. daggle provides cleanup commands to reclaim disk space.
+
+## CLI
+
+```bash
+daggle clean --older-than 30d
+```
+
+Removes run directories and logs older than the specified duration. Accepts `d` (days), `h` (hours), or `w` (weeks).
+
+```bash
+daggle clean --older-than 2w --dry-run
+```
+
+The `--dry-run` flag shows what would be deleted without removing anything.
+
+## API
+
+```bash
+curl -X POST http://localhost:8787/api/v1/runs/cleanup \
+  -H 'Content-Type: application/json' \
+  -d '{"older_than": "30d"}'
+```
+
+## daggleR
+
+```r
+daggleR::cleanup(older_than = "30d")
+```
+
+## Disk usage considerations
+
+- Each run stores stdout/stderr logs per step, an `events.jsonl` file, and a `meta.json` file
+- DAGs that run frequently or produce verbose output can consume significant space
+- Schedule periodic cleanup via cron or as a lifecycle hook in a maintenance DAG
+- The `--dry-run` flag is useful for estimating how much space will be freed before committing

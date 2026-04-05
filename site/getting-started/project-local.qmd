@@ -1,0 +1,68 @@
+---
+title: "Project-Local DAGs"
+---
+
+DAGs can live alongside the R project they orchestrate, using a `.daggle/` directory.
+
+## DAG discovery order
+
+daggle looks for DAG files in this order:
+
+1. `--dags-dir` flag (explicit override)
+2. `.daggle/` in the current working directory (project-local)
+3. `~/.config/daggle/dags/` (global default)
+
+## Example project layout
+
+```
+my-project/
+  .daggle/
+    daily-etl.yaml
+    pkg-check.yaml
+  R/
+    extract.R
+    transform.R
+  renv.lock
+```
+
+Running `daggle list` or `daggle run daily-etl` from within `my-project/` automatically finds the DAGs. No `--dags-dir` needed.
+
+## Working directory
+
+Steps execute in the directory containing the DAG YAML file by default. In the layout above, `daily-etl.yaml`'s steps would run in `my-project/.daggle/`. Override at DAG level or step level:
+
+```yaml
+name: daily-etl
+workdir: /opt/projects/etl    # DAG-level override
+
+steps:
+  - id: extract
+    script: ../R/extract.R    # relative to workdir
+  - id: transform
+    script: ../R/transform.R
+    workdir: /tmp/scratch      # step-level override
+    depends: [extract]
+```
+
+Precedence: step `workdir` > DAG `workdir` > directory containing the YAML file.
+
+## renv integration
+
+daggle auto-detects `renv.lock` in the project directory. When found:
+
+- Resolves the renv library path (`renv/library/R-<major.minor>/<platform>/`)
+- Sets `R_LIBS_USER` for all R steps so they use the project's renv library
+- Records renv detection and `renv.lock` hash in `meta.json`
+
+If `renv.lock` exists but the library is missing, daggle warns you to run `renv::restore()`. To use a custom library path, set `R_LIBS_USER` in the DAG or step `env:` -- daggle will not override it.
+
+## Global vs project-local
+
+| | Global (`~/.config/daggle/dags/`) | Project-local (`.daggle/`) |
+|---|---|---|
+| Use case | Shared utilities, system-wide pipelines | Project-specific workflows |
+| Version control | Not tracked | Committed with the project |
+| Working directory | `~/.config/daggle/dags/` | `.daggle/` |
+| renv detection | No (no `renv.lock` nearby) | Yes (project root) |
+
+Both sources are checked by `daggle list` and `daggle serve`.

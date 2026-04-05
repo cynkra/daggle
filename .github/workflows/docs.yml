@@ -1,0 +1,28 @@
+name: docs
+on:
+  push:
+    branches: [main]
+    paths: ['site/**']
+  pull_request:
+    paths: ['site/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: quarto-dev/quarto-actions/setup@v2
+      - uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: cynkra/daggleR, palmerpenguins, withr
+      - run: quarto render site/
+      - uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site/_site

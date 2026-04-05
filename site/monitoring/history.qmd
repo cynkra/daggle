@@ -1,0 +1,41 @@
+---
+title: "History & Trends"
+---
+
+Review past runs and track performance over time.
+
+## Run history
+
+```bash
+daggle history my-dag --last 20
+```
+
+Lists recent runs with status, start time, duration, and DAG hash:
+
+```
+Run ID               Status     Duration  DAG Hash
+20260401T093012      completed  4m12s     a3f8c1
+20260331T093015      failed     1m03s     a3f8c1
+20260330T093011      completed  4m08s     7b2e44
+```
+
+## Duration statistics
+
+```bash
+daggle stats my-dag --last 30
+```
+
+Shows per-step duration trends:
+
+```
+Step            Avg      P50      P95
+extract         1m02s    58s      1m30s
+transform       2m15s    2m10s    3m01s
+load            45s      42s      1m12s
+
+Overall success rate: 93% (28/30)
+```
+
+## Correlating changes with failures
+
+The DAG hash is a fingerprint of the YAML configuration. When the hash changes between runs, it means the DAG definition was modified. This helps you correlate config changes with new failures -- if a run fails right after the hash changes, the config change is likely the cause.

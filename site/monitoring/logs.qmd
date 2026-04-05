@@ -1,0 +1,67 @@
+---
+title: "Log Files"
+---
+
+Every DAG run produces structured logs on disk. These are the source of truth for debugging.
+
+## Log directory
+
+```
+~/.local/share/daggle/runs/<dag>/<date>/run_<id>/
+```
+
+Example:
+
+```
+~/.local/share/daggle/runs/etl-pipeline/2026-04-01/run_20260401T093012/
+  extract.stdout.log
+  extract.stderr.log
+  transform.stdout.log
+  transform.stderr.log
+  load.stdout.log
+  load.stderr.log
+  events.jsonl
+  meta.json
+```
+
+## Per-step logs
+
+Each step gets two log files:
+
+- `<step>.stdout.log` -- everything the R process wrote to stdout
+- `<step>.stderr.log` -- everything written to stderr, including R errors and warnings
+
+## events.jsonl
+
+Structured lifecycle events, one JSON object per line:
+
+```json
+{"ts":"2026-04-01T09:30:12Z","event":"step_start","step":"extract"}
+{"ts":"2026-04-01T09:31:14Z","event":"step_end","step":"extract","status":"completed","duration_ms":62000}
+{"ts":"2026-04-01T09:31:14Z","event":"step_start","step":"transform"}
+```
+
+Events include: `dag_start`, `dag_end`, `step_start`, `step_end`, `secret_resolved`, `hook_fired`. Secret values from vault and file sources are redacted automatically.
+
+## meta.json
+
+Reproducibility metadata captured at the start of each run:
+
+```json
+{
+  "r_version": "4.4.1",
+  "platform": "aarch64-apple-darwin23",
+  "dag_hash": "a3f8c1",
+  "params": {"department": "sales", "date": "2026-04-01"},
+  "daggle_version": "0.9.0",
+  "renv_status": "synchronized"
+}
+```
+
+## Reading logs via API
+
+```bash
+curl http://localhost:8787/api/v1/dags/etl-pipeline/runs/20260401T093012/steps/extract/log
+```
+
+Returns the combined stdout and stderr for a specific step.

@@ -1,0 +1,52 @@
+---
+title: "Sub-DAG Composition"
+---
+
+The `call:` step type executes another DAG as a sub-step within the current run.
+
+## Basic usage
+
+```yaml
+name: full-pipeline
+steps:
+  - id: etl
+    call:
+      dag: daily-etl
+      params:
+        dept: "{{ .Params.department }}"
+  - id: report
+    script: reports/summary.R
+    depends: [etl]
+```
+
+The `daily-etl` DAG runs to completion (or failure) as part of `full-pipeline`. If it fails, the `etl` step fails and downstream steps are blocked.
+
+## Parameter passing
+
+Pass parameters from the parent DAG to the sub-DAG:
+
+```yaml
+call:
+  dag: model-pipeline
+  params:
+    dataset: "{{ .Params.dataset }}"
+    algo: lm
+```
+
+These override the sub-DAG's parameter defaults.
+
+## Output propagation
+
+Outputs from the sub-DAG's steps are available in the parent DAG via the standard `DAGGLE_OUTPUT_*` environment variables, namespaced by the calling step ID.
+
+## When to use `call:` vs `on_dag` triggers
+
+| | `call:` step | `on_dag:` trigger |
+|---|---|---|
+| Relationship | Parent controls child | Independent DAGs |
+| Execution | Inline, blocks parent | Async, separate run |
+| Failure | Fails the parent step | Does not affect upstream DAG |
+| Scheduling | Part of parent's run | Triggered by events |
+| Use case | Modular pipeline composition | Loose coupling between workflows |
+
+Use `call:` when the sub-DAG is a logical part of the parent workflow. Use `on_dag:` triggers when DAGs are independent but sequenced.

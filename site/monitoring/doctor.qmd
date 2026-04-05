@@ -1,0 +1,39 @@
+---
+title: "Diagnostics"
+---
+
+The `daggle doctor` command runs a series of health checks and reports problems.
+
+## Usage
+
+```bash
+daggle doctor
+```
+
+## What it checks
+
+| Check | What it verifies |
+|------------------|--------------------------------------------------|
+| R version | R is installed and meets any version constraints |
+| R platform | Reports the platform string (e.g. aarch64-apple-darwin23) |
+| renv status | Whether renv is synchronized, out of date, or absent |
+| Scheduler status | Whether the scheduler is running and its PID |
+| Config paths | DAG directory, data directory, and config file locations are accessible |
+| DAG file validity | All YAML files in the DAG directory parse without errors |
+
+Example output:
+
+```
+R version:       4.4.1 .............. ok
+R platform:      aarch64-apple-darwin23
+renv status:     synchronized ....... ok
+Scheduler:       running (PID 4821).. ok
+Config paths:    all accessible ..... ok
+DAG files:       3 valid, 0 invalid . ok
+```
+
+## When to run
+
+- After installing or upgrading daggle
+- When runs fail in unexpected ways
+- Before filing a bug report (include the output)
