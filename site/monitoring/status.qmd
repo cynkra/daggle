@@ -1,0 +1,55 @@
+---
+title: "Checking Status"
+---
+
+Check the current state of a DAG run, including per-step breakdown and error details.
+
+## Latest run
+
+```bash
+daggle status my-dag
+```
+
+Shows the most recent run with overall status, start/end time, duration, and a table of steps with their individual statuses.
+
+## Specific run
+
+```bash
+daggle status my-dag --run-id 20260401T093012
+```
+
+## Status values
+
+| Status | Meaning |
+|-----------|----------------------------------------------|
+| running | Step is currently executing |
+| completed | Step finished successfully (exit code 0) |
+| failed | Step exited with a non-zero code |
+| waiting | Step is queued, waiting on dependencies |
+| cancelled | Run was cancelled before the step could start |
+| skipped | Step was skipped due to a `when:` condition |
+
+## Error messages
+
+When a step fails, daggle extracts the R error message from stderr and shows it inline:
+
+```
+Step: validate
+Status: failed
+Duration: 2.3s
+Error: Error in check_schema(df) : column "revenue" not found
+```
+
+This saves you from digging through log files for common failures.
+
+## Step outputs
+
+If steps produce [outputs](../writing-dags/data-passing.qmd), the status display includes them:
+
+```
+Step: train_model
+Status: completed
+Outputs:
+  model_path: /data/models/rf_20260401.rds
+  accuracy: 0.94
+```

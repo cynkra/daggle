@@ -1,0 +1,118 @@
+---
+title: "Pins & Vetiver"
+---
+
+daggle integrates with the pins and vetiver R packages for publishing data, models, and deploying ML models.
+
+## Pins
+
+Use a `pin` step to publish R objects via `pins::pin_write()`.
+
+### Pin step fields
+
+| Field | Required | Description |
+|-----------|----------|---------------------------------------------------|
+| board | yes | One of `connect`, `s3`, `local`, `azure` |
+| name | yes | Pin name |
+| object | yes | R expression or path to the object to pin |
+| type | no | Serialization format: `rds`, `csv`, `parquet`, `arrow`, `json` (default: `rds`) |
+| versioned | no | Enable versioning (default: true) |
+
+### Example: pin a dataset to Connect
+
+```yaml
+steps:
+  - id: prepare
+    script: prepare_data.R
+    outputs:
+      summary_path: /data/summary.parquet
+
+  - id: publish
+    type: pin
+    depends_on: [prepare]
+    pin:
+      board: connect
+      name: sales-summary
+      object: "{{ .Steps.prepare.Outputs.summary_path }}"
+      type: parquet
+      versioned: true
+    env:
+      CONNECT_SERVER: "${env:CONNECT_SERVER}"
+      CONNECT_API_KEY:
+        value: "${env:CONNECT_API_KEY}"
+        secret: true
+```
+
+### Example: pin to S3
+
+```yaml
+steps:
+  - id: publish
+    type: pin
+    pin:
+      board: s3
+      name: monthly-forecast
+      object: forecasts/forecast.rds
+      type: rds
+    env:
+      AWS_ACCESS_KEY_ID: "${env:AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY:
+        value: "${env:AWS_SECRET_ACCESS_KEY}"
+        secret: true
+      AWS_DEFAULT_REGION: us-east-1
+```
+
+## Vetiver
+
+Use a `vetiver` step for MLOps model versioning and deployment.
+
+### Vetiver step fields
+
+| Field | Required | Description |
+|--------|----------|------------------------------------------------|
+| action | yes | One of `pin` (version the model) or `deploy` (deploy as API) |
+| model | yes | R expression or path to the vetiver model object |
+| board | yes | Board for storing the model (`connect`, `s3`, `local`) |
+| name | yes | Model name |
+
+### Example: version a model
+
+```yaml
+steps:
+  - id: train
+    script: train.R
+    outputs:
+      model_path: /data/models/rf_model.rds
+
+  - id: version
+    type: vetiver
+    depends_on: [train]
+    vetiver:
+      action: pin
+      model: "{{ .Steps.train.Outputs.model_path }}"
+      board: connect
+      name: churn-model
+    env:
+      CONNECT_SERVER: "${env:CONNECT_SERVER}"
+      CONNECT_API_KEY:
+        value: "${env:CONNECT_API_KEY}"
+        secret: true
+```
+
+### Example: deploy a model as an API
+
+```yaml
+steps:
+  - id: deploy
+    type: vetiver
+    vetiver:
+      action: deploy
+      model: "{{ .Steps.train.Outputs.model_path }}"
+      board: connect
+      name: churn-model
+    env:
+      CONNECT_SERVER: "${env:CONNECT_SERVER}"
+      CONNECT_API_KEY:
+        value: "${env:CONNECT_API_KEY}"
+        secret: true
+```
