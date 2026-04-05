@@ -1,0 +1,27 @@
+{{ define "content" }}
+<div class="breadcrumb">
+  <a href="/ui/">DAGs</a><span class="sep">/</span>
+  <a href="/ui/dags/{{ .DAGName }}/runs/{{ .RunID }}">{{ .DAGName }} / {{ .RunID }}</a><span class="sep">/</span>
+  <span>{{ .StepID }}</span>
+</div>
+
+<h1>{{ .StepID }}</h1>
+
+<div class="log-section">
+  <h2>stdout</h2>
+  {{ if .Stdout }}
+  <pre class="log-content">{{ .Stdout }}</pre>
+  {{ else }}
+  <pre class="log-content"><span class="log-empty">(empty)</span></pre>
+  {{ end }}
+</div>
+
+<div class="log-section">
+  <h2>stderr</h2>
+  {{ if .Stderr }}
+  <pre class="log-content">{{ .Stderr }}</pre>
+  {{ else }}
+  <pre class="log-content"><span class="log-empty">(empty)</span></pre>
+  {{ end }}
+</div>
+{{ end }}

@@ -1,0 +1,86 @@
+{{ define "content" }}
+<div class="breadcrumb">
+  <a href="/ui/">DAGs</a><span class="sep">/</span>
+  <a href="/ui/dags/{{ .Run.DAGName }}/runs/latest">{{ .Run.DAGName }}</a><span class="sep">/</span>
+  <span>{{ .Run.RunID }}</span>
+</div>
+
+<h1>{{ .Run.DAGName }} <span class="badge badge-{{ .Run.Status }}">{{ .Run.Status }}</span></h1>
+
+<dl class="meta">
+  <dt>Run ID</dt>
+  <dd class="text-mono">{{ .Run.RunID }}</dd>
+  <dt>Status</dt>
+  <dd><span class="badge badge-{{ .Run.Status }}">{{ .Run.Status }}</span></dd>
+  <dt>Started</dt>
+  <dd>{{ .Run.StartedFmt }}</dd>
+  {{ if .Run.Ended }}
+  <dt>Ended</dt>
+  <dd>{{ .Run.EndedFmt }}</dd>
+  {{ end }}
+  <dt>Duration</dt>
+  <dd>{{ .Run.DurationFmt }}</dd>
+  {{ if .Run.RVersion }}
+  <dt>R Version</dt>
+  <dd>{{ .Run.RVersion }}</dd>
+  {{ end }}
+  {{ if .Run.Platform }}
+  <dt>Platform</dt>
+  <dd>{{ .Run.Platform }}</dd>
+  {{ end }}
+  <dt>DAG Hash</dt>
+  <dd class="text-mono">{{ .Run.DAGHash }}</dd>
+</dl>
+
+{{ if .Run.Params }}
+<h2>Parameters</h2>
+<table>
+  <thead><tr><th>Key</th><th>Value</th></tr></thead>
+  <tbody>
+    {{ range $k, $v := .Run.Params }}
+    <tr><td>{{ $k }}</td><td class="text-mono">{{ $v }}</td></tr>
+    {{ end }}
+  </tbody>
+</table>
+{{ end }}
+
+<h2>Steps</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Status</th>
+      <th>Duration</th>
+      <th>Attempts</th>
+      <th>Error</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ range .Run.Steps }}
+    <tr>
+      <td><a href="/ui/dags/{{ $.Run.DAGName }}/runs/{{ $.Run.RunID }}/steps/{{ .StepID }}/log">{{ .StepID }}</a></td>
+      <td><span class="badge badge-{{ .Status }}">{{ .Status }}</span></td>
+      <td>{{ .DurationFmt }}</td>
+      <td>{{ .Attempts }}</td>
+      <td>{{ if .Error }}<span class="text-mono">{{ .Error }}</span>{{ else }}<span class="text-muted">—</span>{{ end }}</td>
+    </tr>
+    {{ end }}
+  </tbody>
+</table>
+
+{{ if .Outputs }}
+<h2>Outputs</h2>
+<table>
+  <thead><tr><th>Step</th><th>Key</th><th>Value</th></tr></thead>
+  <tbody>
+    {{ range .Outputs }}
+    <tr>
+      <td>{{ .StepID }}</td>
+      <td class="text-mono">{{ .Key }}</td>
+      <td class="text-mono">{{ .Value }}</td>
+    </tr>
+    {{ end }}
+  </tbody>
+</table>
+{{ end }}
+{{ end }}

@@ -1,0 +1,35 @@
+{{ define "content" }}
+<h1>DAGs</h1>
+{{ if .DAGs }}
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Steps</th>
+      <th>Schedule</th>
+      <th>Last Status</th>
+      <th>Last Run</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ range .DAGs }}
+    <tr>
+      <td>
+        {{ if .LastRunID }}
+          <a href="/ui/dags/{{ .Name }}/runs/latest">{{ .Name }}</a>
+        {{ else }}
+          {{ .Name }}
+        {{ end }}
+      </td>
+      <td>{{ .Steps }}</td>
+      <td>{{ if .Schedule }}{{ .Schedule }}{{ else }}<span class="text-muted">—</span>{{ end }}</td>
+      <td>{{ if .LastStatus }}<span class="badge badge-{{ .LastStatus }}">{{ .LastStatus }}</span>{{ else }}<span class="text-muted">never run</span>{{ end }}</td>
+      <td>{{ if .LastRun }}{{ .LastRunFmt }}{{ else }}<span class="text-muted">—</span>{{ end }}</td>
+    </tr>
+    {{ end }}
+  </tbody>
+</table>
+{{ else }}
+<p class="text-muted">No DAGs found. Place YAML files in the DAGs directory and they will appear here.</p>
+{{ end }}
+{{ end }}
