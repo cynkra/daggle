@@ -1,0 +1,143 @@
+---
+title: "Tutorial: Multi-DAG Workflows"
+---
+
+This tutorial shows two approaches to chaining DAGs: event-driven triggers for loosely coupled workflows, and sub-DAG calls for tightly composed pipelines.
+
+## Approach 1: on_dag trigger
+
+Independent DAGs, loose coupling. The upstream DAG does not know about the downstream DAG.
+
+### ETL pipeline (runs on schedule)
+
+```yaml
+name: etl-pipeline
+trigger:
+  schedule: "0 3 * * *"    # 3 AM daily
+
+steps:
+  - id: extract
+    r_expr: |
+      data <- read.csv("/data/incoming/daily_export.csv")
+      saveRDS(data, "data/raw.rds")
+      cat("::daggle-output name=n_rows::", nrow(data), "\n")
+
+  - id: clean
+    r_expr: |
+      raw <- readRDS("data/raw.rds")
+      clean <- raw[complete.cases(raw), ]
+      saveRDS(clean, "data/clean.rds")
+      cat("::daggle-output name=n_clean::", nrow(clean), "\n")
+    depends: [extract]
+
+  - id: load
+    r_expr: |
+      clean <- readRDS("data/clean.rds")
+      con <- DBI::dbConnect(RSQLite::SQLite(), "warehouse.db")
+      DBI::dbWriteTable(con, "daily_data", clean, append = TRUE)
+      DBI::dbDisconnect(con)
+      cat("::daggle-output name=loaded::true\n")
+    depends: [clean]
+```
+
+### Report pipeline (triggers on ETL completion)
+
+```yaml
+name: report-pipeline
+trigger:
+  on_dag:
+    name: etl-pipeline
+    status: completed
+    pass_outputs: true
+
+steps:
+  - id: generate
+    r_expr: |
+      n_rows <- Sys.getenv("DAGGLE_OUTPUT_LOAD_LOADED")
+      cat(sprintf("ETL completed, generating report\n"))
+      # ... build report from warehouse data ...
+      cat("::daggle-output name=report_path::output/daily_report.html\n")
+
+  - id: distribute
+    command: |
+      cp output/daily_report.html /shared/reports/
+      echo "Report distributed"
+    depends: [generate]
+```
+
+When `etl-pipeline` completes successfully, daggle automatically starts `report-pipeline`. The `pass_outputs: true` flag makes the upstream DAG's outputs available as environment variables in the downstream DAG.
+
+### Running
+
+Start the scheduler to activate both triggers:
+
+```bash
+daggle serve
+```
+
+The ETL pipeline runs at 3 AM. When it finishes, the report pipeline starts automatically. If the ETL pipeline fails, the report pipeline does not trigger (because `status: completed` requires success).
+
+You can also set `status: failed` to build alert workflows, or `status: any` to trigger regardless of outcome.
+
+## Approach 2: call step
+
+Parent controls child. The sub-DAG runs inline as part of the parent.
+
+### Full pipeline (composes the ETL DAG)
+
+```yaml
+name: full-pipeline
+steps:
+  - id: run-etl
+    call:
+      dag: etl-pipeline
+
+  - id: report
+    r_expr: |
+      cat("Generating report from warehouse data\n")
+      # ... build report ...
+      cat("::daggle-output name=report_path::output/daily_report.html\n")
+    depends: [run-etl]
+
+  - id: distribute
+    command: |
+      cp output/daily_report.html /shared/reports/
+      echo "Report distributed"
+    depends: [report]
+```
+
+The `call:` step runs `etl-pipeline` to completion. If it fails, the `run-etl` step fails and blocks downstream steps. The parent DAG has full control over the execution flow.
+
+You can pass parameters to the sub-DAG:
+
+```yaml
+- id: run-etl
+  call:
+    dag: etl-pipeline
+    params:
+      source: "api"
+```
+
+## When to use each approach
+
+| | `on_dag` trigger | `call` step |
+|---|---|---|
+| Coupling | Loose -- DAGs are independent | Tight -- parent owns the child |
+| Failure | Does not affect upstream DAG | Fails the parent step |
+| Execution | Async, separate run | Inline, blocks parent |
+| Scheduling | Each DAG has its own triggers | Sub-DAG runs when parent runs |
+| Visibility | Two separate runs in history | One run with nested steps |
+
+**Use `on_dag` triggers when:**
+
+- The DAGs are maintained by different teams
+- You want the upstream DAG to remain unaware of downstream consumers
+- You need multiple DAGs to react to the same upstream event
+- Failure in the downstream DAG should not affect the upstream
+
+**Use `call` steps when:**
+
+- The sub-DAG is a logical component of a larger workflow
+- You need the parent to fail if the sub-DAG fails
+- You want a single run ID tracking the entire pipeline
+- You want to pass parameters from parent to child
