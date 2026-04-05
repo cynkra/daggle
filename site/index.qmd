@@ -1,0 +1,58 @@
+---
+pagetitle: "daggle - A lightweight DAG scheduler for R"
+toc: false
+sidebar: false
+---
+
+::: {.hero}
+
+![](assets/logo/daggle-hero.png)
+
+[A lightweight DAG scheduler for R]{.tagline}
+
+[Define multi-step R workflows in YAML. Run them with a single binary.]{.subtitle}
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cynkra/daggle/main/install.sh | sh
+```
+
+::: {.cta-buttons}
+[Get Started](getting-started/install.qmd){.btn-primary}
+[View on GitHub](https://github.com/cynkra/daggle){.btn-secondary}
+:::
+
+:::
+
+---
+
+::: {.feature-cards}
+
+::: {.feature-card}
+### Single Binary
+One `go build` produces a static binary. No database, no message broker, no Python. The only prerequisite is R.
+:::
+
+::: {.feature-card}
+### YAML-Defined
+Declarative DAG definitions: easy to read, diff, and review. A JSON Schema is provided for editor autocomplete.
+:::
+
+::: {.feature-card}
+### R-Native
+Every step is assumed to be R. Auto-detects renv, enforces R version constraints, parses R-specific outputs. 27 step types from `script:` to `targets:` to `connect:`.
+:::
+
+:::
+
+---
+
+daggle sits between `cron + Rscript` and heavy workflow engines like Airflow. It knows what R is, how R fails, and what R users need to automate.
+
+| Question | Before daggle | With daggle |
+|----------|--------------|-------------|
+| When should this run? | crontab | `trigger: { schedule: ... }` in YAML |
+| What if it fails? | Check syslog manually | Retries with exponential backoff, `on_failure` hooks |
+| What if it hangs? | Kill it manually | Timeout with SIGTERM/SIGKILL to entire process group |
+| Who gets told? | Nobody | Hooks (R expressions -- slackr, blastula, whatever you want) |
+| What happened last time? | `cat /var/log/syslog` | `daggle status`, structured events |
+| Can independent steps run in parallel? | No | Automatic from DAG structure |
