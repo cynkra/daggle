@@ -393,24 +393,36 @@ trigger:
   overlap: cancel
 ```
 
+## Scheduler
+
+`daggle serve` starts a long-running daemon that monitors DAG files and executes triggers automatically.
+
 ```bash
+# Start the scheduler
 daggle serve
-daggle serve --port 8787   # also start REST API
+
+# Start with REST API enabled
+daggle serve --port 8787
+
+# Stop the scheduler
+daggle stop
 ```
 
 The scheduler:
-- Monitors the DAG directory for files with `trigger:` blocks
-- Manages cron schedules and file watchers
-- Handles overlap: `skip` (default) ignores triggers while a DAG runs, `cancel` kills the old run and starts fresh
-- Limits to 4 concurrent DAG runs
+- Scans the DAG directory for files with `trigger:` blocks
+- Manages cron schedules, file watchers, webhooks, condition polling, git polling, and DAG-completion listeners
 - Hot-reloads DAG files every 30 seconds, or immediately on SIGHUP
-- Shuts down gracefully on SIGINT/SIGTERM (waits for in-flight runs)
-- Writes a PID file for process management (`daggle stop` to shut down)
-- Optionally serves the REST API on `--port` (default: off)
+- Enforces overlap policy per DAG: `skip` (default) or `cancel`
+- Limits to 4 concurrent DAG runs
+- Writes a PID file (`~/.local/share/daggle/proc/scheduler.pid`) for process management
+- Shuts down gracefully on SIGINT/SIGTERM — stops accepting new runs and waits up to 5 minutes for in-flight runs to finish
+- Optionally serves the REST API when `--port` is specified
+
+Without `daggle serve`, you can still run DAGs manually with `daggle run` — the scheduler is only needed for automated triggers.
 
 ## REST API
 
-Start the API with `daggle serve --port 8787`. See [docs/api.md](docs/api.md) for the full endpoint reference.
+When the scheduler is started with `--port`, it also serves a REST API for programmatic access. See [docs/api.md](docs/api.md) for the full endpoint reference.
 
 ```bash
 # List DAGs
