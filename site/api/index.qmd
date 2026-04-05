@@ -10,6 +10,10 @@ daggle serve --port 8787
 
 There is no default port. Without `--port`, daggle runs as a scheduler only.
 
+Opening the port URL in a browser shows a read-only status dashboard (DAG list, run details, log viewer). The API itself is available under `/api/v1/`.
+
+The API is designed to be wrapped -- build custom dashboards with [daggleR](../daggler/index.qmd) + Shiny, or any HTTP client.
+
 ## Base URL
 
 ```
