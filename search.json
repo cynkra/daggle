@@ -114,7 +114,7 @@
     "href": "running/scheduler.html#what-the-scheduler-does",
     "title": "Scheduler",
     "section": "What the scheduler does",
-    "text": "What the scheduler does\n\nScans the DAG directory for files with trigger: blocks\nManages all trigger types: cron, file watcher, webhook, DAG completion, condition polling, git\nHot-reloads DAG files every 30 seconds (detects changes via SHA-256 hashing)\nImmediate reload on kill -HUP &lt;pid&gt; (SIGHUP)\nEnforces overlap policy per DAG (skip or cancel)\nLimits to 4 concurrent DAG runs\nWrites a PID file at ~/.local/share/daggle/proc/scheduler.pid\nOptionally serves the REST API when --port is specified",
+    "text": "What the scheduler does\n\nScans the DAG directory for files with trigger: blocks\nManages all trigger types: cron, file watcher, webhook, DAG completion, condition polling, git\nHot-reloads DAG files every 30 seconds (detects changes via SHA-256 hashing)\nImmediate reload on kill -HUP &lt;pid&gt; (SIGHUP)\nEnforces overlap policy per DAG (skip or cancel)\nLimits to 4 concurrent DAG runs\nWrites a PID file at ~/.local/share/daggle/proc/scheduler.pid\nServes a read-only status dashboard when --port is specified — open the port URL in a browser\nOptionally serves the REST API when --port is specified",
     "crumbs": [
       "Running",
       "Scheduler"
@@ -1881,7 +1881,7 @@
     "href": "index.html",
     "title": "daggle",
     "section": "",
-    "text": "A lightweight DAG scheduler for R\nDefine multi-step R workflows in YAML. Run them with a single binary.\ncurl -fsSL https://raw.githubusercontent.com/cynkra/daggle/main/install.sh | sh\n\nGet Started View on GitHub\n\n\n\n\n\nSingle Binary\nOne go build produces a static binary. No database, no message broker, no Python. The only prerequisite is R.\n\n\nYAML-Defined\nDeclarative DAG definitions: easy to read, diff, and review. A JSON Schema is provided for editor autocomplete.\n\n\nR-Native\nEvery step is assumed to be R. Auto-detects renv, enforces R version constraints, parses R-specific outputs. 27 step types from script: to targets: to connect:.\n\n\n\ndaggle sits between cron + Rscript and heavy workflow engines like Airflow. It knows what R is, how R fails, and what R users need to automate.\n\n\n\n\n\n\n\n\nQuestion\nBefore daggle\nWith daggle\n\n\n\n\nWhen should this run?\ncrontab\ntrigger: { schedule: ... } in YAML\n\n\nWhat if it fails?\nCheck syslog manually\nRetries with exponential backoff, on_failure hooks\n\n\nWhat if it hangs?\nKill it manually\nTimeout with SIGTERM/SIGKILL to entire process group\n\n\nWho gets told?\nNobody\nHooks (R expressions – slackr, blastula, whatever you want)\n\n\nWhat happened last time?\ncat /var/log/syslog\ndaggle status, structured events\n\n\nCan independent steps run in parallel?\nNo\nAutomatic from DAG structure"
+    "text": "A lightweight DAG scheduler for R\nDefine multi-step R workflows in YAML. Run them with a single binary.\ncurl -fsSL https://raw.githubusercontent.com/cynkra/daggle/main/install.sh | sh\n\nGet Started View on GitHub\n\n\n\n\n\nSingle Binary\nOne go build produces a static binary. No database, no message broker, no Python. The only prerequisite is R.\n\n\nYAML-Defined\nDeclarative DAG definitions: easy to read, diff, and review. A JSON Schema is provided for editor autocomplete.\n\n\nR-Native\nEvery step is assumed to be R. Auto-detects renv, enforces R version constraints, parses R-specific outputs. 27 step types from script: to targets: to connect:.\n\n\nBuilt-in Dashboard\ndaggle serve --port 8787 serves a read-only status UI alongside the REST API. For custom dashboards, wrap the API with daggleR + Shiny.\n\n\n\ndaggle sits between cron + Rscript and heavy workflow engines like Airflow. It knows what R is, how R fails, and what R users need to automate.\n\n\n\n\n\n\n\n\nQuestion\nBefore daggle\nWith daggle\n\n\n\n\nWhen should this run?\ncrontab\ntrigger: { schedule: ... } in YAML\n\n\nWhat if it fails?\nCheck syslog manually\nRetries with exponential backoff, on_failure hooks\n\n\nWhat if it hangs?\nKill it manually\nTimeout with SIGTERM/SIGKILL to entire process group\n\n\nWho gets told?\nNobody\nHooks (R expressions – slackr, blastula, whatever you want)\n\n\nWhat happened last time?\ncat /var/log/syslog\ndaggle status, structured events\n\n\nCan independent steps run in parallel?\nNo\nAutomatic from DAG structure"
   },
   {
     "objectID": "monitoring/history.html",
@@ -2625,7 +2625,7 @@
     "href": "api/index.html",
     "title": "REST API",
     "section": "",
-    "text": "daggle includes a built-in REST API for programmatic access to DAGs, runs, and outputs. The API starts only when you explicitly provide a port:\nThere is no default port. Without --port, daggle runs as a scheduler only.",
+    "text": "daggle includes a built-in REST API for programmatic access to DAGs, runs, and outputs. The API starts only when you explicitly provide a port:\nThere is no default port. Without --port, daggle runs as a scheduler only.\nOpening the port URL in a browser shows a read-only status dashboard (DAG list, run details, log viewer). The API itself is available under /api/v1/.\nThe API is designed to be wrapped – build custom dashboards with daggleR + Shiny, or any HTTP client.",
     "crumbs": [
       "API",
       "Overview"

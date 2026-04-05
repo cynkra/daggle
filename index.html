@@ -375,6 +375,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="r-native">R-Native</h3>
 <p>Every step is assumed to be R. Auto-detects renv, enforces R version constraints, parses R-specific outputs. 27 step types from <code>script:</code> to <code>targets:</code> to <code>connect:</code>.</p>
 </section>
+<section id="built-in-dashboard" class="level3 feature-card">
+<h3 class="anchored" data-anchor-id="built-in-dashboard">Built-in Dashboard</h3>
+<p><code>daggle serve --port 8787</code> serves a read-only status UI alongside the REST API. For custom dashboards, wrap the API with daggleR + Shiny.</p>
+</section>
 </div>
 <hr>
 <p>daggle sits between <code>cron + Rscript</code> and heavy workflow engines like Airflow. It knows what R is, how R fails, and what R users need to automate.</p>
