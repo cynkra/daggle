@@ -1,0 +1,86 @@
+---
+title: "Approval Gates"
+---
+
+Pause execution until a human reviews and approves.
+
+## Defining an approval step
+
+```yaml
+steps:
+  - id: fit-model
+    script: models/fit.R
+  - id: review
+    approve:
+      message: "Review model metrics before deploying"
+      timeout: 24h
+    depends: [fit-model]
+  - id: deploy
+    connect:
+      type: plumber
+      path: api/
+    depends: [review]
+```
+
+When the `review` step is reached, execution pauses. Downstream steps wait until the gate is resolved.
+
+## Approving or rejecting
+
+::: {.panel-tabset}
+
+### CLI
+
+```bash
+daggle status my-pipeline   # shows "waiting" with approval message
+daggle approve my-pipeline  # continue execution
+daggle reject my-pipeline   # fail the step
+```
+
+### REST API
+
+```bash
+# Approve
+curl -X POST http://localhost:8787/api/v1/dags/my-pipeline/runs/abc123/steps/review/approve
+
+# Reject
+curl -X POST http://localhost:8787/api/v1/dags/my-pipeline/runs/abc123/steps/review/reject
+```
+
+### daggleR
+
+```r
+daggleR::approve("my-pipeline", run_id = "abc123", step_id = "review")
+daggleR::reject("my-pipeline", run_id = "abc123", step_id = "review")
+```
+
+:::
+
+## Notification hooks
+
+Alert reviewers when approval is needed:
+
+```yaml
+- id: review
+  approve:
+    message: "Review model accuracy before production deploy"
+    timeout: 24h
+    notify:
+      r_expr: |
+        slackr::slackr_msg(sprintf(
+          "Approval needed for %s (run %s): Review model accuracy",
+          Sys.getenv("DAGGLE_DAG_NAME"),
+          Sys.getenv("DAGGLE_RUN_ID")
+        ))
+```
+
+## Timeout behavior
+
+If `timeout` is set and no approval or rejection arrives in time, the step fails. The `on_failure` hook fires if configured.
+
+## Audit trail
+
+Approval and rejection events are recorded in `events.jsonl` with:
+
+- System user who approved/rejected
+- Timestamp
+- Step ID and run ID

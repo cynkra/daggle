@@ -1,0 +1,46 @@
+---
+title: "Manual Execution"
+---
+
+Run any DAG immediately from the command line, regardless of trigger configuration.
+
+## Basic usage
+
+```bash
+daggle run <dag-name>
+```
+
+## Parameter overrides
+
+```bash
+daggle run etl-pipeline -p department=marketing -p date=2026-01-15
+```
+
+The `-p` / `--param` flag is repeatable. Parameters override the defaults defined in the DAG YAML.
+
+## What happens
+
+1. daggle parses the DAG YAML and validates it
+2. Template variables are expanded (`{{ .Today }}`, `{{ .Params.x }}`, etc.)
+3. `base.yaml` defaults are merged (if present)
+4. Secrets are resolved (`${env:}`, `${file:}`, `${vault:}`) -- fails fast if any are missing
+5. R version is checked (if `r_version:` is set)
+6. renv is auto-detected and `R_LIBS_USER` is set
+7. Steps are topologically sorted into parallel tiers
+8. Tiers execute sequentially; steps within a tier run in parallel
+9. Lifecycle hooks fire on completion/failure
+10. `meta.json` is written with reproducibility metadata
+
+## Signal handling
+
+- **Ctrl+C** (SIGINT) or **SIGTERM** sends SIGTERM to the entire process group of all running steps
+- After a 5-second grace period, SIGKILL is sent
+- No orphaned R processes
+
+## Directory overrides
+
+```bash
+daggle run my-dag --dags-dir /path/to/dags --data-dir /path/to/data
+```
+
+These override the default [DAG discovery](../getting-started/project-local.qmd) and data storage locations.
