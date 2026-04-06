@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo/daggle-hero.png" alt="daggle" width="200">
+</p>
+
 # daggle
 
 [![CI](https://github.com/cynkra/daggle/actions/workflows/ci.yml/badge.svg)](https://github.com/cynkra/daggle/actions/workflows/ci.yml)
