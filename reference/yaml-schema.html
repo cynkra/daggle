@@ -406,6 +406,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#dag-level-fields" id="toc-dag-level-fields" class="nav-link" data-scroll-target="#dag-level-fields">DAG-level fields</a></li>
   <li><a href="#trigger-fields" id="toc-trigger-fields" class="nav-link" data-scroll-target="#trigger-fields">Trigger fields</a></li>
   <li><a href="#step-fields" id="toc-step-fields" class="nav-link" data-scroll-target="#step-fields">Step fields</a></li>
+  <li><a href="#retry-config" id="toc-retry-config" class="nav-link" data-scroll-target="#retry-config">Retry config</a></li>
   <li><a href="#hook-fields" id="toc-hook-fields" class="nav-link" data-scroll-target="#hook-fields">Hook fields</a></li>
   <li><a href="#template-variables" id="toc-template-variables" class="nav-link" data-scroll-target="#template-variables">Template variables</a></li>
   </ul>
@@ -462,105 +463,101 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>string</td>
 <td>yes</td>
 <td>–</td>
-<td>Unique DAG identifier. Must match <code>[a-zA-Z0-9_-]+</code>.</td>
+<td>Unique DAG identifier</td>
 </tr>
 <tr class="even">
 <td><code>version</code></td>
 <td>string</td>
 <td>no</td>
 <td><code>"1"</code></td>
-<td>Schema version. Currently only <code>"1"</code> is supported.</td>
+<td>Schema version</td>
 </tr>
 <tr class="odd">
 <td><code>steps</code></td>
 <td>array</td>
 <td>yes</td>
 <td>–</td>
-<td>Ordered list of step objects.</td>
+<td>List of step objects</td>
 </tr>
 <tr class="even">
 <td><code>trigger</code></td>
 <td>object</td>
 <td>no</td>
 <td>(none)</td>
-<td>Automated execution triggers. See <a href="#trigger-fields">trigger fields</a>.</td>
+<td>Automated execution triggers. See <a href="#trigger-fields">trigger fields</a></td>
 </tr>
 <tr class="odd">
 <td><code>workdir</code></td>
 <td>string</td>
 <td>no</td>
 <td>(DAG file dir)</td>
-<td>Working directory for all steps. Supports <code>~</code> expansion.</td>
+<td>Working directory for all steps</td>
 </tr>
 <tr class="even">
 <td><code>env</code></td>
 <td>object</td>
 <td>no</td>
 <td><code>{}</code></td>
-<td>Environment variables inherited by all steps. Values are strings.</td>
+<td>Environment variables for all steps. Values are strings or <code>{value, secret}</code> objects</td>
 </tr>
 <tr class="odd">
 <td><code>params</code></td>
 <td>array</td>
 <td>no</td>
 <td><code>[]</code></td>
-<td>Parameter definitions. Each has <code>name</code> (required) and <code>default</code> (optional).</td>
+<td>Parameters: <code>name</code> (required), <code>default</code> (optional)</td>
 </tr>
 <tr class="even">
 <td><code>r_version</code></td>
 <td>string</td>
 <td>no</td>
 <td>(none)</td>
-<td>R version constraint (e.g.&nbsp;<code>"&gt;=4.1.0"</code>, <code>"4.4.1"</code>).</td>
+<td>R version constraint (e.g.&nbsp;<code>"&gt;=4.1.0"</code>)</td>
 </tr>
 <tr class="odd">
 <td><code>r_version_strict</code></td>
 <td>boolean</td>
 <td>no</td>
 <td><code>false</code></td>
-<td>If <code>true</code>, fail when R version does not satisfy <code>r_version</code>. Otherwise warn.</td>
+<td>Fail if R version doesn’t match (default: warn only)</td>
 </tr>
 <tr class="even">
 <td><code>on_success</code></td>
 <td>hook</td>
 <td>no</td>
 <td>(none)</td>
-<td>Hook executed after all steps succeed.</td>
+<td>Hook after all steps succeed</td>
 </tr>
 <tr class="odd">
 <td><code>on_failure</code></td>
 <td>hook</td>
 <td>no</td>
 <td>(none)</td>
-<td>Hook executed when the DAG fails.</td>
+<td>Hook when DAG fails</td>
 </tr>
 <tr class="even">
 <td><code>on_exit</code></td>
 <td>hook</td>
 <td>no</td>
 <td>(none)</td>
-<td>Hook executed on DAG exit regardless of outcome.</td>
+<td>Hook on DAG exit regardless of outcome</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="trigger-fields" class="level2">
 <h2 class="anchored" data-anchor-id="trigger-fields">Trigger fields</h2>
-<p>The <code>trigger</code> object controls when the scheduler automatically starts a DAG.</p>
+<p>The <code>trigger</code> object controls when the scheduler automatically starts a DAG. Multiple triggers can coexist – any match starts a run.</p>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 15%">
-<col style="width: 13%">
-<col style="width: 22%">
-<col style="width: 20%">
-<col style="width: 28%">
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Field</th>
 <th>Type</th>
-<th>Required</th>
-<th>Default</th>
 <th>Description</th>
 </tr>
 </thead>
@@ -568,38 +565,218 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><code>schedule</code></td>
 <td>string</td>
-<td>no</td>
-<td>(none)</td>
-<td>Cron expression (5-field). e.g.&nbsp;<code>"30 6 * * MON-FRI"</code>.</td>
+<td>Cron expression (e.g.&nbsp;<code>"30 6 * * MON-FRI"</code>, <code>"@every 5m"</code>)</td>
 </tr>
 <tr class="even">
-<td><code>watch</code></td>
-<td>string or array</td>
-<td>no</td>
-<td>(none)</td>
-<td>File glob(s) that trigger a run on change. e.g.&nbsp;<code>"data/*.csv"</code>.</td>
+<td><code>overlap</code></td>
+<td>enum</td>
+<td><code>"skip"</code> (default) or <code>"cancel"</code> – what to do if DAG is already running</td>
 </tr>
 <tr class="odd">
+<td><code>watch</code></td>
+<td>object</td>
+<td>File watcher trigger</td>
+</tr>
+<tr class="even">
 <td><code>webhook</code></td>
-<td>boolean</td>
-<td>no</td>
-<td><code>false</code></td>
-<td>If <code>true</code>, enable triggering via the REST API webhook endpoint.</td>
+<td>object</td>
+<td>HTTP POST trigger</td>
+</tr>
+<tr class="odd">
+<td><code>on_dag</code></td>
+<td>object</td>
+<td>Trigger on another DAG’s completion</td>
+</tr>
+<tr class="even">
+<td><code>condition</code></td>
+<td>object</td>
+<td>Polling trigger (R expr or shell command)</td>
+</tr>
+<tr class="odd">
+<td><code>git</code></td>
+<td>object</td>
+<td>Trigger on new git commits</td>
 </tr>
 </tbody>
 </table>
-<p>At least one trigger field must be present when the <code>trigger</code> object is specified.</p>
+<section id="watch-fields" class="level3">
+<h3 class="anchored" data-anchor-id="watch-fields"><code>watch</code> fields</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>path</code></td>
+<td>string</td>
+<td>yes</td>
+<td>Directory to watch</td>
+</tr>
+<tr class="even">
+<td><code>pattern</code></td>
+<td>string</td>
+<td>no</td>
+<td>Glob pattern (e.g.&nbsp;<code>"*.csv"</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>debounce</code></td>
+<td>duration</td>
+<td>no</td>
+<td>Wait for writes to settle (e.g.&nbsp;<code>"5s"</code>)</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="webhook-fields" class="level3">
+<h3 class="anchored" data-anchor-id="webhook-fields"><code>webhook</code> fields</h3>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>secret</code></td>
+<td>string</td>
+<td>no</td>
+<td>HMAC-SHA256 secret for request validation</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="on_dag-fields" class="level3">
+<h3 class="anchored" data-anchor-id="on_dag-fields"><code>on_dag</code> fields</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 16%">
+<col style="width: 27%">
+<col style="width: 36%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>name</code></td>
+<td>string</td>
+<td>yes</td>
+<td>Name of upstream DAG</td>
+</tr>
+<tr class="even">
+<td><code>status</code></td>
+<td>enum</td>
+<td>no</td>
+<td><code>"completed"</code> (default), <code>"failed"</code>, or <code>"any"</code></td>
+</tr>
+<tr class="odd">
+<td><code>pass_outputs</code></td>
+<td>boolean</td>
+<td>no</td>
+<td>Pass upstream outputs as env vars</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="condition-fields" class="level3">
+<h3 class="anchored" data-anchor-id="condition-fields"><code>condition</code> fields</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 16%">
+<col style="width: 27%">
+<col style="width: 36%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>r_expr</code></td>
+<td>string</td>
+<td>one of</td>
+<td>R expression to evaluate</td>
+</tr>
+<tr class="even">
+<td><code>command</code></td>
+<td>string</td>
+<td>one of</td>
+<td>Shell command to evaluate</td>
+</tr>
+<tr class="odd">
+<td><code>poll_interval</code></td>
+<td>duration</td>
+<td>no</td>
+<td>How often to check (default: <code>"5m"</code>)</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="git-fields" class="level3">
+<h3 class="anchored" data-anchor-id="git-fields"><code>git</code> fields</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 16%">
+<col style="width: 27%">
+<col style="width: 36%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>branch</code></td>
+<td>string</td>
+<td>no</td>
+<td>Branch to monitor</td>
+</tr>
+<tr class="even">
+<td><code>events</code></td>
+<td>array</td>
+<td>no</td>
+<td><code>"push"</code>, <code>"tag"</code></td>
+</tr>
+<tr class="odd">
+<td><code>poll_interval</code></td>
+<td>duration</td>
+<td>no</td>
+<td>How often to poll (default: <code>"30s"</code>)</td>
+</tr>
+</tbody>
+</table>
+</section>
 </section>
 <section id="step-fields" class="level2">
 <h2 class="anchored" data-anchor-id="step-fields">Step fields</h2>
+<p>Each step requires an <code>id</code> and exactly one step type field.</p>
+<section id="common-fields" class="level3">
+<h3 class="anchored" data-anchor-id="common-fields">Common fields</h3>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 15%">
-<col style="width: 13%">
-<col style="width: 22%">
-<col style="width: 20%">
-<col style="width: 28%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Field</th>
@@ -615,141 +792,371 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>string</td>
 <td>yes</td>
 <td>–</td>
-<td>Unique step identifier within the DAG. Must match <code>[a-zA-Z0-9_-]+</code>.</td>
-</tr>
-<tr class="even">
-<td><code>script</code></td>
-<td>string</td>
-<td>one of</td>
-<td>–</td>
-<td>Path to an R script to execute.</td>
-</tr>
-<tr class="odd">
-<td><code>r_expr</code></td>
-<td>string</td>
-<td>one of</td>
-<td>–</td>
-<td>Inline R expression(s).</td>
-</tr>
-<tr class="even">
-<td><code>command</code></td>
-<td>string</td>
-<td>one of</td>
-<td>–</td>
-<td>Shell command to execute.</td>
-</tr>
-<tr class="odd">
-<td><code>sub_dag</code></td>
-<td>string</td>
-<td>one of</td>
-<td>–</td>
-<td>Name of another DAG to invoke.</td>
+<td>Unique step identifier</td>
 </tr>
 <tr class="even">
 <td><code>args</code></td>
-<td>array</td>
+<td>string[]</td>
 <td>no</td>
 <td><code>[]</code></td>
-<td>Command-line arguments. Supports template variables.</td>
+<td>Command-line arguments</td>
 </tr>
 <tr class="odd">
 <td><code>depends</code></td>
-<td>array</td>
+<td>string[]</td>
 <td>no</td>
 <td><code>[]</code></td>
-<td>IDs of upstream steps that must complete first.</td>
+<td>IDs of upstream steps</td>
 </tr>
 <tr class="even">
 <td><code>timeout</code></td>
 <td>duration</td>
 <td>no</td>
 <td>(none)</td>
-<td>Maximum step duration. e.g.&nbsp;<code>"30s"</code>, <code>"5m"</code>, <code>"1h"</code>.</td>
+<td>Maximum duration (e.g.&nbsp;<code>"30s"</code>, <code>"5m"</code>)</td>
 </tr>
 <tr class="odd">
 <td><code>retry</code></td>
 <td>object</td>
 <td>no</td>
 <td>(none)</td>
-<td>Retry config: <code>limit</code> (int), <code>backoff</code> (<code>"fixed"</code> or <code>"exponential"</code>), <code>max_delay</code> (duration).</td>
+<td>See <a href="#retry-config">retry config</a></td>
 </tr>
 <tr class="even">
 <td><code>env</code></td>
 <td>object</td>
 <td>no</td>
 <td><code>{}</code></td>
-<td>Step-level environment variables. Merged with DAG-level <code>env</code>.</td>
+<td>Step-level environment variables</td>
 </tr>
 <tr class="odd">
 <td><code>workdir</code></td>
 <td>string</td>
 <td>no</td>
 <td>(DAG workdir)</td>
-<td>Step-level working directory override.</td>
+<td>Step-level working directory</td>
 </tr>
 <tr class="even">
 <td><code>when</code></td>
 <td>object</td>
 <td>no</td>
 <td>(none)</td>
-<td>Conditional execution. Fields: <code>output_contains</code>, <code>env_set</code>, <code>env_equals</code>, <code>expr</code>.</td>
+<td>Skip step if condition fails. Fields: <code>r_expr</code> or <code>command</code></td>
 </tr>
 <tr class="odd">
 <td><code>preconditions</code></td>
 <td>array</td>
 <td>no</td>
 <td><code>[]</code></td>
-<td>Health checks to run before the step. Each has <code>command</code> and optional <code>timeout</code>.</td>
+<td>Fail step if checks fail. Each has <code>r_expr</code> or <code>command</code></td>
 </tr>
 <tr class="even">
 <td><code>error_on</code></td>
 <td>enum</td>
 <td>no</td>
 <td><code>"error"</code></td>
-<td>Error sensitivity: <code>"error"</code>, <code>"warning"</code>, or <code>"message"</code>.</td>
+<td><code>"error"</code>, <code>"warning"</code>, or <code>"message"</code></td>
 </tr>
 <tr class="odd">
 <td><code>matrix</code></td>
 <td>object</td>
 <td>no</td>
 <td>(none)</td>
-<td>Parameter grid. Keys are variable names, values are arrays.</td>
+<td>Parameter grid. Keys = names, values = string arrays</td>
 </tr>
 <tr class="even">
 <td><code>max_parallel</code></td>
 <td>integer</td>
 <td>no</td>
 <td>(all)</td>
-<td>Maximum concurrent matrix instances.</td>
+<td>Max concurrent matrix instances</td>
 </tr>
 <tr class="odd">
-<td><code>approval</code></td>
-<td>boolean</td>
-<td>no</td>
-<td><code>false</code></td>
-<td>If <code>true</code>, pause and wait for manual approval before executing.</td>
-</tr>
-<tr class="even">
 <td><code>on_success</code></td>
 <td>hook</td>
 <td>no</td>
 <td>(none)</td>
-<td>Step-level success hook.</td>
+<td>Step success hook</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>on_failure</code></td>
 <td>hook</td>
 <td>no</td>
 <td>(none)</td>
-<td>Step-level failure hook.</td>
+<td>Step failure hook</td>
 </tr>
 </tbody>
 </table>
-<p>Exactly one step type field (<code>script</code>, <code>r_expr</code>, <code>command</code>, or <code>sub_dag</code>) must be specified per step.</p>
+</section>
+<section id="step-types" class="level3">
+<h3 class="anchored" data-anchor-id="step-types">Step types</h3>
+<p>Exactly one step type field must be set per step.</p>
+<p><strong>Core:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>script</code></td>
+<td>string</td>
+<td>Path to R script. Runs via <code>Rscript --no-save --no-restore</code></td>
+</tr>
+<tr class="even">
+<td><code>r_expr</code></td>
+<td>string</td>
+<td>Inline R expression. Written to temp file, runs via Rscript</td>
+</tr>
+<tr class="odd">
+<td><code>command</code></td>
+<td>string</td>
+<td>Shell command. Runs via <code>sh -c</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Documents:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>quarto</code></td>
+<td>string</td>
+<td>Quarto document or project path. Runs <code>quarto render</code></td>
+</tr>
+<tr class="even">
+<td><code>rmd</code></td>
+<td>string</td>
+<td>R Markdown file path. Runs <code>rmarkdown::render()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>R package development:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>test</code></td>
+<td>string</td>
+<td>Package path. Runs <code>devtools::test()</code></td>
+</tr>
+<tr class="even">
+<td><code>check</code></td>
+<td>string</td>
+<td>Package path. Runs <code>rcmdcheck::rcmdcheck()</code></td>
+</tr>
+<tr class="odd">
+<td><code>document</code></td>
+<td>string</td>
+<td>Package path. Runs <code>roxygen2::roxygenize()</code></td>
+</tr>
+<tr class="even">
+<td><code>lint</code></td>
+<td>string</td>
+<td>Package path. Runs <code>lintr::lint_package()</code></td>
+</tr>
+<tr class="odd">
+<td><code>style</code></td>
+<td>string</td>
+<td>Package path. Runs <code>styler::style_pkg()</code></td>
+</tr>
+<tr class="even">
+<td><code>coverage</code></td>
+<td>string</td>
+<td>Package path. Runs <code>covr::package_coverage()</code></td>
+</tr>
+<tr class="odd">
+<td><code>pkgdown</code></td>
+<td>string</td>
+<td>Package path. Runs <code>pkgdown::build_site()</code></td>
+</tr>
+<tr class="even">
+<td><code>benchmark</code></td>
+<td>string</td>
+<td>Directory path. Runs bench scripts</td>
+</tr>
+<tr class="odd">
+<td><code>revdepcheck</code></td>
+<td>string</td>
+<td>Package path. Runs <code>revdepcheck::revdep_check()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Environment:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>renv_restore</code></td>
+<td>string</td>
+<td>Project path. Runs <code>renv::restore()</code></td>
+</tr>
+<tr class="even">
+<td><code>install</code></td>
+<td>string</td>
+<td>Package names. Installs via <code>pak</code> or <code>install.packages()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Deployment:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>connect</code></td>
+<td>object</td>
+<td>Deploy to Posit Connect. Fields: <code>type</code> (shiny/quarto/plumber), <code>path</code>, <code>name</code>, <code>force_update</code></td>
+</tr>
+<tr class="even">
+<td><code>pin</code></td>
+<td>object</td>
+<td>Publish via pins. Fields: <code>board</code>, <code>name</code>, <code>object</code>, <code>type</code>, <code>versioned</code></td>
+</tr>
+<tr class="odd">
+<td><code>vetiver</code></td>
+<td>object</td>
+<td>MLOps deploy. Fields: <code>action</code> (pin/deploy), <code>model</code>, <code>board</code>, <code>name</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Workflow:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>approve</code></td>
+<td>object</td>
+<td>Approval gate. Fields: <code>message</code>, <code>timeout</code>, <code>notify</code> (hook)</td>
+</tr>
+<tr class="even">
+<td><code>call</code></td>
+<td>object</td>
+<td>Sub-DAG. Fields: <code>dag</code> (name), <code>params</code> (map)</td>
+</tr>
+<tr class="odd">
+<td><code>targets</code></td>
+<td>string</td>
+<td>Project path. Runs <code>targets::tar_make()</code></td>
+</tr>
+<tr class="even">
+<td><code>shinytest</code></td>
+<td>string</td>
+<td>App directory. Runs <code>shinytest2::test_app()</code></td>
+</tr>
+<tr class="odd">
+<td><code>validate</code></td>
+<td>string</td>
+<td>Script path. Runs validation via Rscript</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="retry-config" class="level2">
+<h2 class="anchored" data-anchor-id="retry-config">Retry config</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 17%">
+<col style="width: 25%">
+<col style="width: 37%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>limit</code></td>
+<td>integer</td>
+<td>0</td>
+<td>Number of retries (total attempts = limit + 1)</td>
+</tr>
+<tr class="even">
+<td><code>backoff</code></td>
+<td>enum</td>
+<td><code>"linear"</code></td>
+<td><code>"linear"</code> or <code>"exponential"</code></td>
+</tr>
+<tr class="odd">
+<td><code>max_delay</code></td>
+<td>duration</td>
+<td>(none)</td>
+<td>Cap on delay between retries</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="hook-fields" class="level2">
 <h2 class="anchored" data-anchor-id="hook-fields">Hook fields</h2>
-<p>Hooks appear in <code>on_success</code>, <code>on_failure</code>, and <code>on_exit</code> at both DAG and step level. A hook must contain exactly one of:</p>
+<p>Hooks appear in <code>on_success</code>, <code>on_failure</code>, and <code>on_exit</code>. A hook must contain exactly one of:</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -760,45 +1167,54 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>command</code></td>
-<td>string</td>
-<td>Shell command to execute.</td>
-</tr>
-<tr class="even">
 <td><code>r_expr</code></td>
 <td>string</td>
-<td>Inline R expression.</td>
+<td>Inline R expression</td>
 </tr>
-<tr class="odd">
-<td><code>script</code></td>
+<tr class="even">
+<td><code>command</code></td>
 <td>string</td>
-<td>Path to an R script.</td>
+<td>Shell command</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="template-variables" class="level2">
 <h2 class="anchored" data-anchor-id="template-variables">Template variables</h2>
-<p>String fields (<code>args</code>, <code>env</code> values, <code>workdir</code>) support Go template syntax:</p>
+<p>String fields (<code>args</code>, <code>env</code> values, <code>workdir</code>) support Go <code>text/template</code> syntax:</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
 <th>Variable</th>
+<th>Example</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td><code>{ .Today }</code></td>
-<td>Today’s date in <code>YYYY-MM-DD</code> format</td>
+<td><code>2026-04-06</code></td>
+<td>Current date (YYYY-MM-DD)</td>
 </tr>
 <tr class="even">
-<td><code>{{ .Params.&lt;name&gt; }}</code></td>
-<td>Value of parameter <code>&lt;name&gt;</code></td>
+<td><code>{ .Now }</code></td>
+<td><code>2026-04-06T08:30:00Z</code></td>
+<td>Current time (RFC3339)</td>
 </tr>
 <tr class="odd">
-<td><code>{{ .Env.&lt;name&gt; }}</code></td>
-<td>Value of environment variable <code>&lt;name&gt;</code></td>
+<td><code>{ .Params.name }</code></td>
+<td><code>sales</code></td>
+<td>Parameter value</td>
+</tr>
+<tr class="even">
+<td><code>{ .Env.KEY }</code></td>
+<td><code>localhost</code></td>
+<td>DAG-level environment variable</td>
+</tr>
+<tr class="odd">
+<td><code>{ .Matrix.key }</code></td>
+<td><code>lm</code></td>
+<td>Matrix parameter (in expanded steps)</td>
 </tr>
 </tbody>
 </table>
