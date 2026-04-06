@@ -85,7 +85,13 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	// DAG files
 	entries, err := os.ReadDir(dagDir)
 	if err != nil {
-		printCheck("WARN", "Cannot read DAG directory: %v", err)
+		if os.IsNotExist(err) {
+			printCheck("INFO", "DAG directory does not exist yet")
+			fmt.Println("         Create it with: mkdir -p " + dagDir)
+			fmt.Println("         Or run: daggle init <template>")
+		} else {
+			printCheck("WARN", "Cannot read DAG directory: %v", err)
+		}
 	} else {
 		var valid, invalid int
 		var parseErrors []string
