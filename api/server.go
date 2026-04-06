@@ -10,20 +10,26 @@ import (
 	"time"
 )
 
+// DAGSource represents a directory containing DAG YAML files, with a label.
+type DAGSource struct {
+	Name string // project name or "global"
+	Dir  string // absolute path to directory with YAML files
+}
+
 // Server is the daggle REST API server.
 type Server struct {
 	mux     *http.ServeMux
-	dagDir  string
+	sources []DAGSource
 	version string
 	started time.Time
 	logger  *slog.Logger
 }
 
 // New creates a new API server.
-func New(dagDir, version string) *Server {
+func New(sources []DAGSource, version string) *Server {
 	s := &Server{
 		mux:     http.NewServeMux(),
-		dagDir:  dagDir,
+		sources: sources,
 		version: version,
 		started: time.Now(),
 		logger:  slog.Default(),
@@ -88,12 +94,14 @@ func readJSON(r *http.Request, v interface{}) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
-// dagPath resolves a DAG YAML file path from a name.
+// dagPath resolves a DAG YAML file path from a name, searching all sources.
 func (s *Server) dagPath(name string) string {
-	for _, ext := range []string{".yaml", ".yml"} {
-		p := s.dagDir + "/" + name + ext
-		if _, err := os.Stat(p); err == nil {
-			return p
+	for _, src := range s.sources {
+		for _, ext := range []string{".yaml", ".yml"} {
+			p := src.Dir + "/" + name + ext
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
 		}
 	}
 	return ""

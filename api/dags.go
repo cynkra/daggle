@@ -16,55 +16,57 @@ import (
 )
 
 func (s *Server) handleListDAGs(w http.ResponseWriter, _ *http.Request) {
-	entries, err := os.ReadDir(s.dagDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			writeJSON(w, http.StatusOK, []DAGSummary{})
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "read DAG directory: "+err.Error())
-		return
-	}
-
 	var dags []DAGSummary
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
-			continue
-		}
-		if name == "base.yaml" || name == "base.yml" {
-			continue
-		}
 
-		dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
-		path := filepath.Join(s.dagDir, name)
-
-		d, err := dag.ParseFile(path)
+	for _, src := range s.sources {
+		entries, err := os.ReadDir(src.Dir)
 		if err != nil {
-			continue // skip invalid DAGs
+			if os.IsNotExist(err) {
+				continue
+			}
+			continue
 		}
 
-		summary := DAGSummary{
-			Name:  dagName,
-			Steps: len(d.Steps),
-		}
-		if d.Trigger != nil {
-			summary.Schedule = d.Trigger.Schedule
-		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
+				continue
+			}
+			if name == "base.yaml" || name == "base.yml" {
+				continue
+			}
 
-		if run, err := state.LatestRun(dagName); err == nil && run != nil {
-			summary.LastStatus = state.RunStatus(run.Dir)
-			summary.LastRun = formatTime(run.StartTime)
-		}
+			dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
+			path := filepath.Join(src.Dir, name)
 
-		dags = append(dags, summary)
+			d, err := dag.ParseFile(path)
+			if err != nil {
+				continue
+			}
+
+			summary := DAGSummary{
+				Name:    dagName,
+				Steps:   len(d.Steps),
+				Project: src.Name,
+			}
+			if d.Trigger != nil {
+				summary.Schedule = d.Trigger.Schedule
+			}
+
+			if run, err := state.LatestRun(dagName); err == nil && run != nil {
+				summary.LastStatus = state.RunStatus(run.Dir)
+				summary.LastRun = formatTime(run.StartTime)
+			}
+
+			dags = append(dags, summary)
+		}
 	}
 
 	if dags == nil {
-		dags = []DAGSummary{} // return [] not null
+		dags = []DAGSummary{}
 	}
 	writeJSON(w, http.StatusOK, dags)
 }

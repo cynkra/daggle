@@ -13,6 +13,7 @@ type HealthResponse struct {
 type DAGSummary struct {
 	Name       string `json:"name"`
 	Steps      int    `json:"steps"`
+	Project    string `json:"project,omitempty"`
 	Schedule   string `json:"schedule,omitempty"`
 	LastStatus string `json:"last_status,omitempty"`
 	LastRun    string `json:"last_run,omitempty"`
