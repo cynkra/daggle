@@ -18,6 +18,10 @@ import (
 func (s *Server) handleListDAGs(w http.ResponseWriter, _ *http.Request) {
 	entries, err := os.ReadDir(s.dagDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			writeJSON(w, http.StatusOK, []DAGSummary{})
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "read DAG directory: "+err.Error())
 		return
 	}

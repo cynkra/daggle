@@ -193,6 +193,9 @@ func (s *Scheduler) shutdown() {
 func (s *Scheduler) syncDAGs(ctx context.Context) error {
 	entries, err := os.ReadDir(s.dagDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // no DAG directory yet, nothing to schedule
+		}
 		return fmt.Errorf("read DAG dir: %w", err)
 	}
 

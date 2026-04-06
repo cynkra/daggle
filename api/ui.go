@@ -111,7 +111,7 @@ type stepLogView struct {
 
 func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
 	entries, err := os.ReadDir(s.dagDir)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		http.Error(w, "read DAG directory: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
