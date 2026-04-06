@@ -89,6 +89,8 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 	select {
 	case err := <-done:
 		<-scanDone // ensure all stdout is read
+		_ = stdoutFile.Sync()
+		_ = stderrFile.Sync()
 		r := buildResult(err, start, stdoutPath, stderrPath)
 		r.Outputs = outputs
 		return r
@@ -96,6 +98,8 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		killProcessGroup(cmd)
 		<-done
 		<-scanDone
+		_ = stdoutFile.Sync()
+		_ = stderrFile.Sync()
 		return Result{
 			ExitCode: -1,
 			Err:      ctx.Err(),
