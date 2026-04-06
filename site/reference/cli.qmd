@@ -186,7 +186,45 @@ Available templates:
 | `pkg-release` | R package release workflow |
 | `data-pipeline` | Extract-transform-load data pipeline |
 
-Writes the generated YAML to the current directory.
+Writes the generated YAML to `.daggle/` in the current directory.
+
+## daggle register
+
+Register a project directory so the scheduler picks up its `.daggle/` DAGs.
+
+```
+daggle register [path] [--name <name>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--name` | string | (directory basename) | Project name for the registry |
+
+- `path` defaults to the current working directory
+- Validates `.daggle/` exists (warns if not)
+- Checks for DAG name collisions across all sources
+- Sends SIGHUP to running scheduler for immediate reload
+- Registry stored at `~/.config/daggle/projects.yaml`
+
+## daggle unregister
+
+Remove a project from the registry.
+
+```
+daggle unregister <name|path>
+```
+
+Accepts the project name or its filesystem path. Sends SIGHUP to running scheduler.
+
+## daggle projects
+
+List all registered projects.
+
+```
+daggle projects
+```
+
+Shows: project name, status (ok/missing), DAG count, path. Also shows the global DAGs directory.
 
 ## Global flags {#global-flags}
 

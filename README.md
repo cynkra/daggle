@@ -536,6 +536,13 @@ daggle reject <dag-name> [flags]  Reject a waiting DAG run
 
 daggle init <template>            Generate a DAG from a built-in template
                                   Templates: pkg-check, pkg-release, data-pipeline
+
+daggle register [path] [flags]   Register a project for scheduled execution
+  --name <name>                   Project name (default: directory basename)
+
+daggle unregister <name|path>    Remove a project from the registry
+
+daggle projects                  List registered projects with DAG counts
 ```
 
 Global flags:
@@ -658,6 +665,29 @@ daggle looks for DAG files in this order:
 1. `--dags-dir` flag (explicit override)
 2. `.daggle/` in the current working directory (project-local)
 3. `~/.config/daggle/dags/` (global default)
+
+## Project registration
+
+Register project directories so the scheduler picks up their `.daggle/` DAGs:
+
+```bash
+# Register current project
+cd my-project
+daggle register
+
+# Register with explicit path and name
+daggle register /opt/analytics/etl --name etl-pipeline
+
+# List registered projects
+daggle projects
+
+# Remove a project
+daggle unregister my-project
+```
+
+The registry is stored at `~/.config/daggle/projects.yaml`. When `daggle serve` starts, it watches all registered projects plus the global DAGs directory. `daggle list` and `daggle run` search across all sources.
+
+DAG names must be unique across all registered projects. `daggle register` checks for collisions before adding.
 
 Project-local discovery means DAGs can live alongside the R project they orchestrate:
 
