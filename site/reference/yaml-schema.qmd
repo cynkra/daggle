@@ -20,73 +20,177 @@ steps:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `name` | string | yes | -- | Unique DAG identifier. Must match `[a-zA-Z0-9_-]+`. |
-| `version` | string | no | `"1"` | Schema version. Currently only `"1"` is supported. |
-| `steps` | array | yes | -- | Ordered list of step objects. |
-| `trigger` | object | no | (none) | Automated execution triggers. See [trigger fields](#trigger-fields). |
-| `workdir` | string | no | (DAG file dir) | Working directory for all steps. Supports `~` expansion. |
-| `env` | object | no | `{}` | Environment variables inherited by all steps. Values are strings. |
-| `params` | array | no | `[]` | Parameter definitions. Each has `name` (required) and `default` (optional). |
-| `r_version` | string | no | (none) | R version constraint (e.g. `">=4.1.0"`, `"4.4.1"`). |
-| `r_version_strict` | boolean | no | `false` | If `true`, fail when R version does not satisfy `r_version`. Otherwise warn. |
-| `on_success` | hook | no | (none) | Hook executed after all steps succeed. |
-| `on_failure` | hook | no | (none) | Hook executed when the DAG fails. |
-| `on_exit` | hook | no | (none) | Hook executed on DAG exit regardless of outcome. |
+| `name` | string | yes | -- | Unique DAG identifier |
+| `version` | string | no | `"1"` | Schema version |
+| `steps` | array | yes | -- | List of step objects |
+| `trigger` | object | no | (none) | Automated execution triggers. See [trigger fields](#trigger-fields) |
+| `workdir` | string | no | (DAG file dir) | Working directory for all steps |
+| `env` | object | no | `{}` | Environment variables for all steps. Values are strings or `{value, secret}` objects |
+| `params` | array | no | `[]` | Parameters: `name` (required), `default` (optional) |
+| `r_version` | string | no | (none) | R version constraint (e.g. `">=4.1.0"`) |
+| `r_version_strict` | boolean | no | `false` | Fail if R version doesn't match (default: warn only) |
+| `on_success` | hook | no | (none) | Hook after all steps succeed |
+| `on_failure` | hook | no | (none) | Hook when DAG fails |
+| `on_exit` | hook | no | (none) | Hook on DAG exit regardless of outcome |
 
 ## Trigger fields {#trigger-fields}
 
-The `trigger` object controls when the scheduler automatically starts a DAG.
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `schedule` | string | no | (none) | Cron expression (5-field). e.g. `"30 6 * * MON-FRI"`. |
-| `watch` | string or array | no | (none) | File glob(s) that trigger a run on change. e.g. `"data/*.csv"`. |
-| `webhook` | boolean | no | `false` | If `true`, enable triggering via the REST API webhook endpoint. |
-
-At least one trigger field must be present when the `trigger` object is specified.
-
-## Step fields
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `id` | string | yes | -- | Unique step identifier within the DAG. Must match `[a-zA-Z0-9_-]+`. |
-| `script` | string | one of | -- | Path to an R script to execute. |
-| `r_expr` | string | one of | -- | Inline R expression(s). |
-| `command` | string | one of | -- | Shell command to execute. |
-| `sub_dag` | string | one of | -- | Name of another DAG to invoke. |
-| `args` | array | no | `[]` | Command-line arguments. Supports template variables. |
-| `depends` | array | no | `[]` | IDs of upstream steps that must complete first. |
-| `timeout` | duration | no | (none) | Maximum step duration. e.g. `"30s"`, `"5m"`, `"1h"`. |
-| `retry` | object | no | (none) | Retry config: `limit` (int), `backoff` (`"fixed"` or `"exponential"`), `max_delay` (duration). |
-| `env` | object | no | `{}` | Step-level environment variables. Merged with DAG-level `env`. |
-| `workdir` | string | no | (DAG workdir) | Step-level working directory override. |
-| `when` | object | no | (none) | Conditional execution. Fields: `output_contains`, `env_set`, `env_equals`, `expr`. |
-| `preconditions` | array | no | `[]` | Health checks to run before the step. Each has `command` and optional `timeout`. |
-| `error_on` | enum | no | `"error"` | Error sensitivity: `"error"`, `"warning"`, or `"message"`. |
-| `matrix` | object | no | (none) | Parameter grid. Keys are variable names, values are arrays. |
-| `max_parallel` | integer | no | (all) | Maximum concurrent matrix instances. |
-| `approval` | boolean | no | `false` | If `true`, pause and wait for manual approval before executing. |
-| `on_success` | hook | no | (none) | Step-level success hook. |
-| `on_failure` | hook | no | (none) | Step-level failure hook. |
-
-Exactly one step type field (`script`, `r_expr`, `command`, or `sub_dag`) must be specified per step.
-
-## Hook fields
-
-Hooks appear in `on_success`, `on_failure`, and `on_exit` at both DAG and step level. A hook must contain exactly one of:
+The `trigger` object controls when the scheduler automatically starts a DAG. Multiple triggers can coexist -- any match starts a run.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `command` | string | Shell command to execute. |
-| `r_expr` | string | Inline R expression. |
-| `script` | string | Path to an R script. |
+| `schedule` | string | Cron expression (e.g. `"30 6 * * MON-FRI"`, `"@every 5m"`) |
+| `overlap` | enum | `"skip"` (default) or `"cancel"` -- what to do if DAG is already running |
+| `watch` | object | File watcher trigger |
+| `webhook` | object | HTTP POST trigger |
+| `on_dag` | object | Trigger on another DAG's completion |
+| `condition` | object | Polling trigger (R expr or shell command) |
+| `git` | object | Trigger on new git commits |
+
+### `watch` fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | yes | Directory to watch |
+| `pattern` | string | no | Glob pattern (e.g. `"*.csv"`) |
+| `debounce` | duration | no | Wait for writes to settle (e.g. `"5s"`) |
+
+### `webhook` fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `secret` | string | no | HMAC-SHA256 secret for request validation |
+
+### `on_dag` fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Name of upstream DAG |
+| `status` | enum | no | `"completed"` (default), `"failed"`, or `"any"` |
+| `pass_outputs` | boolean | no | Pass upstream outputs as env vars |
+
+### `condition` fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `r_expr` | string | one of | R expression to evaluate |
+| `command` | string | one of | Shell command to evaluate |
+| `poll_interval` | duration | no | How often to check (default: `"5m"`) |
+
+### `git` fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `branch` | string | no | Branch to monitor |
+| `events` | array | no | `"push"`, `"tag"` |
+| `poll_interval` | duration | no | How often to poll (default: `"30s"`) |
+
+## Step fields
+
+Each step requires an `id` and exactly one step type field.
+
+### Common fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `id` | string | yes | -- | Unique step identifier |
+| `args` | string[] | no | `[]` | Command-line arguments |
+| `depends` | string[] | no | `[]` | IDs of upstream steps |
+| `timeout` | duration | no | (none) | Maximum duration (e.g. `"30s"`, `"5m"`) |
+| `retry` | object | no | (none) | See [retry config](#retry-config) |
+| `env` | object | no | `{}` | Step-level environment variables |
+| `workdir` | string | no | (DAG workdir) | Step-level working directory |
+| `when` | object | no | (none) | Skip step if condition fails. Fields: `r_expr` or `command` |
+| `preconditions` | array | no | `[]` | Fail step if checks fail. Each has `r_expr` or `command` |
+| `error_on` | enum | no | `"error"` | `"error"`, `"warning"`, or `"message"` |
+| `matrix` | object | no | (none) | Parameter grid. Keys = names, values = string arrays |
+| `max_parallel` | integer | no | (all) | Max concurrent matrix instances |
+| `on_success` | hook | no | (none) | Step success hook |
+| `on_failure` | hook | no | (none) | Step failure hook |
+
+### Step types
+
+Exactly one step type field must be set per step.
+
+**Core:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `script` | string | Path to R script. Runs via `Rscript --no-save --no-restore` |
+| `r_expr` | string | Inline R expression. Written to temp file, runs via Rscript |
+| `command` | string | Shell command. Runs via `sh -c` |
+
+**Documents:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `quarto` | string | Quarto document or project path. Runs `quarto render` |
+| `rmd` | string | R Markdown file path. Runs `rmarkdown::render()` |
+
+**R package development:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `test` | string | Package path. Runs `devtools::test()` |
+| `check` | string | Package path. Runs `rcmdcheck::rcmdcheck()` |
+| `document` | string | Package path. Runs `roxygen2::roxygenize()` |
+| `lint` | string | Package path. Runs `lintr::lint_package()` |
+| `style` | string | Package path. Runs `styler::style_pkg()` |
+| `coverage` | string | Package path. Runs `covr::package_coverage()` |
+| `pkgdown` | string | Package path. Runs `pkgdown::build_site()` |
+| `benchmark` | string | Directory path. Runs bench scripts |
+| `revdepcheck` | string | Package path. Runs `revdepcheck::revdep_check()` |
+
+**Environment:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `renv_restore` | string | Project path. Runs `renv::restore()` |
+| `install` | string | Package names. Installs via `pak` or `install.packages()` |
+
+**Deployment:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `connect` | object | Deploy to Posit Connect. Fields: `type` (shiny/quarto/plumber), `path`, `name`, `force_update` |
+| `pin` | object | Publish via pins. Fields: `board`, `name`, `object`, `type`, `versioned` |
+| `vetiver` | object | MLOps deploy. Fields: `action` (pin/deploy), `model`, `board`, `name` |
+
+**Workflow:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `approve` | object | Approval gate. Fields: `message`, `timeout`, `notify` (hook) |
+| `call` | object | Sub-DAG. Fields: `dag` (name), `params` (map) |
+| `targets` | string | Project path. Runs `targets::tar_make()` |
+| `shinytest` | string | App directory. Runs `shinytest2::test_app()` |
+| `validate` | string | Script path. Runs validation via Rscript |
+
+## Retry config {#retry-config}
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `limit` | integer | 0 | Number of retries (total attempts = limit + 1) |
+| `backoff` | enum | `"linear"` | `"linear"` or `"exponential"` |
+| `max_delay` | duration | (none) | Cap on delay between retries |
+
+## Hook fields
+
+Hooks appear in `on_success`, `on_failure`, and `on_exit`. A hook must contain exactly one of:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `r_expr` | string | Inline R expression |
+| `command` | string | Shell command |
 
 ## Template variables
 
-String fields (`args`, `env` values, `workdir`) support Go template syntax:
+String fields (`args`, `env` values, `workdir`) support Go `text/template` syntax:
 
-| Variable | Description |
-|----------|-------------|
-| `{{ .Today }}` | Today's date in `YYYY-MM-DD` format |
-| `{{ .Params.<name> }}` | Value of parameter `<name>` |
-| `{{ .Env.<name> }}` | Value of environment variable `<name>` |
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `{{ .Today }}` | `2026-04-06` | Current date (YYYY-MM-DD) |
+| `{{ .Now }}` | `2026-04-06T08:30:00Z` | Current time (RFC3339) |
+| `{{ .Params.name }}` | `sales` | Parameter value |
+| `{{ .Env.KEY }}` | `localhost` | DAG-level environment variable |
+| `{{ .Matrix.key }}` | `lm` | Matrix parameter (in expanded steps) |
