@@ -226,6 +226,16 @@ daggle projects
 
 Shows: project name, status (ok/missing), DAG count, path. Also shows the global DAGs directory.
 
+## daggle version
+
+Print the daggle version.
+
+```
+daggle version
+```
+
+Prints the version string (e.g. `0.4.1`). Development builds show `dev`.
+
 ## Global flags {#global-flags}
 
 These flags apply to all commands and override the corresponding environment variables.
