@@ -1,6 +1,7 @@
 package dag
 
 import (
+	"path/filepath"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -20,8 +21,9 @@ type DAG struct {
 	RVersion       string `yaml:"r_version,omitempty"`
 	RVersionStrict bool   `yaml:"r_version_strict,omitempty"`
 
-	// SourceDir is the directory containing the DAG YAML file.
-	// Set by ParseFile, not from YAML. Used as default working directory.
+	// SourceDir is the project root directory. When the DAG file is inside
+	// a .daggle/ directory, this is the parent of .daggle/; otherwise it is
+	// the directory containing the DAG file. Set by ParseFile, not from YAML.
 	SourceDir string `yaml:"-"`
 
 	// Hooks
@@ -287,17 +289,22 @@ type Retry struct {
 
 // ResolveWorkdir returns the effective working directory for a step.
 // Precedence: step workdir > DAG workdir > DAG source directory.
+// Relative step workdirs are resolved against the base (DAG workdir or SourceDir).
 func (d *DAG) ResolveWorkdir(s Step) string {
+	base := d.SourceDir
+	if d.Workdir != "" {
+		base = d.Workdir
+	}
 	if s.Workdir != "" {
+		if filepath.IsAbs(s.Workdir) {
+			return s.Workdir
+		}
+		if base != "" {
+			return filepath.Join(base, s.Workdir)
+		}
 		return s.Workdir
 	}
-	if d.Workdir != "" {
-		return d.Workdir
-	}
-	if d.SourceDir != "" {
-		return d.SourceDir
-	}
-	return ""
+	return base
 }
 
 // StepType returns the type of the step based on which field is set.

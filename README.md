@@ -113,7 +113,7 @@ Every step is assumed to be R unless stated otherwise. The following step types 
 name: my-pipeline               # required
 trigger:                        # optional: automated execution triggers
   schedule: "30 6 * * MON-FRI" # cron schedule for daggle serve
-workdir: /opt/projects/etl      # optional working directory override
+workdir: /opt/projects/etl      # optional; defaults to project root (parent of .daggle/)
 
 env:                            # environment variables for all steps
   DB_HOST: "localhost"
@@ -133,7 +133,7 @@ on_exit:
 
 steps:
   - id: extract                 # unique step identifier (required)
-    script: etl/extract.R       # R script path (relative to workdir)
+    script: etl/extract.R       # R script path (relative to project root)
     args: ["--dept", "{{ .Params.department }}"]
     timeout: 10m                # kill step after this duration
     retry:
@@ -154,7 +154,7 @@ steps:
     script: etl/report.R
     args: ["--rows", "$DAGGLE_OUTPUT_VALIDATE_ROW_COUNT"]
     depends: [validate]
-    workdir: /tmp/reports        # step-level workdir override
+    workdir: reports             # step-level workdir (relative to project root, or absolute)
 
   - id: deploy
     command: scp output.csv server:/data/
@@ -632,7 +632,7 @@ This expands into 6 parallel step instances, each with `DAGGLE_MATRIX_ALGO` and 
 
 **Dependency resolution** — Steps declare dependencies via `depends:`. daggle performs a topological sort and groups steps into tiers. Steps within a tier run in parallel.
 
-**Working directory** — Steps execute in the DAG file's directory by default. Override at DAG level (`workdir:`) or step level. Precedence: step > DAG > DAG file directory.
+**Working directory** — Steps execute in the project root (parent of `.daggle/`) by default. Override at DAG level (`workdir:`) or step level. Step-level workdirs can be relative (resolved against the project root or DAG workdir) or absolute. Precedence: step > DAG > project root.
 
 **Timeouts** — Each step can specify a `timeout`. On expiry, daggle sends SIGTERM to the entire process group, waits 5 seconds, then SIGKILL. No orphaned R processes.
 
@@ -687,10 +687,10 @@ The registry is stored at `~/.config/daggle/projects.yaml`. When `daggle serve` 
 
 DAG names must be unique across all registered projects. `daggle register` checks for collisions before adding.
 
-Project-local discovery means DAGs can live alongside the R project they orchestrate:
+Project-local discovery means DAGs can live alongside the R project they orchestrate. Steps execute in the project root (parent of `.daggle/`) by default — no `workdir:` needed:
 
 ```
-my-project/
+my-project/                    # ← steps run here by default
   .daggle/
     daily-etl.yaml
     pkg-check.yaml

@@ -24,10 +24,17 @@ func ParseFile(path string) (*DAG, error) {
 		return nil, err
 	}
 
-	// Set SourceDir to the directory containing the DAG file
+	// Set SourceDir to the project root. If the DAG file lives inside a
+	// .daggle/ directory, use the parent (the project root) so that steps
+	// execute relative to the project, not the .daggle/ directory.
 	absPath, err := filepath.Abs(path)
 	if err == nil {
-		d.SourceDir = filepath.Dir(absPath)
+		dir := filepath.Dir(absPath)
+		if filepath.Base(dir) == ".daggle" {
+			d.SourceDir = filepath.Dir(dir)
+		} else {
+			d.SourceDir = dir
+		}
 	}
 
 	return d, nil

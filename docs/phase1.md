@@ -22,7 +22,7 @@ Phase 1 delivers a fully functional DAG scheduler for R: define workflows in YAM
 
 - **Retries** — Configurable per step via `retry: { limit: N }` with linear backoff between attempts
 - **Timeouts** — Per-step timeout enforcement via `timeout:` field. On expiry: SIGTERM to entire process group, 5s grace period, then SIGKILL. No orphaned R processes.
-- **Working directory** — Steps execute in the DAG file's directory by default. Overridable at DAG level (`workdir:`) and step level. Precedence: step > DAG > DAG file directory.
+- **Working directory** — Steps execute in the project root (parent of `.daggle/`) by default. Overridable at DAG level (`workdir:`) and step level. Relative step workdirs are resolved against the project root or DAG workdir. Precedence: step > DAG > project root.
 - **Parallel execution** — Independent steps (same tier in the topological sort) run concurrently
 
 ### Inter-step communication
