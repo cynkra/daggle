@@ -22,12 +22,17 @@ var templateFS embed.FS
 //go:embed ui/static/*
 var staticFS embed.FS
 
-var tmpl *template.Template
+var templates map[string]*template.Template
 
 func init() {
-	tmpl = template.Must(template.New("").Funcs(template.FuncMap{
-		"timeAgo": timeAgo,
-	}).ParseFS(templateFS, "ui/templates/*.html"))
+	funcs := template.FuncMap{"timeAgo": timeAgo}
+	pages := []string{"dag_list.html", "run_detail.html", "step_log.html"}
+	templates = make(map[string]*template.Template, len(pages))
+	for _, p := range pages {
+		templates[p] = template.Must(
+			template.New("").Funcs(funcs).ParseFS(templateFS, "ui/templates/layout.html", "ui/templates/"+p),
+		)
+	}
 }
 
 // registerUI adds UI routes to the server mux.
@@ -275,9 +280,14 @@ func (s *Server) uiStepLog(w http.ResponseWriter, r *http.Request) {
 
 // --- Helpers ---
 
-func renderTemplate(w http.ResponseWriter, _ string, data interface{}) {
+func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
+	t, ok := templates[name]
+	if !ok {
+		http.Error(w, "unknown template: "+name, http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
+	if err := t.ExecuteTemplate(w, "layout", data); err != nil {
 		http.Error(w, "render: "+err.Error(), http.StatusInternalServerError)
 	}
 }
