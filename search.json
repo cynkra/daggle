@@ -114,7 +114,7 @@
     "href": "running/scheduler.html#what-the-scheduler-does",
     "title": "Scheduler",
     "section": "What the scheduler does",
-    "text": "What the scheduler does\n\nScans the DAG directory for files with trigger: blocks\nManages all trigger types: cron, file watcher, webhook, DAG completion, condition polling, git\nHot-reloads DAG files every 30 seconds (detects changes via SHA-256 hashing)\nImmediate reload on kill -HUP &lt;pid&gt; (SIGHUP)\nEnforces overlap policy per DAG (skip or cancel)\nLimits to 4 concurrent DAG runs\nWrites a PID file at ~/.local/share/daggle/proc/scheduler.pid\nServes a read-only status dashboard when --port is specified — open the port URL in a browser\nOptionally serves the REST API when --port is specified",
+    "text": "What the scheduler does\n\nScans all DAG sources (global directory, registered projects, cwd) for files with trigger: blocks\nManages all trigger types: cron, file watcher, webhook, DAG completion, condition polling, git\nHot-reloads DAG files every 30 seconds (detects changes via SHA-256 hashing)\nImmediate reload on kill -HUP &lt;pid&gt; (SIGHUP)\nEnforces overlap policy per DAG (skip or cancel)\nLimits to 4 concurrent DAG runs\nWrites a PID file at ~/.local/share/daggle/proc/scheduler.pid\nServes a read-only status dashboard when --port is specified — open the port URL in a browser\nOptionally serves the REST API when --port is specified",
     "crumbs": [
       "Running",
       "Scheduler"
@@ -126,6 +126,17 @@
     "title": "Scheduler",
     "section": "Without the scheduler",
     "text": "Without the scheduler\ndaggle run works without daggle serve – the scheduler is only needed for automated triggers. You can use daggle purely as a manual DAG runner.",
+    "crumbs": [
+      "Running",
+      "Scheduler"
+    ]
+  },
+  {
+    "objectID": "running/scheduler.html#multi-project-scheduling",
+    "href": "running/scheduler.html#multi-project-scheduling",
+    "title": "Scheduler",
+    "section": "Multi-project scheduling",
+    "text": "Multi-project scheduling\nThe scheduler watches DAGs from multiple sources:\n\nGlobal directory (~/.config/daggle/dags/)\nAll registered projects (from ~/.config/daggle/projects.yaml)\n.daggle/ in the current working directory\n\nRegister projects so the scheduler picks up their triggers:\ncd my-project\ndaggle register\ndaggle register and daggle unregister send SIGHUP to the running scheduler for immediate reload. DAG names must be unique across all sources.",
     "crumbs": [
       "Running",
       "Scheduler"
@@ -785,7 +796,40 @@
     "href": "reference/cli.html#daggle-init",
     "title": "CLI Reference",
     "section": "daggle init",
-    "text": "daggle init\nGenerate a DAG from a built-in template.\ndaggle init &lt;template&gt;\nAvailable templates:\n\n\n\nTemplate\nDescription\n\n\n\n\npkg-check\nR package check pipeline (build, check, test)\n\n\npkg-release\nR package release workflow\n\n\ndata-pipeline\nExtract-transform-load data pipeline\n\n\n\nWrites the generated YAML to the current directory.",
+    "text": "daggle init\nGenerate a DAG from a built-in template.\ndaggle init &lt;template&gt;\nAvailable templates:\n\n\n\nTemplate\nDescription\n\n\n\n\npkg-check\nR package check pipeline (build, check, test)\n\n\npkg-release\nR package release workflow\n\n\ndata-pipeline\nExtract-transform-load data pipeline\n\n\n\nWrites the generated YAML to .daggle/ in the current directory.",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "reference/cli.html#daggle-register",
+    "href": "reference/cli.html#daggle-register",
+    "title": "CLI Reference",
+    "section": "daggle register",
+    "text": "daggle register\nRegister a project directory so the scheduler picks up its .daggle/ DAGs.\ndaggle register [path] [--name &lt;name&gt;]\n\n\n\n\n\n\n\n\n\nFlag\nType\nDefault\nDescription\n\n\n\n\n--name\nstring\n(directory basename)\nProject name for the registry\n\n\n\n\npath defaults to the current working directory\nValidates .daggle/ exists (warns if not)\nChecks for DAG name collisions across all sources\nSends SIGHUP to running scheduler for immediate reload\nRegistry stored at ~/.config/daggle/projects.yaml",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "reference/cli.html#daggle-unregister",
+    "href": "reference/cli.html#daggle-unregister",
+    "title": "CLI Reference",
+    "section": "daggle unregister",
+    "text": "daggle unregister\nRemove a project from the registry.\ndaggle unregister &lt;name|path&gt;\nAccepts the project name or its filesystem path. Sends SIGHUP to running scheduler.",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "reference/cli.html#daggle-projects",
+    "href": "reference/cli.html#daggle-projects",
+    "title": "CLI Reference",
+    "section": "daggle projects",
+    "text": "daggle projects\nList all registered projects.\ndaggle projects\nShows: project name, status (ok/missing), DAG count, path. Also shows the global DAGs directory.",
     "crumbs": [
       "Reference",
       "CLI"
@@ -1533,6 +1577,17 @@
     ]
   },
   {
+    "objectID": "getting-started/project-local.html#registering-projects-for-scheduling",
+    "href": "getting-started/project-local.html#registering-projects-for-scheduling",
+    "title": "Project-Local DAGs",
+    "section": "Registering projects for scheduling",
+    "text": "Registering projects for scheduling\nBy default, daggle serve only watches the global DAGs directory and .daggle/ in the cwd. To have the scheduler pick up DAGs from other project directories, register them:\ncd my-project\ndaggle register           # registers cwd as \"my-project\"\nOr with an explicit path:\ndaggle register /opt/analytics/etl --name etl-pipeline\nManage the registry:\ndaggle projects           # list all registered projects\ndaggle unregister my-project\nThe registry is stored at ~/.config/daggle/projects.yaml. DAG names must be unique across all registered projects – daggle register checks for collisions.\nSee Scheduler for details on multi-project scheduling.",
+    "crumbs": [
+      "Getting Started",
+      "Project-Local DAGs"
+    ]
+  },
+  {
     "objectID": "secrets/index.html",
     "href": "secrets/index.html",
     "title": "Secrets & Security",
@@ -2108,7 +2163,7 @@
     "href": "reference/file-layout.html#directory-structure",
     "title": "File Layout",
     "section": "Directory structure",
-    "text": "Directory structure\n~/.config/daggle/\n  dags/                          # Global DAG definitions\n    my-pipeline.yml\n    nightly-etl.yml\n\n~/.local/share/daggle/\n  runs/                          # Run data, organized by DAG and date\n    &lt;dag&gt;/\n      &lt;YYYY-MM-DD&gt;/\n        run_&lt;id&gt;/\n          meta.json              # Run metadata (params, start time, status)\n          events.jsonl           # Append-only event log (see Event Schema)\n          &lt;step&gt;.stdout.log      # Step stdout (includes output markers)\n          &lt;step&gt;.stderr.log      # Step stderr\n          &lt;step&gt;.inline.R        # Rendered inline R code (for r_expr steps)\n  proc/\n    scheduler.pid                # Scheduler daemon PID file\n\n.daggle/                         # Project-local DAG definitions (repo root)\n  my-dag.yml",
+    "text": "Directory structure\n~/.config/daggle/\n  dags/                          # Global DAG definitions\n    my-pipeline.yml\n    nightly-etl.yml\n  projects.yaml                  # Registered project directories\n\n~/.local/share/daggle/\n  runs/                          # Run data, organized by DAG and date\n    &lt;dag&gt;/\n      &lt;YYYY-MM-DD&gt;/\n        run_&lt;id&gt;/\n          meta.json              # Run metadata (params, start time, status)\n          events.jsonl           # Append-only event log (see Event Schema)\n          &lt;step&gt;.stdout.log      # Step stdout (includes output markers)\n          &lt;step&gt;.stderr.log      # Step stderr\n          &lt;step&gt;.inline.R        # Rendered inline R code (for r_expr steps)\n  proc/\n    scheduler.pid                # Scheduler daemon PID file\n\n.daggle/                         # Project-local DAG definitions (repo root)\n  my-dag.yml",
     "crumbs": [
       "Reference",
       "File Layout"

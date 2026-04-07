@@ -389,6 +389,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#working-directory" id="toc-working-directory" class="nav-link" data-scroll-target="#working-directory">Working directory</a></li>
   <li><a href="#renv-integration" id="toc-renv-integration" class="nav-link" data-scroll-target="#renv-integration">renv integration</a></li>
   <li><a href="#global-vs-project-local" id="toc-global-vs-project-local" class="nav-link" data-scroll-target="#global-vs-project-local">Global vs project-local</a></li>
+  <li><a href="#registering-projects-for-scheduling" id="toc-registering-projects-for-scheduling" class="nav-link" data-scroll-target="#registering-projects-for-scheduling">Registering projects for scheduling</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -501,6 +502,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>Both sources are checked by <code>daggle list</code> and <code>daggle serve</code>.</p>
+</section>
+<section id="registering-projects-for-scheduling" class="level2">
+<h2 class="anchored" data-anchor-id="registering-projects-for-scheduling">Registering projects for scheduling</h2>
+<p>By default, <code>daggle serve</code> only watches the global DAGs directory and <code>.daggle/</code> in the cwd. To have the scheduler pick up DAGs from other project directories, register them:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> my-project</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> register           <span class="co"># registers cwd as "my-project"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Or with an explicit path:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> register /opt/analytics/etl <span class="at">--name</span> etl-pipeline</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Manage the registry:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> projects           <span class="co"># list all registered projects</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> unregister my-project</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The registry is stored at <code>~/.config/daggle/projects.yaml</code>. DAG names must be unique across all registered projects – <code>daggle register</code> checks for collisions.</p>
+<p>See <a href="../running/scheduler.html">Scheduler</a> for details on multi-project scheduling.</p>
 
 
 </section>

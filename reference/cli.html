@@ -381,6 +381,9 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#daggle-approve" id="toc-daggle-approve" class="nav-link" data-scroll-target="#daggle-approve">daggle approve</a></li>
   <li><a href="#daggle-reject" id="toc-daggle-reject" class="nav-link" data-scroll-target="#daggle-reject">daggle reject</a></li>
   <li><a href="#daggle-init" id="toc-daggle-init" class="nav-link" data-scroll-target="#daggle-init">daggle init</a></li>
+  <li><a href="#daggle-register" id="toc-daggle-register" class="nav-link" data-scroll-target="#daggle-register">daggle register</a></li>
+  <li><a href="#daggle-unregister" id="toc-daggle-unregister" class="nav-link" data-scroll-target="#daggle-unregister">daggle unregister</a></li>
+  <li><a href="#daggle-projects" id="toc-daggle-projects" class="nav-link" data-scroll-target="#daggle-projects">daggle projects</a></li>
   <li><a href="#global-flags" id="toc-global-flags" class="nav-link" data-scroll-target="#global-flags">Global flags</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -688,7 +691,55 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
-<p>Writes the generated YAML to the current directory.</p>
+<p>Writes the generated YAML to <code>.daggle/</code> in the current directory.</p>
+</section>
+<section id="daggle-register" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-register">daggle register</h2>
+<p>Register a project directory so the scheduler picks up its <code>.daggle/</code> DAGs.</p>
+<pre><code>daggle register [path] [--name &lt;name&gt;]</code></pre>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 17%">
+<col style="width: 26%">
+<col style="width: 38%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--name</code></td>
+<td>string</td>
+<td>(directory basename)</td>
+<td>Project name for the registry</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>path</code> defaults to the current working directory</li>
+<li>Validates <code>.daggle/</code> exists (warns if not)</li>
+<li>Checks for DAG name collisions across all sources</li>
+<li>Sends SIGHUP to running scheduler for immediate reload</li>
+<li>Registry stored at <code>~/.config/daggle/projects.yaml</code></li>
+</ul>
+</section>
+<section id="daggle-unregister" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-unregister">daggle unregister</h2>
+<p>Remove a project from the registry.</p>
+<pre><code>daggle unregister &lt;name|path&gt;</code></pre>
+<p>Accepts the project name or its filesystem path. Sends SIGHUP to running scheduler.</p>
+</section>
+<section id="daggle-projects" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-projects">daggle projects</h2>
+<p>List all registered projects.</p>
+<pre><code>daggle projects</code></pre>
+<p>Shows: project name, status (ok/missing), DAG count, path. Also shows the global DAGs directory.</p>
 </section>
 <section id="global-flags" class="level2">
 <h2 class="anchored" data-anchor-id="global-flags">Global flags</h2>
