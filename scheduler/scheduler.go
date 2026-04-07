@@ -97,8 +97,16 @@ func New(sources []DAGSource) *Scheduler {
 	}
 }
 
-// Reload triggers an immediate rescan of the DAG directory.
-func (s *Scheduler) Reload(ctx context.Context) {
+// Reload triggers an immediate rescan of DAG sources. If newSources is
+// non-empty, the scheduler's source list is replaced before scanning,
+// allowing newly registered projects to be picked up without a restart.
+func (s *Scheduler) Reload(ctx context.Context, newSources []DAGSource) {
+	if len(newSources) > 0 {
+		s.mu.Lock()
+		s.sources = newSources
+		s.mu.Unlock()
+		s.logger.Info("DAG sources updated", "count", len(newSources))
+	}
 	if err := s.syncDAGs(ctx); err != nil {
 		s.logger.Error("reload failed", "error", err)
 	} else {
@@ -197,11 +205,17 @@ func (s *Scheduler) shutdown() {
 
 // syncDAGs scans all DAG source directories and updates trigger registrations.
 func (s *Scheduler) syncDAGs(ctx context.Context) error {
+	// Snapshot sources under lock so Reload can update them concurrently.
+	s.mu.Lock()
+	sources := make([]DAGSource, len(s.sources))
+	copy(sources, s.sources)
+	s.mu.Unlock()
+
 	seen := make(map[string]bool)
 	newListeners := make(map[string][]onDAGListener)
 	newWebhooks := make(map[string]webhookEntry)
 
-	for _, src := range s.sources {
+	for _, src := range sources {
 		if err := s.syncSource(ctx, src, seen, newListeners, newWebhooks); err != nil {
 			s.logger.Error("sync source failed", "source", src.Name, "dir", src.Dir, "error", err)
 		}

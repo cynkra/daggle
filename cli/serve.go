@@ -69,7 +69,7 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 				return
 			case <-sighup:
 				fmt.Println("SIGHUP received, reloading DAGs...")
-				sched.Reload(ctx)
+				sched.Reload(ctx, buildSchedulerSources())
 			}
 		}
 	}()
