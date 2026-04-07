@@ -59,6 +59,7 @@ type dagListView struct {
 type dagListItem struct {
 	Name       string
 	Steps      int
+	Project    string
 	Schedule   string
 	LastStatus string
 	LastRun    string
@@ -110,49 +111,52 @@ type stepLogView struct {
 // --- Handlers ---
 
 func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
-	entries, err := os.ReadDir(s.dagDir)
-	if err != nil && !os.IsNotExist(err) {
-		http.Error(w, "read DAG directory: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	var dags []dagListItem
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
-			continue
-		}
-		if name == "base.yaml" || name == "base.yml" {
-			continue
-		}
 
-		dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
-		path := filepath.Join(s.dagDir, name)
-
-		d, err := dag.ParseFile(path)
+	for _, src := range s.sources {
+		entries, err := os.ReadDir(src.Dir)
 		if err != nil {
 			continue
 		}
 
-		item := dagListItem{
-			Name:  dagName,
-			Steps: len(d.Steps),
-		}
-		if d.Trigger != nil {
-			item.Schedule = d.Trigger.Schedule
-		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
+				continue
+			}
+			if name == "base.yaml" || name == "base.yml" {
+				continue
+			}
 
-		if run, err := state.LatestRun(dagName); err == nil && run != nil {
-			item.LastStatus = state.RunStatus(run.Dir)
-			item.LastRun = run.StartTime.Format(time.RFC3339)
-			item.LastRunFmt = timeAgo(run.StartTime)
-			item.LastRunID = run.ID
-		}
+			dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
+			path := filepath.Join(src.Dir, name)
 
-		dags = append(dags, item)
+			d, err := dag.ParseFile(path)
+			if err != nil {
+				continue
+			}
+
+			item := dagListItem{
+				Name:    dagName,
+				Steps:   len(d.Steps),
+				Project: src.Name,
+			}
+			if d.Trigger != nil {
+				item.Schedule = d.Trigger.Schedule
+			}
+
+			if run, err := state.LatestRun(dagName); err == nil && run != nil {
+				item.LastStatus = state.RunStatus(run.Dir)
+				item.LastRun = run.StartTime.Format(time.RFC3339)
+				item.LastRunFmt = timeAgo(run.StartTime)
+				item.LastRunID = run.ID
+			}
+
+			dags = append(dags, item)
+		}
 	}
 
 	view := dagListView{

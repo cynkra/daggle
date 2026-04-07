@@ -25,48 +25,55 @@ func init() {
 
 func listDAGs(_ *cobra.Command, _ []string) error {
 	applyOverrides()
-	dir := state.DAGDir()
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Printf("No DAGs directory found at %s\n", dir)
-			fmt.Println("Create DAG files in this directory to get started.")
-			return nil
-		}
-		return err
-	}
+	sources := state.BuildDAGSources()
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "NAME\tSTEPS\tLAST RUN\tSTATUS")
+	_, _ = fmt.Fprintln(w, "NAME\tPROJECT\tSTEPS\tLAST RUN\tSTATUS")
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
-			continue
-		}
-
-		dagPath := filepath.Join(dir, name)
-		d, err := dag.ParseFile(dagPath)
+	found := false
+	for _, src := range sources {
+		entries, err := os.ReadDir(src.Dir)
 		if err != nil {
-			dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
-			_, _ = fmt.Fprintf(w, "%s\t-\t-\tINVALID\n", dagName)
 			continue
 		}
 
-		lastRun := "-"
-		status := "-"
-		if run, err := state.LatestRun(d.Name); err == nil && run != nil {
-			lastRun = run.StartTime.Format("2006-01-02 15:04")
-			status = state.RunStatus(run.Dir)
-		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
+				continue
+			}
+			if name == "base.yaml" || name == "base.yml" {
+				continue
+			}
 
-		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", d.Name, len(d.Steps), lastRun, status)
+			dagPath := filepath.Join(src.Dir, name)
+			d, err := dag.ParseFile(dagPath)
+			if err != nil {
+				dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
+				_, _ = fmt.Fprintf(w, "%s\t%s\t-\t-\tINVALID\n", dagName, src.Name)
+				found = true
+				continue
+			}
+
+			lastRun := "-"
+			status := "-"
+			if run, err := state.LatestRun(d.Name); err == nil && run != nil {
+				lastRun = run.StartTime.Format("2006-01-02 15:04")
+				status = state.RunStatus(run.Dir)
+			}
+
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n", d.Name, src.Name, len(d.Steps), lastRun, status)
+			found = true
+		}
 	}
 	_ = w.Flush()
+
+	if !found {
+		fmt.Println("No DAGs found. Create DAG files or register a project with `daggle register`.")
+	}
 
 	return nil
 }

@@ -31,7 +31,7 @@ func init() {
 
 func serveDaemon(_ *cobra.Command, _ []string) error {
 	applyOverrides()
-	dagDir := state.DAGDir()
+	sources := buildSchedulerSources()
 
 	// Check if another scheduler is already running
 	if scheduler.IsRunning() {
@@ -46,7 +46,10 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 	defer func() { _ = scheduler.RemovePID() }()
 
 	fmt.Printf("Starting scheduler\n")
-	fmt.Printf("DAG directory: %s\n", dagDir)
+	fmt.Printf("DAG sources: %d\n", len(sources))
+	for _, src := range sources {
+		fmt.Printf("  %s: %s\n", src.Name, src.Dir)
+	}
 	fmt.Printf("PID file: %s\n", scheduler.PIDPath())
 
 	// Set up signal handling: SIGINT/SIGTERM for shutdown
@@ -57,7 +60,7 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
 
-	sched := scheduler.New(dagDir)
+	sched := scheduler.New(sources)
 
 	go func() {
 		for {
@@ -73,7 +76,11 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 
 	// Start REST API server if port is specified
 	if apiPort > 0 {
-		apiServer := api.New(dagDir, Version)
+		apiSources := make([]api.DAGSource, len(sources))
+		for i, s := range sources {
+			apiSources[i] = api.DAGSource{Name: s.Name, Dir: s.Dir}
+		}
+		apiServer := api.New(apiSources, Version)
 		addr := fmt.Sprintf("127.0.0.1:%d", apiPort)
 		httpServer := &http.Server{
 			Addr:    addr,
@@ -95,4 +102,13 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 
 	fmt.Println()
 	return sched.Start(ctx)
+}
+
+func buildSchedulerSources() []scheduler.DAGSource {
+	stateSources := state.BuildDAGSources()
+	sources := make([]scheduler.DAGSource, len(stateSources))
+	for i, s := range stateSources {
+		sources[i] = scheduler.DAGSource{Name: s.Name, Dir: s.Dir}
+	}
+	return sources
 }

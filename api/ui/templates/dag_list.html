@@ -5,6 +5,7 @@
   <thead>
     <tr>
       <th>Name</th>
+      <th>Project</th>
       <th>Steps</th>
       <th>Schedule</th>
       <th>Last Status</th>
@@ -21,6 +22,7 @@
           {{ .Name }}
         {{ end }}
       </td>
+      <td><span class="text-muted">{{ .Project }}</span></td>
       <td>{{ .Steps }}</td>
       <td>{{ if .Schedule }}{{ .Schedule }}{{ else }}<span class="text-muted">—</span>{{ end }}</td>
       <td>{{ if .LastStatus }}<span class="badge badge-{{ .LastStatus }}">{{ .LastStatus }}</span>{{ else }}<span class="text-muted">never run</span>{{ end }}</td>

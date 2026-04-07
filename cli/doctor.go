@@ -74,52 +74,96 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 
 	fmt.Println()
 
-	// Paths
-	dagDir := state.DAGDir()
+	// Paths & DAG sources
 	dataDir := state.DataDir()
-	printCheck("INFO", "DAG directory: %s", dagDir)
 	printCheck("INFO", "Data directory: %s", dataDir)
+
+	sources := state.BuildDAGSources()
+	printCheck("INFO", "DAG sources: %d", len(sources))
 
 	fmt.Println()
 
-	// DAG files
-	entries, err := os.ReadDir(dagDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			printCheck("INFO", "DAG directory does not exist yet")
-			fmt.Println("         Create it with: mkdir -p " + dagDir)
-			fmt.Println("         Or run: daggle init <template>")
-		} else {
-			printCheck("WARN", "Cannot read DAG directory: %v", err)
+	// Registered projects
+	projects, _ := state.LoadProjects()
+	if len(projects) > 0 {
+		printCheck("INFO", "Registered projects: %d", len(projects))
+		for _, p := range projects {
+			dagDir := filepath.Join(p.Path, ".daggle")
+			if _, err := os.Stat(dagDir); os.IsNotExist(err) {
+				printCheck("WARN", "  %s: .daggle/ missing (%s)", p.Name, p.Path)
+			} else {
+				printCheck("OK", "  %s: %s", p.Name, p.Path)
+			}
 		}
 	} else {
+		printCheck("INFO", "No registered projects")
+	}
+
+	fmt.Println()
+
+	// DAG files across all sources
+	var totalValid, totalInvalid int
+	var allParseErrors []string
+
+	for _, src := range sources {
+		entries, err := os.ReadDir(src.Dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			printCheck("WARN", "Cannot read %s (%s): %v", src.Name, src.Dir, err)
+			continue
+		}
+
 		var valid, invalid int
-		var parseErrors []string
 		for _, entry := range entries {
 			name := entry.Name()
 			if entry.IsDir() || (!strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml")) {
 				continue
 			}
-			path := filepath.Join(dagDir, name)
+			if name == "base.yaml" || name == "base.yml" {
+				continue
+			}
+			path := filepath.Join(src.Dir, name)
 			if _, err := dag.ParseFile(path); err != nil {
 				invalid++
-				parseErrors = append(parseErrors, fmt.Sprintf("  %s: %v", name, err))
+				allParseErrors = append(allParseErrors, fmt.Sprintf("  %s/%s: %v", src.Name, name, err))
 			} else {
 				valid++
 			}
 		}
-		if valid+invalid == 0 {
-			printCheck("INFO", "No DAG files found")
-		} else {
-			printCheck("OK", "%d DAG(s) found, %d valid", valid+invalid, valid)
-			if invalid > 0 {
-				printCheck("WARN", "%d DAG(s) have errors:", invalid)
-				for _, e := range parseErrors {
-					fmt.Println(e)
-				}
+		totalValid += valid
+		totalInvalid += invalid
+	}
+
+	if totalValid+totalInvalid == 0 {
+		printCheck("INFO", "No DAG files found")
+		fmt.Println("         Create DAGs with: daggle init <template>")
+		fmt.Println("         Or register a project: daggle register")
+	} else {
+		printCheck("OK", "%d DAG(s) found, %d valid", totalValid+totalInvalid, totalValid)
+		if totalInvalid > 0 {
+			printCheck("WARN", "%d DAG(s) have errors:", totalInvalid)
+			for _, e := range allParseErrors {
+				fmt.Println(e)
 			}
 		}
 	}
+
+	// Check for name collisions
+	names := state.CollectDAGNames(sources)
+	// CollectDAGNames returns first-seen only, so check for duplicates manually
+	seen := make(map[string]string)
+	for _, src := range sources {
+		for _, n := range dagNamesInDir(src.Dir) {
+			if prev, exists := seen[n]; exists && prev != src.Name {
+				printCheck("WARN", "DAG name collision: %q exists in both %q and %q", n, prev, src.Name)
+			} else {
+				seen[n] = src.Name
+			}
+		}
+	}
+	_ = names // used for the collision check pattern
 
 	fmt.Println()
 	return nil

@@ -21,7 +21,7 @@ daggle stop
 
 ## What the scheduler does
 
-- Scans the DAG directory for files with `trigger:` blocks
+- Scans all DAG sources (global directory, registered projects, cwd) for files with `trigger:` blocks
 - Manages all trigger types: cron, file watcher, webhook, DAG completion, condition polling, git
 - Hot-reloads DAG files every 30 seconds (detects changes via SHA-256 hashing)
 - Immediate reload on `kill -HUP <pid>` (SIGHUP)
@@ -34,6 +34,23 @@ daggle stop
 ## Without the scheduler
 
 `daggle run` works without `daggle serve` -- the scheduler is only needed for automated triggers. You can use daggle purely as a manual DAG runner.
+
+## Multi-project scheduling
+
+The scheduler watches DAGs from multiple sources:
+
+1. Global directory (`~/.config/daggle/dags/`)
+2. All [registered projects](../getting-started/project-local.qmd) (from `~/.config/daggle/projects.yaml`)
+3. `.daggle/` in the current working directory
+
+Register projects so the scheduler picks up their triggers:
+
+```bash
+cd my-project
+daggle register
+```
+
+`daggle register` and `daggle unregister` send SIGHUP to the running scheduler for immediate reload. DAG names must be unique across all sources.
 
 ## Running as a system service
 

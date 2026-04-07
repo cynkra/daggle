@@ -77,7 +77,7 @@ steps:
     command: echo hello
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	if err := sched.syncDAGs(context.Background()); err != nil {
 		t.Fatalf("syncDAGs: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestScheduler_HotReload(t *testing.T) {
 	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 
 	// Initial scan — empty
 	_ = sched.syncDAGs(context.Background())
@@ -157,7 +157,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	_ = sched.syncDAGs(context.Background())
 
 	// Trigger first run
@@ -211,7 +211,7 @@ steps:
     command: sleep 30
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	_ = sched.syncDAGs(context.Background())
 
 	dagPath := filepath.Join(dagDir, "cancel.yaml")
@@ -255,7 +255,7 @@ func TestScheduler_MaxConcurrent(t *testing.T) {
 	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	sched.maxConcurrent = 2
 
 	// Create multiple DAGs
@@ -303,7 +303,7 @@ func TestScheduler_StartStop(t *testing.T) {
 	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -349,7 +349,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -407,7 +407,7 @@ steps:
     command: echo processing
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -457,7 +457,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -526,7 +526,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -568,7 +568,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -641,7 +641,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New(repoDir)
+	sched := New([]DAGSource{{Name: "test", Dir: repoDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -701,7 +701,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -767,7 +767,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New(dagDir)
+	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

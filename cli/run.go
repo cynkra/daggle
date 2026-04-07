@@ -167,14 +167,17 @@ func resolveDAGPath(name string) string {
 	if strings.Contains(name, "/") || strings.HasSuffix(name, ".yaml") || strings.HasSuffix(name, ".yml") {
 		return name
 	}
-	// Otherwise look in the DAGs directory
-	dir := state.DAGDir()
-	// Try .yaml then .yml
-	yamlPath := filepath.Join(dir, name+".yaml")
-	if _, err := os.Stat(yamlPath); err == nil {
-		return yamlPath
+	// Search across all DAG sources
+	for _, src := range state.BuildDAGSources() {
+		for _, ext := range []string{".yaml", ".yml"} {
+			p := filepath.Join(src.Dir, name+ext)
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
+		}
 	}
-	return filepath.Join(dir, name+".yml")
+	// Fall back to current DAGDir for error messaging
+	return filepath.Join(state.DAGDir(), name+".yaml")
 }
 
 func parseParams(raw []string) map[string]string {

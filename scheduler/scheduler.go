@@ -57,11 +57,17 @@ func (e *dagEntry) teardown() {
 	e.cancelFns = nil
 }
 
+// DAGSource represents a directory containing DAG YAML files, with a label.
+type DAGSource struct {
+	Name string // project name or "global"
+	Dir  string // absolute path to directory with YAML files
+}
+
 // Scheduler manages trigger-based DAG execution.
 type Scheduler struct {
-	cron   *cron.Cron
-	dagDir string
-	logger *slog.Logger
+	cron    *cron.Cron
+	sources []DAGSource
+	logger  *slog.Logger
 
 	mu             sync.Mutex
 	registered     map[string]*dagEntry              // dagName -> entry
@@ -76,11 +82,11 @@ type Scheduler struct {
 	ctx            context.Context                    // scheduler lifecycle context
 }
 
-// New creates a new Scheduler that watches the given DAG directory.
-func New(dagDir string) *Scheduler {
+// New creates a new Scheduler that watches the given DAG sources.
+func New(sources []DAGSource) *Scheduler {
 	return &Scheduler{
 		cron:           cron.New(),
-		dagDir:         dagDir,
+		sources:        sources,
 		logger:         slog.Default(),
 		registered:     make(map[string]*dagEntry),
 		running:        make(map[string]context.CancelFunc),
@@ -110,7 +116,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	}
 
 	s.cron.Start()
-	s.logger.Info("scheduler started", "dag_dir", s.dagDir)
+	s.logger.Info("scheduler started", "sources", len(s.sources))
 
 	// Start on_dag completion dispatcher
 	go s.dispatchCompletions(ctx)
@@ -189,19 +195,68 @@ func (s *Scheduler) shutdown() {
 	}
 }
 
-// syncDAGs scans the DAG directory and updates trigger registrations.
+// syncDAGs scans all DAG source directories and updates trigger registrations.
 func (s *Scheduler) syncDAGs(ctx context.Context) error {
-	entries, err := os.ReadDir(s.dagDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // no DAG directory yet, nothing to schedule
-		}
-		return fmt.Errorf("read DAG dir: %w", err)
-	}
-
 	seen := make(map[string]bool)
 	newListeners := make(map[string][]onDAGListener)
 	newWebhooks := make(map[string]webhookEntry)
+
+	for _, src := range s.sources {
+		if err := s.syncSource(ctx, src, seen, newListeners, newWebhooks); err != nil {
+			s.logger.Error("sync source failed", "source", src.Name, "dir", src.Dir, "error", err)
+		}
+	}
+
+	// Remove DAGs that no longer exist in any source
+	s.mu.Lock()
+	for name, entry := range s.registered {
+		if !seen[name] {
+			s.cron.Remove(entry.cronID)
+			entry.teardown()
+			delete(s.registered, name)
+			s.logger.Info("unregistered DAG", "dag", name)
+		}
+	}
+	// Update on_dag listeners and webhooks
+	s.onDAGListeners = newListeners
+	s.webhooks = newWebhooks
+
+	// Start/stop webhook server based on whether any webhooks are configured
+	needServer := len(newWebhooks) > 0
+	hasServer := s.webhookCloseFn != nil
+	s.mu.Unlock()
+
+	if needServer && !hasServer {
+		addr, closeFn, err := s.startWebhookServer(newWebhooks)
+		if err != nil {
+			s.logger.Error("failed to start webhook server", "error", err)
+		} else {
+			s.mu.Lock()
+			s.webhookCloseFn = closeFn
+			s.webhookAddr = addr
+			s.mu.Unlock()
+			s.logger.Info("webhook server started", "addr", addr)
+		}
+	} else if !needServer && hasServer {
+		s.mu.Lock()
+		s.webhookCloseFn()
+		s.webhookCloseFn = nil
+		s.mu.Unlock()
+		s.logger.Info("webhook server stopped (no webhook triggers)")
+	}
+
+	return nil
+}
+
+// syncSource scans a single DAG source directory.
+func (s *Scheduler) syncSource(ctx context.Context, src DAGSource, seen map[string]bool, newListeners map[string][]onDAGListener, newWebhooks map[string]webhookEntry) error {
+	entries, err := os.ReadDir(src.Dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read DAG dir %s: %w", src.Dir, err)
+	}
 
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -212,7 +267,7 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 			continue
 		}
 
-		path := filepath.Join(s.dagDir, name)
+		path := filepath.Join(src.Dir, name)
 		hash, err := fileHash(path)
 		if err != nil {
 			s.logger.Warn("failed to hash DAG file", "path", path, "error", err)
@@ -312,44 +367,6 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 		s.mu.Lock()
 		s.registered[d.Name] = newEntry
 		s.mu.Unlock()
-	}
-
-	// Remove DAGs that no longer exist
-	s.mu.Lock()
-	for name, entry := range s.registered {
-		if !seen[name] {
-			s.cron.Remove(entry.cronID)
-			entry.teardown()
-			delete(s.registered, name)
-			s.logger.Info("unregistered DAG", "dag", name)
-		}
-	}
-	// Update on_dag listeners and webhooks
-	s.onDAGListeners = newListeners
-	s.webhooks = newWebhooks
-
-	// Start/stop webhook server based on whether any webhooks are configured
-	needServer := len(newWebhooks) > 0
-	hasServer := s.webhookCloseFn != nil
-	s.mu.Unlock()
-
-	if needServer && !hasServer {
-		addr, closeFn, err := s.startWebhookServer(newWebhooks)
-		if err != nil {
-			s.logger.Error("failed to start webhook server", "error", err)
-		} else {
-			s.mu.Lock()
-			s.webhookCloseFn = closeFn
-			s.webhookAddr = addr
-			s.mu.Unlock()
-			s.logger.Info("webhook server started", "addr", addr)
-		}
-	} else if !needServer && hasServer {
-		s.mu.Lock()
-		s.webhookCloseFn()
-		s.webhookCloseFn = nil
-		s.mu.Unlock()
-		s.logger.Info("webhook server stopped (no webhook triggers)")
 	}
 
 	return nil
@@ -502,7 +519,7 @@ func (s *Scheduler) setupGitTrigger(ctx context.Context, d *dag.DAG, dagPath str
 	// Resolve git repo directory (use DAG source dir)
 	repoDir := d.SourceDir
 	if repoDir == "" {
-		repoDir = s.dagDir
+		repoDir = filepath.Dir(dagPath)
 	}
 
 	branch := g.Branch

@@ -66,3 +66,29 @@ If `renv.lock` exists but the library is missing, daggle warns you to run `renv:
 | renv detection | No (no `renv.lock` nearby) | Yes (project root) |
 
 Both sources are checked by `daggle list` and `daggle serve`.
+
+## Registering projects for scheduling
+
+By default, `daggle serve` only watches the global DAGs directory and `.daggle/` in the cwd. To have the scheduler pick up DAGs from other project directories, register them:
+
+```bash
+cd my-project
+daggle register           # registers cwd as "my-project"
+```
+
+Or with an explicit path:
+
+```bash
+daggle register /opt/analytics/etl --name etl-pipeline
+```
+
+Manage the registry:
+
+```bash
+daggle projects           # list all registered projects
+daggle unregister my-project
+```
+
+The registry is stored at `~/.config/daggle/projects.yaml`. DAG names must be unique across all registered projects -- `daggle register` checks for collisions.
+
+See [Scheduler](../running/scheduler.qmd) for details on multi-project scheduling.
