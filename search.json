@@ -836,6 +836,17 @@
     ]
   },
   {
+    "objectID": "reference/cli.html#daggle-version",
+    "href": "reference/cli.html#daggle-version",
+    "title": "CLI Reference",
+    "section": "daggle version",
+    "text": "daggle version\nPrint the daggle version.\ndaggle version\nPrints the version string (e.g. 0.4.1). Development builds show dev.",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
     "objectID": "reference/cli.html#global-flags",
     "href": "reference/cli.html#global-flags",
     "title": "CLI Reference",
