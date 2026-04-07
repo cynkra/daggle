@@ -297,10 +297,13 @@ func TestResolveWorkdir(t *testing.T) {
 		step Step
 		want string
 	}{
-		{"step wins", DAG{Workdir: "/dag", SourceDir: "/src"}, Step{Workdir: "/step"}, "/step"},
+		{"absolute step wins", DAG{Workdir: "/dag", SourceDir: "/src"}, Step{Workdir: "/step"}, "/step"},
 		{"dag wins over source", DAG{Workdir: "/dag", SourceDir: "/src"}, Step{}, "/dag"},
 		{"source fallback", DAG{SourceDir: "/src"}, Step{}, "/src"},
 		{"empty", DAG{}, Step{}, ""},
+		{"relative step resolved against source", DAG{SourceDir: "/project"}, Step{Workdir: "subdir"}, "/project/subdir"},
+		{"relative step resolved against dag workdir", DAG{Workdir: "/dag", SourceDir: "/src"}, Step{Workdir: "subdir"}, "/dag/subdir"},
+		{"relative step no base", DAG{}, Step{Workdir: "subdir"}, "subdir"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -308,6 +311,46 @@ func TestResolveWorkdir(t *testing.T) {
 				t.Errorf("ResolveWorkdir() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestParseFile_SourceDir_DaggleDir(t *testing.T) {
+	// DAG file inside .daggle/ → SourceDir should be the parent (project root)
+	dir := t.TempDir()
+	daggleDir := filepath.Join(dir, ".daggle")
+	if err := os.MkdirAll(daggleDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	content := []byte("name: test\nsteps:\n  - id: a\n    command: echo\n")
+	dagPath := filepath.Join(daggleDir, "pipeline.yaml")
+	if err := os.WriteFile(dagPath, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d, err := ParseFile(dagPath)
+	if err != nil {
+		t.Fatalf("ParseFile: %v", err)
+	}
+	if d.SourceDir != dir {
+		t.Errorf("SourceDir = %q, want %q (project root)", d.SourceDir, dir)
+	}
+}
+
+func TestParseFile_SourceDir_RegularDir(t *testing.T) {
+	// DAG file in a regular directory → SourceDir should be that directory
+	dir := t.TempDir()
+	content := []byte("name: test\nsteps:\n  - id: a\n    command: echo\n")
+	dagPath := filepath.Join(dir, "pipeline.yaml")
+	if err := os.WriteFile(dagPath, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d, err := ParseFile(dagPath)
+	if err != nil {
+		t.Fatalf("ParseFile: %v", err)
+	}
+	if d.SourceDir != dir {
+		t.Errorf("SourceDir = %q, want %q", d.SourceDir, dir)
 	}
 }
 
