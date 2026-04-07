@@ -14,7 +14,7 @@
   <dd><span class="badge badge-{{ .Run.Status }}">{{ .Run.Status }}</span></dd>
   <dt>Started</dt>
   <dd>{{ .Run.StartedFmt }}</dd>
-  {{ if .Run.Ended }}
+  {{ if .Run.EndedFmt }}
   <dt>Ended</dt>
   <dd>{{ .Run.EndedFmt }}</dd>
   {{ end }}
