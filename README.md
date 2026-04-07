@@ -539,6 +539,8 @@ daggle register [path] [flags]   Register a project for scheduled execution
 daggle unregister <name|path>    Remove a project from the registry
 
 daggle projects                  List registered projects with DAG counts
+
+daggle version                    Print the daggle version
 ```
 
 Global flags:
