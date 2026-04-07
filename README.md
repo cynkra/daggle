@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="docs/assets/logo/daggle-hero.png" alt="daggle" width="200">
-</p>
-
-# daggle
+# daggle <img src="docs/assets/logo/daggle-hero.png" alt="daggle" width="200" align="right">
 
 [![CI](https://github.com/cynkra/daggle/actions/workflows/ci.yml/badge.svg)](https://github.com/cynkra/daggle/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cynkra/daggle)](https://goreportcard.com/report/github.com/cynkra/daggle)
