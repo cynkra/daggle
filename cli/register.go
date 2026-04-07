@@ -49,9 +49,16 @@ func runRegister(_ *cobra.Command, args []string) error {
 		fmt.Printf("Warning: %s does not exist yet. DAGs will be picked up when the directory is created.\n", dagDir)
 	}
 
-	// Check for DAG name collisions
+	// Check for DAG name collisions, excluding the directory being registered
+	// to avoid false self-collisions from cwd auto-discovery.
 	existingSources := state.BuildDAGSources()
-	existingNames := state.CollectDAGNames(existingSources)
+	var filteredSources []state.DAGSource
+	for _, src := range existingSources {
+		if src.Dir != dagDir {
+			filteredSources = append(filteredSources, src)
+		}
+	}
+	existingNames := state.CollectDAGNames(filteredSources)
 
 	newSource := state.DAGSource{Name: name, Dir: dagDir}
 	newNames := state.CollectDAGNames([]state.DAGSource{newSource})
