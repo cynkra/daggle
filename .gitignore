@@ -2,3 +2,4 @@
 /daggle
 dist/
 .env
+tmp
