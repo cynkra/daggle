@@ -1,0 +1,632 @@
+openapi: "3.0.3"
+info:
+  title: daggle API
+  description: REST API for the daggle DAG scheduler.
+  version: "0.1.0"
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+
+servers:
+  - url: http://localhost:9090
+    description: Local daggle server (default port)
+
+paths:
+  /api/v1/health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      tags: [system]
+      responses:
+        "200":
+          description: Server is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /api/v1/dags:
+    get:
+      summary: List all DAGs
+      operationId: listDags
+      tags: [dags]
+      responses:
+        "200":
+          description: Array of DAG summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DAGSummary"
+
+  /api/v1/dags/{name}:
+    get:
+      summary: Get DAG details
+      operationId: getDag
+      tags: [dags]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+      responses:
+        "200":
+          description: DAG detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DAGDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/dags/{name}/run:
+    post:
+      summary: Trigger a DAG run
+      operationId: triggerRun
+      tags: [dags]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TriggerRequest"
+      responses:
+        "201":
+          description: Run started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TriggerResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/dags/{name}/runs:
+    get:
+      summary: List runs for a DAG
+      operationId: listRuns
+      tags: [runs]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+      responses:
+        "200":
+          description: Array of run summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RunSummary"
+
+  /api/v1/dags/{name}/runs/{run_id}:
+    get:
+      summary: Get run details
+      operationId: getRun
+      tags: [runs]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Run detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/dags/{name}/runs/{run_id}/cancel:
+    post:
+      summary: Cancel a running DAG run
+      operationId: cancelRun
+      tags: [runs]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Cancel requested.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/dags/{name}/runs/{run_id}/steps:
+    get:
+      summary: List steps in a run
+      operationId: listSteps
+      tags: [steps]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Array of step summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StepSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/dags/{name}/runs/{run_id}/steps/{step_id}/log:
+    get:
+      summary: Get step logs
+      operationId: getStepLog
+      tags: [steps]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+        - $ref: "#/components/parameters/stepId"
+      responses:
+        "200":
+          description: Step stdout and stderr.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StepLog"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/dags/{name}/runs/{run_id}/steps/{step_id}/approve:
+    post:
+      summary: Approve a waiting step
+      operationId: approveStep
+      tags: [steps]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+        - $ref: "#/components/parameters/stepId"
+      responses:
+        "200":
+          description: Step approved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/dags/{name}/runs/{run_id}/steps/{step_id}/reject:
+    post:
+      summary: Reject a waiting step
+      operationId: rejectStep
+      tags: [steps]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+        - $ref: "#/components/parameters/stepId"
+      responses:
+        "200":
+          description: Step rejected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/dags/{name}/runs/{run_id}/outputs:
+    get:
+      summary: Get run outputs
+      operationId: getOutputs
+      tags: [outputs]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Flat array of output entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OutputEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/projects:
+    get:
+      summary: List registered projects
+      operationId: listProjects
+      tags: [projects]
+      responses:
+        "200":
+          description: Array of project summaries. First entry is always "(global)".
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectSummary"
+    post:
+      summary: Register a project
+      operationId: registerProject
+      tags: [projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Project registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/projects/{name}:
+    delete:
+      summary: Unregister a project
+      operationId: unregisterProject
+      tags: [projects]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project name.
+      responses:
+        "200":
+          description: Project unregistered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnregisterResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/runs/cleanup:
+    post:
+      summary: Clean up old runs
+      operationId: cleanupRuns
+      tags: [maintenance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CleanupRequest"
+      responses:
+        "200":
+          description: Cleanup complete.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CleanupResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+components:
+  parameters:
+    dagName:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: DAG name.
+    runId:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Run ID (UUID) or the literal string "latest".
+    stepId:
+      name: step_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Step ID.
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict with current state.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    HealthResponse:
+      type: object
+      required: [status, version, uptime_seconds]
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          example: "0.1.11"
+        uptime_seconds:
+          type: number
+          format: double
+
+    DAGSummary:
+      type: object
+      required: [name, steps]
+      properties:
+        name:
+          type: string
+        steps:
+          type: integer
+        project:
+          type: string
+        schedule:
+          type: string
+        last_status:
+          type: string
+        last_run:
+          type: string
+          format: date-time
+
+    DAGDetail:
+      type: object
+      required: [name, steps, step_ids]
+      properties:
+        name:
+          type: string
+        steps:
+          type: integer
+        step_ids:
+          type: array
+          items:
+            type: string
+        schedule:
+          type: string
+        workdir:
+          type: string
+        r_version:
+          type: string
+        last_status:
+          type: string
+        last_run_id:
+          type: string
+        last_run:
+          type: string
+          format: date-time
+
+    TriggerRequest:
+      type: object
+      properties:
+        params:
+          type: object
+          additionalProperties:
+            type: string
+
+    TriggerResponse:
+      type: object
+      required: [run_id, status]
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+          example: started
+
+    RunSummary:
+      type: object
+      required: [run_id, started, status]
+      properties:
+        run_id:
+          type: string
+        started:
+          type: string
+          format: date-time
+        status:
+          type: string
+        duration_seconds:
+          type: number
+          format: double
+        dag_hash:
+          type: string
+          description: First 12 characters of the DAG file hash.
+
+    RunDetail:
+      type: object
+      required: [run_id, dag_name, status, started, steps]
+      properties:
+        run_id:
+          type: string
+        dag_name:
+          type: string
+        status:
+          type: string
+        started:
+          type: string
+          format: date-time
+        ended:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: number
+          format: double
+        dag_hash:
+          type: string
+        r_version:
+          type: string
+        platform:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/StepSummary"
+
+    StepSummary:
+      type: object
+      required: [step_id, status]
+      properties:
+        step_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - running
+            - completed
+            - failed
+            - retrying
+            - waiting
+            - approved
+            - rejected
+            - skipped
+        duration_seconds:
+          type: number
+          format: double
+        attempts:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+          description: Approval message.
+
+    StepLog:
+      type: object
+      required: [step_id, stdout, stderr]
+      properties:
+        step_id:
+          type: string
+        stdout:
+          type: string
+        stderr:
+          type: string
+
+    OutputEntry:
+      type: object
+      required: [step_id, key, value]
+      properties:
+        step_id:
+          type: string
+        key:
+          type: string
+        value:
+          type: string
+
+    ProjectSummary:
+      type: object
+      required: [name, path, status, dags]
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        status:
+          type: string
+          enum: [ok, missing]
+        dags:
+          type: integer
+
+    RegisterRequest:
+      type: object
+      required: [path]
+      properties:
+        name:
+          type: string
+          description: Project name. Defaults to directory basename if omitted.
+        path:
+          type: string
+          description: Absolute or relative path to the project root.
+
+    RegisterResponse:
+      type: object
+      required: [name, path]
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+
+    UnregisterResponse:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    CancelResponse:
+      type: object
+      required: [status, run_id, message]
+      properties:
+        status:
+          type: string
+          example: cancel_requested
+        run_id:
+          type: string
+        message:
+          type: string
+
+    ApprovalResponse:
+      type: object
+      required: [step_id, status]
+      properties:
+        step_id:
+          type: string
+        status:
+          type: string
+          enum: [approved, rejected]
+
+    CleanupRequest:
+      type: object
+      required: [older_than]
+      properties:
+        older_than:
+          type: string
+          description: 'Duration string, e.g. "30d", "24h", "1h30m".'
+          example: "30d"
+
+    CleanupResponse:
+      type: object
+      required: [removed, freed_bytes, freed]
+      properties:
+        removed:
+          type: integer
+        freed_bytes:
+          type: integer
+          format: int64
+        freed:
+          type: string
+          description: Human-readable size, e.g. "1.5 GB".

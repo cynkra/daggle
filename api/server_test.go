@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,6 +37,34 @@ steps:
 
 	srv := New(func() []state.DAGSource { return []state.DAGSource{{Name: "test", Dir: dagDir}} }, "test-version")
 	return srv, dagDir
+}
+
+func TestOpenAPISpec(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	req := httptest.NewRequest("GET", "/openapi.yaml", nil)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	ct := w.Header().Get("Content-Type")
+	if ct != "text/yaml; charset=utf-8" {
+		t.Errorf("content-type = %q, want text/yaml; charset=utf-8", ct)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "openapi:") {
+		t.Error("response does not contain openapi: key")
+	}
+	if !strings.Contains(body, "/api/v1/health") {
+		t.Error("response does not contain /api/v1/health path")
+	}
+	if !strings.Contains(body, "/api/v1/projects") {
+		t.Error("response does not contain /api/v1/projects path")
+	}
 }
 
 func TestHealth(t *testing.T) {
