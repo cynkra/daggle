@@ -63,16 +63,10 @@ func (e *dagEntry) teardown() {
 	e.cancelFns = nil
 }
 
-// DAGSource represents a directory containing DAG YAML files, with a label.
-type DAGSource struct {
-	Name string // project name or "global"
-	Dir  string // absolute path to directory with YAML files
-}
-
 // Scheduler manages trigger-based DAG execution.
 type Scheduler struct {
 	cron    *cron.Cron
-	sources []DAGSource
+	sources []state.DAGSource
 	logger  *slog.Logger
 
 	mu             sync.Mutex
@@ -89,7 +83,7 @@ type Scheduler struct {
 }
 
 // New creates a new Scheduler that watches the given DAG sources.
-func New(sources []DAGSource) *Scheduler {
+func New(sources []state.DAGSource) *Scheduler {
 	return &Scheduler{
 		cron:           cron.New(),
 		sources:        sources,
@@ -106,7 +100,7 @@ func New(sources []DAGSource) *Scheduler {
 // Reload triggers an immediate rescan of DAG sources. If newSources is
 // non-empty, the scheduler's source list is replaced before scanning,
 // allowing newly registered projects to be picked up without a restart.
-func (s *Scheduler) Reload(ctx context.Context, newSources []DAGSource) {
+func (s *Scheduler) Reload(ctx context.Context, newSources []state.DAGSource) {
 	if len(newSources) > 0 {
 		s.mu.Lock()
 		s.sources = newSources
@@ -213,7 +207,7 @@ func (s *Scheduler) shutdown() {
 func (s *Scheduler) syncDAGs(ctx context.Context) error {
 	// Snapshot sources under lock so Reload can update them concurrently.
 	s.mu.Lock()
-	sources := make([]DAGSource, len(s.sources))
+	sources := make([]state.DAGSource, len(s.sources))
 	copy(sources, s.sources)
 	s.mu.Unlock()
 
@@ -270,7 +264,7 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 }
 
 // syncSource scans a single DAG source directory.
-func (s *Scheduler) syncSource(ctx context.Context, src DAGSource, seen map[string]bool, newListeners map[string][]onDAGListener, newWebhooks map[string]webhookEntry) error {
+func (s *Scheduler) syncSource(ctx context.Context, src state.DAGSource, seen map[string]bool, newListeners map[string][]onDAGListener, newWebhooks map[string]webhookEntry) error {
 	entries, err := os.ReadDir(src.Dir)
 	if err != nil {
 		if os.IsNotExist(err) {

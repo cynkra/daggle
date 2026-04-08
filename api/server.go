@@ -9,17 +9,13 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-)
 
-// DAGSource represents a directory containing DAG YAML files, with a label.
-type DAGSource struct {
-	Name string // project name or "global"
-	Dir  string // absolute path to directory with YAML files
-}
+	"github.com/cynkra/daggle/state"
+)
 
 // SourceFunc returns the current list of DAG sources.
 // Called on each request so newly registered projects are picked up.
-type SourceFunc func() []DAGSource
+type SourceFunc func() []state.DAGSource
 
 // Server is the daggle REST API server.
 type Server struct {
@@ -46,7 +42,7 @@ func New(sourceFunc SourceFunc, version string) *Server {
 }
 
 // sources returns the current DAG sources.
-func (s *Server) sources() []DAGSource {
+func (s *Server) sources() []state.DAGSource {
 	return s.sourceFunc()
 }
 
