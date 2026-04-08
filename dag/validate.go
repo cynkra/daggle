@@ -18,6 +18,14 @@ func Validate(d *DAG) error {
 		errs = append(errs, "dag must have at least one step")
 	}
 
+	// Build complete ID set for dependency validation
+	allIDs := make(map[string]bool, len(d.Steps))
+	for _, s := range d.Steps {
+		if s.ID != "" {
+			allIDs[s.ID] = true
+		}
+	}
+
 	ids := make(map[string]bool, len(d.Steps))
 	for _, s := range d.Steps {
 		if s.ID == "" {
@@ -67,18 +75,8 @@ func Validate(d *DAG) error {
 
 		// Validate depends references
 		for _, dep := range s.Depends {
-			if !ids[dep] {
-				// Check if it exists anywhere in the step list (forward reference)
-				found := false
-				for _, other := range d.Steps {
-					if other.ID == dep {
-						found = true
-						break
-					}
-				}
-				if !found {
-					errs = append(errs, fmt.Sprintf("step %q depends on unknown step %q", s.ID, dep))
-				}
+			if !allIDs[dep] {
+				errs = append(errs, fmt.Sprintf("step %q depends on unknown step %q", s.ID, dep))
 			}
 		}
 
@@ -238,12 +236,12 @@ func CheckRVersion(constraint, actual string) (string, bool) {
 		if cmp >= 0 {
 			return "", true
 		}
-		return fmt.Sprintf("R version %s does not satisfy %s (have %s)", constraint, constraint, actual), false
+		return fmt.Sprintf("R %s does not satisfy %s (have %s)", actual, constraint, actual), false
 	case "==":
 		if cmp == 0 {
 			return "", true
 		}
-		return fmt.Sprintf("R version %s does not satisfy %s (have %s)", constraint, constraint, actual), false
+		return fmt.Sprintf("R %s does not satisfy %s (have %s)", actual, constraint, actual), false
 	}
 	return "", true
 }

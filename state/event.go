@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -93,7 +94,8 @@ func ReadEvents(runDir string) ([]Event, error) {
 	for scanner.Scan() {
 		var e Event
 		if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
-			continue // skip malformed lines
+			slog.Warn("skipping malformed event line", "error", err, "dir", runDir)
+			continue
 		}
 		events = append(events, e)
 	}

@@ -3,9 +3,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 
 	"github.com/cynkra/daggle/dag"
 )
@@ -19,14 +16,10 @@ type RPkgExecutor struct {
 func (e *RPkgExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result {
 	pkgPath := e.resolvePkgPath(step)
 	rCode := wrapErrorOn(e.generateRCode(pkgPath), step.ErrorOn)
-
-	tmpFile := filepath.Join(logDir, step.ID+".rpkg.R")
-	if err := os.WriteFile(tmpFile, []byte(rCode), 0644); err != nil {
-		return Result{ExitCode: -1, Err: fmt.Errorf("write rpkg R: %w", err)}
-	}
-
-	cmd := exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
-	return runProcess(ctx, cmd, step.ID, logDir, workdir, env)
+	// rpkg steps don't pass step.Args, so use a step copy with empty args
+	s := step
+	s.Args = nil
+	return runRScript(ctx, rCode, s, logDir, workdir, env, "rpkg")
 }
 
 func (e *RPkgExecutor) resolvePkgPath(step dag.Step) string {

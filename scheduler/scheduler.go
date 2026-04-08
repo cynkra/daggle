@@ -41,6 +41,12 @@ type onDAGListener struct {
 	status  string // "completed", "failed", or "any"
 }
 
+// runEntry tracks an active DAG run.
+type runEntry struct {
+	cancel context.CancelFunc
+	done   chan struct{} // closed when the run goroutine exits
+}
+
 // dagEntry tracks a registered DAG and its active triggers.
 type dagEntry struct {
 	cronID    cron.EntryID         // zero if no cron trigger
@@ -57,21 +63,15 @@ func (e *dagEntry) teardown() {
 	e.cancelFns = nil
 }
 
-// DAGSource represents a directory containing DAG YAML files, with a label.
-type DAGSource struct {
-	Name string // project name or "global"
-	Dir  string // absolute path to directory with YAML files
-}
-
 // Scheduler manages trigger-based DAG execution.
 type Scheduler struct {
 	cron    *cron.Cron
-	sources []DAGSource
+	sources []state.DAGSource
 	logger  *slog.Logger
 
 	mu             sync.Mutex
 	registered     map[string]*dagEntry              // dagName -> entry
-	running        map[string]context.CancelFunc     // dagName -> cancel
+	running        map[string]*runEntry              // dagName -> active run
 	runningCount   int
 	maxConcurrent  int
 	onDAGListeners map[string][]onDAGListener        // upstreamDAGName -> downstream listeners
@@ -83,16 +83,16 @@ type Scheduler struct {
 }
 
 // New creates a new Scheduler that watches the given DAG sources.
-func New(sources []DAGSource) *Scheduler {
+func New(sources []state.DAGSource) *Scheduler {
 	return &Scheduler{
 		cron:           cron.New(),
 		sources:        sources,
 		logger:         slog.Default(),
 		registered:     make(map[string]*dagEntry),
-		running:        make(map[string]context.CancelFunc),
+		running:        make(map[string]*runEntry),
 		maxConcurrent:  defaultMaxConcurrent,
 		onDAGListeners: make(map[string][]onDAGListener),
-		completions:    make(chan dagCompletionEvent, 64),
+		completions:    make(chan dagCompletionEvent, 256),
 		webhooks:       make(map[string]webhookEntry),
 	}
 }
@@ -100,7 +100,7 @@ func New(sources []DAGSource) *Scheduler {
 // Reload triggers an immediate rescan of DAG sources. If newSources is
 // non-empty, the scheduler's source list is replaced before scanning,
 // allowing newly registered projects to be picked up without a restart.
-func (s *Scheduler) Reload(ctx context.Context, newSources []DAGSource) {
+func (s *Scheduler) Reload(ctx context.Context, newSources []state.DAGSource) {
 	if len(newSources) > 0 {
 		s.mu.Lock()
 		s.sources = newSources
@@ -182,9 +182,9 @@ func (s *Scheduler) shutdown() {
 			case <-deadline:
 				s.logger.Warn("grace period expired, cancelling remaining runs")
 				s.mu.Lock()
-				for name, cancel := range s.running {
+				for name, entry := range s.running {
 					s.logger.Warn("cancelling run", "dag", name)
-					cancel()
+					entry.cancel()
 				}
 				s.mu.Unlock()
 				// Give processes a moment to clean up
@@ -207,7 +207,7 @@ func (s *Scheduler) shutdown() {
 func (s *Scheduler) syncDAGs(ctx context.Context) error {
 	// Snapshot sources under lock so Reload can update them concurrently.
 	s.mu.Lock()
-	sources := make([]DAGSource, len(s.sources))
+	sources := make([]state.DAGSource, len(s.sources))
 	copy(sources, s.sources)
 	s.mu.Unlock()
 
@@ -253,9 +253,10 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 		}
 	} else if !needServer && hasServer {
 		s.mu.Lock()
-		s.webhookCloseFn()
+		closeFn := s.webhookCloseFn
 		s.webhookCloseFn = nil
 		s.mu.Unlock()
+		closeFn()
 		s.logger.Info("webhook server stopped (no webhook triggers)")
 	}
 
@@ -263,7 +264,7 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 }
 
 // syncSource scans a single DAG source directory.
-func (s *Scheduler) syncSource(ctx context.Context, src DAGSource, seen map[string]bool, newListeners map[string][]onDAGListener, newWebhooks map[string]webhookEntry) error {
+func (s *Scheduler) syncSource(ctx context.Context, src state.DAGSource, seen map[string]bool, newListeners map[string][]onDAGListener, newWebhooks map[string]webhookEntry) error {
 	entries, err := os.ReadDir(src.Dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -619,20 +620,17 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 	s.mu.Lock()
 
 	// Handle overlap with already-running DAG
-	if cancelOld, running := s.running[d.Name]; running {
+	if old, running := s.running[d.Name]; running {
 		if overlap == "cancel" {
 			s.logger.Info("cancelling previous run (overlap: cancel)", "dag", d.Name, "source", source)
-			cancelOld()
+			old.cancel()
+			doneCh := old.done
 			s.mu.Unlock()
-			// Wait for old goroutine to clean up (its defer deletes from running map)
-			for i := 0; i < 50; i++ {
-				time.Sleep(100 * time.Millisecond)
-				s.mu.Lock()
-				_, stillRunning := s.running[d.Name]
-				s.mu.Unlock()
-				if !stillRunning {
-					break
-				}
+			// Wait for the old run to finish cleanup
+			select {
+			case <-doneCh:
+			case <-time.After(5 * time.Second):
+				s.logger.Warn("timeout waiting for cancelled run", "dag", d.Name)
 			}
 			s.mu.Lock()
 		} else {
@@ -654,12 +652,14 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 		parentCtx = context.Background()
 	}
 	ctx, cancel := context.WithCancel(parentCtx)
-	s.running[d.Name] = cancel
+	doneCh := make(chan struct{})
+	s.running[d.Name] = &runEntry{cancel: cancel, done: doneCh}
 	s.runningCount++
 	s.mu.Unlock()
 
 	// Run in a goroutine
 	go func() {
+		defer close(doneCh)
 		defer func() {
 			s.mu.Lock()
 			delete(s.running, d.Name)
@@ -694,8 +694,8 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 		// Emit completion event for on_dag listeners
 		select {
 		case s.completions <- dagCompletionEvent{DAGName: d.Name, Status: status}:
-		default:
-			s.logger.Warn("completion event dropped, channel full", "dag", d.Name)
+		case <-time.After(5 * time.Second):
+			s.logger.Error("completion event dropped after timeout", "dag", d.Name)
 		}
 	}()
 }

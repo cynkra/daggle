@@ -6,19 +6,16 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
-)
 
-// DAGSource represents a directory containing DAG YAML files, with a label.
-type DAGSource struct {
-	Name string // project name or "global"
-	Dir  string // absolute path to directory with YAML files
-}
+	"github.com/cynkra/daggle/state"
+)
 
 // SourceFunc returns the current list of DAG sources.
 // Called on each request so newly registered projects are picked up.
-type SourceFunc func() []DAGSource
+type SourceFunc func() []state.DAGSource
 
 // Server is the daggle REST API server.
 type Server struct {
@@ -45,7 +42,7 @@ func New(sourceFunc SourceFunc, version string) *Server {
 }
 
 // sources returns the current DAG sources.
-func (s *Server) sources() []DAGSource {
+func (s *Server) sources() []state.DAGSource {
 	return s.sourceFunc()
 }
 
@@ -108,8 +105,12 @@ func readJSON(r *http.Request, v interface{}) error {
 // dagPath resolves a DAG YAML file path from a name, searching all sources.
 func (s *Server) dagPath(name string) string {
 	for _, src := range s.sources() {
+		cleanSrc := filepath.Clean(src.Dir) + string(filepath.Separator)
 		for _, ext := range []string{".yaml", ".yml"} {
-			p := src.Dir + "/" + name + ext
+			p := filepath.Join(src.Dir, name+ext)
+			if !strings.HasPrefix(filepath.Clean(p), cleanSrc) {
+				continue // path traversal attempt
+			}
 			if _, err := os.Stat(p); err == nil {
 				return p
 			}

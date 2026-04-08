@@ -60,6 +60,27 @@ func ExpandDAG(d *DAG, paramOverrides map[string]string) (*DAG, error) {
 
 	for i, s := range d.Steps {
 		es := s
+		// Deep copy mutable fields to avoid sharing with original
+		if len(s.Depends) > 0 {
+			es.Depends = make([]string, len(s.Depends))
+			copy(es.Depends, s.Depends)
+		}
+		if s.Retry != nil {
+			r := *s.Retry
+			es.Retry = &r
+		}
+		if s.When != nil {
+			w := *s.When
+			es.When = &w
+		}
+		if s.OnSuccess != nil {
+			h := *s.OnSuccess
+			es.OnSuccess = &h
+		}
+		if s.OnFailure != nil {
+			h := *s.OnFailure
+			es.OnFailure = &h
+		}
 		es.Args = make([]string, len(s.Args))
 
 		// Expand args

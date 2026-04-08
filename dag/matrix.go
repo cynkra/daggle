@@ -2,6 +2,7 @@ package dag
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -84,6 +85,7 @@ func matrixCombinations(matrix map[string][]string) []map[string]string {
 	for k := range matrix {
 		keys = append(keys, k)
 	}
+	sort.Strings(keys)
 
 	// Generate combinations via cartesian product
 	combos := []map[string]string{{}}

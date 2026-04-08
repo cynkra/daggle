@@ -3,8 +3,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -16,16 +14,8 @@ type ConnectExecutor struct{}
 
 // Run generates R code to deploy to Posit Connect and executes it via Rscript.
 func (e *ConnectExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result {
-	c := step.Connect
-	rCode := wrapErrorOn(generateConnectR(c), step.ErrorOn)
-
-	tmpFile := filepath.Join(logDir, step.ID+".connect.R")
-	if err := os.WriteFile(tmpFile, []byte(rCode), 0644); err != nil {
-		return Result{ExitCode: -1, Err: fmt.Errorf("write connect R: %w", err)}
-	}
-
-	cmd := exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
-	return runProcess(ctx, cmd, step.ID, logDir, workdir, env)
+	rCode := wrapErrorOn(generateConnectR(step.Connect), step.ErrorOn)
+	return runRScript(ctx, rCode, step, logDir, workdir, env, "connect")
 }
 
 func generateConnectR(c *dag.ConnectDeploy) string {

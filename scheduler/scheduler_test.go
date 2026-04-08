@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/cynkra/daggle/state"
 )
 
 func TestPIDFile(t *testing.T) {
@@ -77,7 +79,7 @@ steps:
     command: echo hello
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	if err := sched.syncDAGs(context.Background()); err != nil {
 		t.Fatalf("syncDAGs: %v", err)
 	}
@@ -97,7 +99,7 @@ func TestScheduler_HotReload(t *testing.T) {
 	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 
 	// Initial scan — empty
 	_ = sched.syncDAGs(context.Background())
@@ -157,7 +159,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	_ = sched.syncDAGs(context.Background())
 
 	// Trigger first run
@@ -187,8 +189,8 @@ steps:
 
 	// Clean up: cancel the running DAG
 	sched.mu.Lock()
-	for _, cancel := range sched.running {
-		cancel()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -211,7 +213,7 @@ steps:
     command: sleep 30
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	_ = sched.syncDAGs(context.Background())
 
 	dagPath := filepath.Join(dagDir, "cancel.yaml")
@@ -242,8 +244,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancel := range sched.running {
-		cancel()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -255,7 +257,7 @@ func TestScheduler_MaxConcurrent(t *testing.T) {
 	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	sched.maxConcurrent = 2
 
 	// Create multiple DAGs
@@ -290,8 +292,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancel := range sched.running {
-		cancel()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -303,7 +305,7 @@ func TestScheduler_StartStop(t *testing.T) {
 	_ = os.MkdirAll(dagDir, 0755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -349,7 +351,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -380,8 +382,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -407,7 +409,7 @@ steps:
     command: echo processing
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -457,7 +459,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -491,8 +493,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -526,7 +528,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -568,7 +570,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -596,8 +598,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -641,7 +643,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: repoDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: repoDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -679,8 +681,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -701,7 +703,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -744,8 +746,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -767,7 +769,7 @@ steps:
     command: sleep 10
 `)
 
-	sched := New([]DAGSource{{Name: "test", Dir: dagDir}})
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -820,8 +822,8 @@ steps:
 	// Clean up
 	time.Sleep(200 * time.Millisecond)
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
