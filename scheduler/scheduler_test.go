@@ -187,8 +187,8 @@ steps:
 
 	// Clean up: cancel the running DAG
 	sched.mu.Lock()
-	for _, cancel := range sched.running {
-		cancel()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -242,8 +242,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancel := range sched.running {
-		cancel()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -290,8 +290,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancel := range sched.running {
-		cancel()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -380,8 +380,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -491,8 +491,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -596,8 +596,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -679,8 +679,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -744,8 +744,8 @@ steps:
 
 	// Clean up
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
@@ -820,8 +820,8 @@ steps:
 	// Clean up
 	time.Sleep(200 * time.Millisecond)
 	sched.mu.Lock()
-	for _, cancelFn := range sched.running {
-		cancelFn()
+	for _, entry := range sched.running {
+		entry.cancel()
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
