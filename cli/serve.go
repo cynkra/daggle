@@ -76,11 +76,7 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 
 	// Start REST API server if port is specified
 	if apiPort > 0 {
-		apiSources := make([]api.DAGSource, len(sources))
-		for i, s := range sources {
-			apiSources[i] = api.DAGSource{Name: s.Name, Dir: s.Dir}
-		}
-		apiServer := api.New(apiSources, Version)
+		apiServer := api.New(buildAPISources, Version)
 		addr := fmt.Sprintf("127.0.0.1:%d", apiPort)
 		httpServer := &http.Server{
 			Addr:    addr,
@@ -109,6 +105,15 @@ func buildSchedulerSources() []scheduler.DAGSource {
 	sources := make([]scheduler.DAGSource, len(stateSources))
 	for i, s := range stateSources {
 		sources[i] = scheduler.DAGSource{Name: s.Name, Dir: s.Dir}
+	}
+	return sources
+}
+
+func buildAPISources() []api.DAGSource {
+	stateSources := state.BuildDAGSources()
+	sources := make([]api.DAGSource, len(stateSources))
+	for i, s := range stateSources {
+		sources[i] = api.DAGSource{Name: s.Name, Dir: s.Dir}
 	}
 	return sources
 }

@@ -34,7 +34,7 @@ steps:
 		t.Fatal(err)
 	}
 
-	srv := New([]DAGSource{{Name: "test", Dir: dagDir}}, "test-version")
+	srv := New(func() []DAGSource { return []DAGSource{{Name: "test", Dir: dagDir}} }, "test-version")
 	return srv, dagDir
 }
 

@@ -18,7 +18,7 @@ import (
 func (s *Server) handleListDAGs(w http.ResponseWriter, _ *http.Request) {
 	var dags []DAGSummary
 
-	for _, src := range s.sources {
+	for _, src := range s.sources() {
 		entries, err := os.ReadDir(src.Dir)
 		if err != nil {
 			if os.IsNotExist(err) {

@@ -16,26 +16,37 @@ type DAGSource struct {
 	Dir  string // absolute path to directory with YAML files
 }
 
+// SourceFunc returns the current list of DAG sources.
+// Called on each request so newly registered projects are picked up.
+type SourceFunc func() []DAGSource
+
 // Server is the daggle REST API server.
 type Server struct {
-	mux     *http.ServeMux
-	sources []DAGSource
-	version string
-	started time.Time
-	logger  *slog.Logger
+	mux        *http.ServeMux
+	sourceFunc SourceFunc
+	version    string
+	started    time.Time
+	logger     *slog.Logger
 }
 
-// New creates a new API server.
-func New(sources []DAGSource, version string) *Server {
+// New creates a new API server. The sourceFunc is called on each request
+// to get the current DAG sources, so newly registered projects appear
+// without a restart.
+func New(sourceFunc SourceFunc, version string) *Server {
 	s := &Server{
-		mux:     http.NewServeMux(),
-		sources: sources,
-		version: version,
-		started: time.Now(),
-		logger:  slog.Default(),
+		mux:        http.NewServeMux(),
+		sourceFunc: sourceFunc,
+		version:    version,
+		started:    time.Now(),
+		logger:     slog.Default(),
 	}
 	s.registerRoutes()
 	return s
+}
+
+// sources returns the current DAG sources.
+func (s *Server) sources() []DAGSource {
+	return s.sourceFunc()
 }
 
 // Handler returns the HTTP handler for the API server.
@@ -96,7 +107,7 @@ func readJSON(r *http.Request, v interface{}) error {
 
 // dagPath resolves a DAG YAML file path from a name, searching all sources.
 func (s *Server) dagPath(name string) string {
-	for _, src := range s.sources {
+	for _, src := range s.sources() {
 		for _, ext := range []string{".yaml", ".yml"} {
 			p := src.Dir + "/" + name + ext
 			if _, err := os.Stat(p); err == nil {
