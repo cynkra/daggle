@@ -103,6 +103,31 @@ type CleanupResponse struct {
 	Freed      string `json:"freed"` // human-readable
 }
 
+// ProjectSummary is returned in the project list.
+type ProjectSummary struct {
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	Status string `json:"status"` // "ok" or "missing"
+	DAGs   int    `json:"dags"`
+}
+
+// RegisterRequest is the body for POST /api/v1/projects.
+type RegisterRequest struct {
+	Name string `json:"name,omitempty"` // optional, defaults to directory basename
+	Path string `json:"path"`
+}
+
+// RegisterResponse is returned after registering a project.
+type RegisterResponse struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+// UnregisterResponse is returned after unregistering a project.
+type UnregisterResponse struct {
+	Name string `json:"name"`
+}
+
 // ErrorResponse is returned for errors.
 type ErrorResponse struct {
 	Error string `json:"error"`
