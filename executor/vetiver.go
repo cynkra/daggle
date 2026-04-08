@@ -3,9 +3,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 
 	"github.com/cynkra/daggle/dag"
 )
@@ -15,16 +12,8 @@ type VetiverExecutor struct{}
 
 // Run generates R code for vetiver operations and executes it via Rscript.
 func (e *VetiverExecutor) Run(ctx context.Context, step dag.Step, logDir string, workdir string, env []string) Result {
-	v := step.Vetiver
-	rCode := wrapErrorOn(generateVetiverR(v), step.ErrorOn)
-
-	tmpFile := filepath.Join(logDir, step.ID+".vetiver.R")
-	if err := os.WriteFile(tmpFile, []byte(rCode), 0644); err != nil {
-		return Result{ExitCode: -1, Err: fmt.Errorf("write vetiver R: %w", err)}
-	}
-
-	cmd := exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
-	return runProcess(ctx, cmd, step.ID, logDir, workdir, env)
+	rCode := wrapErrorOn(generateVetiverR(step.Vetiver), step.ErrorOn)
+	return runRScript(ctx, rCode, step, logDir, workdir, env, "vetiver")
 }
 
 func generateVetiverR(v *dag.VetiverDeploy) string {
