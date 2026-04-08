@@ -624,6 +624,28 @@ func TestMatrixCombinations(t *testing.T) {
 	}
 }
 
+func TestMatrixCombinations_Deterministic(t *testing.T) {
+	matrix := map[string][]string{
+		"z": {"3", "4"},
+		"a": {"1", "2"},
+		"m": {"x", "y"},
+	}
+	first := matrixCombinations(matrix)
+	for i := 0; i < 20; i++ {
+		again := matrixCombinations(matrix)
+		if len(again) != len(first) {
+			t.Fatalf("length mismatch on iteration %d", i)
+		}
+		for j, combo := range again {
+			for k, v := range combo {
+				if first[j][k] != v {
+					t.Fatalf("non-deterministic output at iteration %d, combo %d: key %q got %q, want %q", i, j, k, v, first[j][k])
+				}
+			}
+		}
+	}
+}
+
 func TestEnvVar_UnmarshalYAML(t *testing.T) {
 	// Plain string form
 	yamlStr := `name: test

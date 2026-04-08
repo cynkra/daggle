@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -108,8 +109,12 @@ func readJSON(r *http.Request, v interface{}) error {
 // dagPath resolves a DAG YAML file path from a name, searching all sources.
 func (s *Server) dagPath(name string) string {
 	for _, src := range s.sources() {
+		cleanSrc := filepath.Clean(src.Dir) + string(filepath.Separator)
 		for _, ext := range []string{".yaml", ".yml"} {
-			p := src.Dir + "/" + name + ext
+			p := filepath.Join(src.Dir, name+ext)
+			if !strings.HasPrefix(filepath.Clean(p), cleanSrc) {
+				continue // path traversal attempt
+			}
 			if _, err := os.Stat(p); err == nil {
 				return p
 			}
