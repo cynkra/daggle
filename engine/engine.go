@@ -319,6 +319,7 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 			e.logger.Error("hook write failed", "hook", name, "error", err)
 			return
 		}
+		defer os.Remove(tmpFile)
 		cmd = exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
 	case hook.Command != "":
 		cmd = exec.CommandContext(ctx, "sh", "-c", hook.Command)
@@ -341,8 +342,21 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	}
 	e.mu.Unlock()
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Route hook output through log files so secrets can be redacted
+	hookStdout, err := os.Create(filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".stdout.log"))
+	if err != nil {
+		e.logger.Error("hook log create failed", "hook", name, "error", err)
+		return
+	}
+	defer hookStdout.Close()
+	hookStderr, err := os.Create(filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".stderr.log"))
+	if err != nil {
+		e.logger.Error("hook log create failed", "hook", name, "error", err)
+		return
+	}
+	defer hookStderr.Close()
+	cmd.Stdout = hookStdout
+	cmd.Stderr = hookStderr
 
 	if err := cmd.Run(); err != nil {
 		e.logger.Error("hook failed", "hook", name, "error", err)
@@ -359,6 +373,7 @@ func (e *Engine) evaluateCondition(ctx context.Context, cond *dag.StepCondition,
 		if err := os.WriteFile(tmpFile, []byte(fmt.Sprintf("if (!(%s)) quit(status = 1, save = 'no')\n", cond.RExpr)), 0644); err != nil {
 			return false, err
 		}
+		defer os.Remove(tmpFile)
 		cmd = exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
 	case cond.Command != "":
 		cmd = exec.CommandContext(ctx, "sh", "-c", cond.Command)

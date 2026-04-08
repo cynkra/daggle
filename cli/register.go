@@ -103,18 +103,15 @@ func runUnregister(_ *cobra.Command, args []string) error {
 }
 
 func notifyScheduler() {
-	if !scheduler.IsRunning() {
-		return
-	}
 	pid, err := scheduler.ReadPID()
 	if err != nil {
 		return
 	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
+	// Verify process exists before signaling
+	if err := syscall.Kill(pid, 0); err != nil {
 		return
 	}
-	if err := proc.Signal(syscall.SIGHUP); err == nil {
+	if err := syscall.Kill(pid, syscall.SIGHUP); err == nil {
 		fmt.Println("Scheduler notified to reload.")
 	}
 }
