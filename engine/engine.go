@@ -327,12 +327,8 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 		return
 	}
 
-	// Set working directory
-	if e.dag.Workdir != "" {
-		cmd.Dir = e.dag.Workdir
-	} else if e.dag.SourceDir != "" {
-		cmd.Dir = e.dag.SourceDir
-	}
+	// Set working directory (empty step falls back to DAG workdir or SourceDir)
+	cmd.Dir = e.dag.ResolveWorkdir(dag.Step{})
 
 	// Provide env with run metadata + renv + outputs
 	cmd.Env = append(os.Environ(), buildEnv(e.dag, e.runInfo, e.renvLibPath)...)
@@ -382,11 +378,7 @@ func (e *Engine) evaluateCondition(ctx context.Context, cond *dag.StepCondition,
 	}
 
 	cmd.Env = append(os.Environ(), env...)
-	if e.dag.Workdir != "" {
-		cmd.Dir = e.dag.Workdir
-	} else if e.dag.SourceDir != "" {
-		cmd.Dir = e.dag.SourceDir
-	}
+	cmd.Dir = e.dag.ResolveWorkdir(dag.Step{})
 
 	if err := cmd.Run(); err != nil {
 		if _, ok := err.(*exec.ExitError); ok {
