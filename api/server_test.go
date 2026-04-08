@@ -315,6 +315,181 @@ func TestTriggerRun(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 }
 
+func TestListProjects(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	configDir := t.TempDir()
+	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
+
+	req := httptest.NewRequest("GET", "/api/v1/projects", nil)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var projects []ProjectSummary
+	if err := json.Unmarshal(w.Body.Bytes(), &projects); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	// Should always have the global entry
+	if len(projects) < 1 {
+		t.Fatal("expected at least the global entry")
+	}
+	if projects[0].Name != "(global)" {
+		t.Errorf("first entry name = %q, want (global)", projects[0].Name)
+	}
+}
+
+func TestRegisterProject(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	configDir := t.TempDir()
+	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
+
+	// Create a project directory with a .daggle/ dir containing a DAG
+	projDir := t.TempDir()
+	dagDir := filepath.Join(projDir, ".daggle")
+	if err := os.MkdirAll(dagDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dagDir, "my-dag.yaml"), []byte("name: my-dag\nsteps:\n  - id: a\n    command: echo hi\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	body := bytes.NewBufferString(`{"name": "my-project", "path": "` + projDir + `"}`)
+	req := httptest.NewRequest("POST", "/api/v1/projects", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", w.Code, w.Body.String())
+	}
+
+	var resp RegisterResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.Name != "my-project" {
+		t.Errorf("name = %q, want my-project", resp.Name)
+	}
+
+	// Verify it appears in the project list
+	req = httptest.NewRequest("GET", "/api/v1/projects", nil)
+	w = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	var projects []ProjectSummary
+	_ = json.Unmarshal(w.Body.Bytes(), &projects)
+	if len(projects) != 2 { // global + my-project
+		t.Fatalf("projects = %d, want 2", len(projects))
+	}
+	if projects[1].Name != "my-project" {
+		t.Errorf("project name = %q, want my-project", projects[1].Name)
+	}
+	if projects[1].DAGs != 1 {
+		t.Errorf("dags = %d, want 1", projects[1].DAGs)
+	}
+	if projects[1].Status != "ok" {
+		t.Errorf("status = %q, want ok", projects[1].Status)
+	}
+}
+
+func TestRegisterProject_Duplicate(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	configDir := t.TempDir()
+	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
+
+	projDir := t.TempDir()
+
+	body := bytes.NewBufferString(`{"name": "dup", "path": "` + projDir + `"}`)
+	req := httptest.NewRequest("POST", "/api/v1/projects", body)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("first register: status = %d", w.Code)
+	}
+
+	// Register same name again
+	body = bytes.NewBufferString(`{"name": "dup", "path": "` + t.TempDir() + `"}`)
+	req = httptest.NewRequest("POST", "/api/v1/projects", body)
+	w = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Errorf("duplicate register: status = %d, want %d", w.Code, http.StatusConflict)
+	}
+}
+
+func TestRegisterProject_MissingPath(t *testing.T) {
+	srv, _ := setupTestServer(t)
+
+	body := bytes.NewBufferString(`{"name": "no-path"}`)
+	req := httptest.NewRequest("POST", "/api/v1/projects", body)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestUnregisterProject(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	configDir := t.TempDir()
+	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
+
+	projDir := t.TempDir()
+
+	// Register first
+	body := bytes.NewBufferString(`{"name": "to-remove", "path": "` + projDir + `"}`)
+	req := httptest.NewRequest("POST", "/api/v1/projects", body)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("register: status = %d", w.Code)
+	}
+
+	// Unregister
+	req = httptest.NewRequest("DELETE", "/api/v1/projects/to-remove", nil)
+	w = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("unregister: status = %d, body = %s", w.Code, w.Body.String())
+	}
+
+	var resp UnregisterResponse
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.Name != "to-remove" {
+		t.Errorf("name = %q, want to-remove", resp.Name)
+	}
+
+	// Verify it's gone from the list
+	req = httptest.NewRequest("GET", "/api/v1/projects", nil)
+	w = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	var projects []ProjectSummary
+	_ = json.Unmarshal(w.Body.Bytes(), &projects)
+	if len(projects) != 1 { // only global remains
+		t.Errorf("projects = %d, want 1 (global only)", len(projects))
+	}
+}
+
+func TestUnregisterProject_NotFound(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	configDir := t.TempDir()
+	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
+
+	req := httptest.NewRequest("DELETE", "/api/v1/projects/nonexistent", nil)
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
 func TestCancelRun_NotRunning(t *testing.T) {
 	srv, _ := setupTestServer(t)
 
