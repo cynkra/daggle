@@ -1,6 +1,7 @@
 package api
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,9 @@ import (
 
 	"github.com/cynkra/daggle/state"
 )
+
+//go:embed openapi.yaml
+var openapiSpec []byte
 
 // SourceFunc returns the current list of DAG sources.
 // Called on each request so newly registered projects are picked up.
@@ -52,6 +56,9 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) registerRoutes() {
+	// OpenAPI spec
+	s.mux.HandleFunc("GET /openapi.yaml", handleOpenAPISpec)
+
 	// System
 	s.mux.HandleFunc("GET /api/v1/health", s.handleHealth)
 
@@ -84,6 +91,12 @@ func (s *Server) registerRoutes() {
 
 	// UI
 	s.registerUI()
+}
+
+func handleOpenAPISpec(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/yaml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(openapiSpec)
 }
 
 // writeJSON writes a JSON response with the given status code.
