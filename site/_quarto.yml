@@ -26,7 +26,7 @@ website:
       - text: "API"
         href: api/index.qmd
       - text: "daggleR"
-        href: daggler/index.qmd
+        href: https://cynkra.github.io/daggler/
       - text: "Tutorials"
         href: tutorials/etl-pipeline.qmd
       - text: "Reference"
@@ -121,16 +121,6 @@ website:
           href: api/index.qmd
         - text: "Endpoints"
           href: api/endpoints.qmd
-
-    - title: "daggleR"
-      style: floating
-      contents:
-        - text: "Overview"
-          href: daggler/index.qmd
-        - text: "In-Step Helpers"
-          href: daggler/in-step.qmd
-        - text: "API Wrappers"
-          href: daggler/api-wrappers.qmd
 
     - title: "Tutorials"
       style: floating
