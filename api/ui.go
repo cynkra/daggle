@@ -118,7 +118,7 @@ type stepLogView struct {
 func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
 	var dags []dagListItem
 
-	for _, src := range s.sources {
+	for _, src := range s.sources() {
 		entries, err := os.ReadDir(src.Dir)
 		if err != nil {
 			continue
