@@ -26,7 +26,7 @@ website:
       - text: "API"
         href: api/index.qmd
       - text: "daggleR"
-        href: https://cynkra.github.io/daggler/
+        href: https://cynkra.github.io/daggleR/
       - text: "Tutorials"
         href: tutorials/etl-pipeline.qmd
       - text: "Reference"

@@ -48,7 +48,7 @@ In YAML:
 
 ## Using daggleR helpers
 
-The [daggleR](https://cynkra.github.io/daggler/) package provides ergonomic wrappers:
+The [daggleR](https://cynkra.github.io/daggleR/) package provides ergonomic wrappers:
 
 ::: {.panel-tabset}
 

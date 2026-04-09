@@ -12,7 +12,7 @@ There is no default port. Without `--port`, daggle runs as a scheduler only.
 
 Opening the port URL in a browser shows a read-only status dashboard (DAG list, run details, log viewer). The API itself is available under `/api/v1/`.
 
-The API is designed to be wrapped -- build custom dashboards with [daggleR](https://cynkra.github.io/daggler/) + Shiny, or any HTTP client.
+The API is designed to be wrapped -- build custom dashboards with [daggleR](https://cynkra.github.io/daggleR/) + Shiny, or any HTTP client.
 
 ## Base URL
 
@@ -79,4 +79,4 @@ curl -s http://localhost:8787/api/v1/dags/etl-daily/runs/latest | jq .
 ## Next steps
 
 - [API Endpoints](endpoints.qmd) -- full reference for every endpoint
-- [daggleR API wrappers](https://cynkra.github.io/daggler/reference/index.html) -- call the API from R
+- [daggleR API wrappers](https://cynkra.github.io/daggleR/reference/index.html) -- call the API from R
