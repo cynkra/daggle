@@ -122,13 +122,25 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 ### Planned
 
-**Phase 7 — Enterprise (if needed):**
+**Phase 7 — User Experience:**
+- `daggle logs <dag> [--step <id>] [--follow]` — direct log access without going through `daggle status`
+- `daggle diff <dag> <run1> <run2>` — compare meta.json, DAG hash, parameters, and outputs between two runs
+- Global notification config — always notify on DAG completion/failure (desktop, ntfy.sh, webhook)
+- Interactive TUI monitor — terminal UI showing live DAG execution status
+
+**Phase 8 — Testing & Quality:**
+- Integration test suite with real R — end-to-end tests that run actual R scripts through daggle
+- Example DAGs repository — real-world examples (penguin analysis, package CI, report pipeline) as both documentation and integration tests
+
+**Phase 9 — Enterprise (if needed):**
 - Distributed workers
 - Queue system with concurrency limits
 - RBAC
-- Prometheus metrics
+- Prometheus metrics (basic run/step metrics could land earlier)
 - SSH remote execution
 - R session pooling (keep warm Rscript processes for fast inline expressions)
+- Webhook auth improvements (bearer tokens, IP allowlists)
+- Declarative retention policies (`retention: 30d` or `retention: 100` in YAML or global config)
 
 ## Open design questions
 
