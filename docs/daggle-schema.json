@@ -280,6 +280,8 @@
           }
         },
         "workdir": { "type": "string", "description": "Step-level working directory override" },
+        "output_dir": { "type": "string", "description": "Output directory for rendered reports. Supports {{ .Matrix.* }} template variables for parameterized naming." },
+        "output_name": { "type": "string", "description": "Output filename for rendered reports. Supports {{ .Matrix.* }} template variables for parameterized naming." },
         "when": { "$ref": "#/$defs/condition", "description": "Conditional execution — skip step if condition is false" },
         "preconditions": {
           "type": "array",
