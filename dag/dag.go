@@ -163,6 +163,9 @@ type Step struct {
 	// Preconditions: health checks before running the step
 	Preconditions []Precondition `yaml:"preconditions,omitempty"`
 
+	// Freshness: source freshness / data SLA checks on input files
+	Freshness []FreshnessCheck `yaml:"freshness,omitempty"`
+
 	// Error sensitivity: "error" (default), "warning", "message"
 	ErrorOn string `yaml:"error_on,omitempty"`
 
@@ -275,6 +278,13 @@ type StepCondition struct {
 type Precondition struct {
 	RExpr   string `yaml:"r_expr,omitempty"`
 	Command string `yaml:"command,omitempty"`
+}
+
+// FreshnessCheck declares a freshness expectation on an input file.
+type FreshnessCheck struct {
+	Path    string `yaml:"path"`
+	MaxAge  string `yaml:"max_age"`
+	OnStale string `yaml:"on_stale,omitempty"` // "fail" (default) or "warn"
 }
 
 // PinDeploy configures publishing data/models via the pins package.
