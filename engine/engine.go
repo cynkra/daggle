@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"sort"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -395,64 +394,55 @@ func fileHash(path string) (string, error) {
 
 // computeCacheKey builds a deterministic cache key for a step based on its inputs.
 func (e *Engine) computeCacheKey(step dag.Step) string {
-	var parts []string
-
-	// Step type content (script file content, expression, or command)
-	switch {
-	case step.Script != "":
-		scriptPath := step.Script
-		if !filepath.IsAbs(scriptPath) {
-			workdir := e.dag.ResolveWorkdir(step)
-			scriptPath = filepath.Join(workdir, scriptPath)
-		}
-		data, err := os.ReadFile(scriptPath)
-		if err == nil {
-			parts = append(parts, "script:"+string(data))
-		} else {
-			parts = append(parts, "script:"+step.Script)
-		}
-	case step.RExpr != "":
-		parts = append(parts, "r_expr:"+step.RExpr)
-	case step.Command != "":
-		parts = append(parts, "command:"+step.Command)
-	default:
-		parts = append(parts, "type:"+dag.StepType(step))
-	}
+	stepType := StepCacheType(step, e.dag)
 
 	// Sorted env vars (DAG-level + step-level)
-	envKeys := make([]string, 0, len(e.dag.Env)+len(step.Env))
-	allEnv := make(map[string]string)
+	var envVars []string
 	for k, v := range e.dag.Env {
-		allEnv[k] = v.Value
-		envKeys = append(envKeys, k)
+		envVars = append(envVars, k+"="+v.Value)
 	}
 	for k, v := range step.Env {
-		allEnv[k] = v.Value
-		envKeys = append(envKeys, k)
-	}
-	sort.Strings(envKeys)
-	for _, k := range envKeys {
-		parts = append(parts, "env:"+k+"="+allEnv[k])
+		envVars = append(envVars, k+"="+v.Value)
 	}
 
 	// Upstream outputs
 	e.mu.Lock()
-	outputKeys := make([]string, 0, len(e.outputs))
-	for k := range e.outputs {
-		outputKeys = append(outputKeys, k)
-	}
-	sort.Strings(outputKeys)
-	for _, k := range outputKeys {
-		parts = append(parts, "output:"+k+"="+e.outputs[k])
+	outputs := make(map[string]string, len(e.outputs))
+	for k, v := range e.outputs {
+		outputs[k] = v
 	}
 	e.mu.Unlock()
 
-	// renv.lock hash
-	if e.meta != nil && e.meta.RenvLockHash != "" {
-		parts = append(parts, "renv:"+e.meta.RenvLockHash)
+	var renvLockHash string
+	if e.meta != nil {
+		renvLockHash = e.meta.RenvLockHash
 	}
 
-	return cache.ComputeKey(parts...)
+	return cache.ComputeStepKey(stepType, envVars, outputs, renvLockHash)
+}
+
+// StepCacheType returns the content identifier string used for cache key computation.
+// It reads script file content when available.
+func StepCacheType(step dag.Step, d *dag.DAG) string {
+	switch {
+	case step.Script != "":
+		scriptPath := step.Script
+		if !filepath.IsAbs(scriptPath) {
+			workdir := d.ResolveWorkdir(step)
+			scriptPath = filepath.Join(workdir, scriptPath)
+		}
+		data, err := os.ReadFile(scriptPath)
+		if err == nil {
+			return "script:" + string(data)
+		}
+		return "script:" + step.Script
+	case step.RExpr != "":
+		return "r_expr:" + step.RExpr
+	case step.Command != "":
+		return "command:" + step.Command
+	default:
+		return "type:" + dag.StepType(step)
+	}
 }
 
 func (e *Engine) collectOutputs(stepID string, outputs map[string]string) {

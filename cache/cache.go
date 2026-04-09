@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -80,6 +81,35 @@ func ComputeKey(parts ...string) string {
 	h := sha256.New()
 	h.Write([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// ComputeStepKey builds a deterministic cache key for a step from its inputs.
+// stepType is the content identifier (e.g. "script:<content>"), envVars are
+// sorted "key=value" pairs, upstreamOutputs maps output keys to values, and
+// renvLockHash is the hash of renv.lock (empty if not present).
+func ComputeStepKey(stepType string, envVars []string, upstreamOutputs map[string]string, renvLockHash string) string {
+	var parts []string
+	parts = append(parts, stepType)
+
+	sort.Strings(envVars)
+	for _, ev := range envVars {
+		parts = append(parts, "env:"+ev)
+	}
+
+	outputKeys := make([]string, 0, len(upstreamOutputs))
+	for k := range upstreamOutputs {
+		outputKeys = append(outputKeys, k)
+	}
+	sort.Strings(outputKeys)
+	for _, k := range outputKeys {
+		parts = append(parts, "output:"+k+"="+upstreamOutputs[k])
+	}
+
+	if renvLockHash != "" {
+		parts = append(parts, "renv:"+renvLockHash)
+	}
+
+	return ComputeKey(parts...)
 }
 
 func (s *Store) entryPath(dagName, stepID, cacheKey string) string {

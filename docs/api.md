@@ -32,6 +32,7 @@ No authentication by default (localhost-only). Authentication can be added in a 
 | GET | `/api/v1/dags` | List all DAGs |
 | GET | `/api/v1/dags/{name}` | Get DAG definition and latest run status |
 | POST | `/api/v1/dags/{name}/run` | Trigger a DAG run (async) |
+| GET | `/api/v1/dags/{name}/plan` | Show execution plan with cache status |
 | POST | `/api/v1/dags/{name}/validate` | Validate a DAG without running |
 
 ### Runs
@@ -87,6 +88,19 @@ GET /api/v1/dags
     "last_status": "completed",
     "last_run": "2026-04-01T06:30:00Z"
   }
+]
+```
+
+### Execution Plan
+
+```json
+GET /api/v1/dags/daily-etl/plan
+
+[
+  { "step_id": "extract",   "status": "outdated", "reason": "script R/extract.R changed" },
+  { "step_id": "transform", "status": "cached" },
+  { "step_id": "model",     "status": "outdated", "reason": "upstream extract changed" },
+  { "step_id": "report",    "status": "no-cache", "reason": "caching not enabled" }
 ]
 ```
 

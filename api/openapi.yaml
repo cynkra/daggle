@@ -81,6 +81,25 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/plan:
+    get:
+      summary: Get execution plan with cache status
+      operationId: getPlan
+      tags: [dags]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+      responses:
+        "200":
+          description: Array of plan entries with cache status.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlanEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/dags/{name}/runs:
     get:
       summary: List runs for a DAG
@@ -381,6 +400,19 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
 
   schemas:
+    PlanEntry:
+      type: object
+      required: [step_id, status]
+      properties:
+        step_id:
+          type: string
+        status:
+          type: string
+          enum: [cached, outdated, no-cache]
+        reason:
+          type: string
+          description: Human-readable reason for the status.
+
     ErrorResponse:
       type: object
       required: [error]
