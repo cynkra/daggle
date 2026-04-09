@@ -430,6 +430,9 @@ func TestRegisterProject_Duplicate(t *testing.T) {
 	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
 
 	projDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projDir, ".daggle"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	body := bytes.NewBufferString(`{"name": "dup", "path": "` + projDir + `"}`)
 	req := httptest.NewRequest("POST", "/api/v1/projects", body)
@@ -439,8 +442,12 @@ func TestRegisterProject_Duplicate(t *testing.T) {
 		t.Fatalf("first register: status = %d", w.Code)
 	}
 
-	// Register same name again
-	body = bytes.NewBufferString(`{"name": "dup", "path": "` + t.TempDir() + `"}`)
+	// Register same name again with different path
+	projDir2 := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projDir2, ".daggle"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	body = bytes.NewBufferString(`{"name": "dup", "path": "` + projDir2 + `"}`)
 	req = httptest.NewRequest("POST", "/api/v1/projects", body)
 	w = httptest.NewRecorder()
 	srv.Handler().ServeHTTP(w, req)
@@ -468,6 +475,9 @@ func TestUnregisterProject(t *testing.T) {
 	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
 
 	projDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projDir, ".daggle"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	// Register first
 	body := bytes.NewBufferString(`{"name": "to-remove", "path": "` + projDir + `"}`)

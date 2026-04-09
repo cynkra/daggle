@@ -21,19 +21,32 @@ var openapiSpec []byte
 // Called on each request so newly registered projects are picked up.
 type SourceFunc func() []state.DAGSource
 
+// SchedulerStatusFunc returns a snapshot of the scheduler's state.
+// Nil if no scheduler is running (e.g. API-only mode).
+type SchedulerStatusFunc func() *SchedulerInfo
+
+// SchedulerInfo holds scheduler state exposed via the health endpoint.
+type SchedulerInfo struct {
+	RegisteredDAGs int            `json:"registered_dags"`
+	ActiveRuns     int            `json:"active_runs"`
+	MaxConcurrent  int            `json:"max_concurrent"`
+	TriggerCounts  map[string]int `json:"trigger_counts,omitempty"`
+}
+
 // Server is the daggle REST API server.
 type Server struct {
-	mux        *http.ServeMux
-	sourceFunc SourceFunc
-	version    string
-	started    time.Time
-	logger     *slog.Logger
+	mux             *http.ServeMux
+	sourceFunc      SourceFunc
+	schedulerStatus SchedulerStatusFunc
+	version         string
+	started         time.Time
+	logger          *slog.Logger
 }
 
 // New creates a new API server. The sourceFunc is called on each request
 // to get the current DAG sources, so newly registered projects appear
 // without a restart.
-func New(sourceFunc SourceFunc, version string) *Server {
+func New(sourceFunc SourceFunc, version string, opts ...ServerOption) *Server {
 	s := &Server{
 		mux:        http.NewServeMux(),
 		sourceFunc: sourceFunc,
@@ -41,8 +54,21 @@ func New(sourceFunc SourceFunc, version string) *Server {
 		started:    time.Now(),
 		logger:     slog.Default(),
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
 	s.registerRoutes()
 	return s
+}
+
+// ServerOption configures the API server.
+type ServerOption func(*Server)
+
+// WithSchedulerStatus provides a function to query scheduler state.
+func WithSchedulerStatus(fn SchedulerStatusFunc) ServerOption {
+	return func(s *Server) {
+		s.schedulerStatus = fn
+	}
 }
 
 // sources returns the current DAG sources.
