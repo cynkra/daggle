@@ -149,16 +149,20 @@ func buildResult(err error, start time.Time, stdoutPath, stderrPath string) Resu
 		} else {
 			r.ExitCode = -1
 		}
-		r.ErrorDetail = extractRError(stderrPath)
+		r.ErrorDetail = extractErrorDetail(stderrPath)
 	}
 	return r
 }
 
-var rErrorRe = regexp.MustCompile(`^Error[ :]`)
+var (
+	rErrorRe      = regexp.MustCompile(`^Error[ :]`)
+	quartoErrorRe = regexp.MustCompile(`(?i)^ERROR:`)
+)
 
-// extractRError reads the last lines of a stderr log file and extracts
-// R error messages (lines starting with "Error in ..." or "Error: ...").
-func extractRError(stderrPath string) string {
+// extractErrorDetail reads the last lines of a stderr log file and extracts
+// a meaningful error message. It tries R errors first, then Quarto errors,
+// then falls back to the last non-empty stderr lines.
+func extractErrorDetail(stderrPath string) string {
 	if stderrPath == "" {
 		return ""
 	}
@@ -166,13 +170,33 @@ func extractRError(stderrPath string) string {
 	if err != nil {
 		return ""
 	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	content := strings.TrimSpace(string(data))
+	if content == "" {
+		return ""
+	}
+	lines := strings.Split(content, "\n")
 
-	// Find the last R error line and collect it plus any following context
+	// Try R error extraction
+	if detail := extractPatternError(lines, rErrorRe, "Execution halted"); detail != "" {
+		return detail
+	}
+
+	// Try Quarto error extraction
+	if detail := extractPatternError(lines, quartoErrorRe, ""); detail != "" {
+		return detail
+	}
+
+	// Fallback: last non-empty stderr lines (for shell commands and other tools)
+	return extractLastLines(lines, 5)
+}
+
+// extractPatternError searches the last 50 lines for a matching error pattern
+// and returns the error line plus following context.
+func extractPatternError(lines []string, pattern *regexp.Regexp, skipLine string) string {
 	errorStart := -1
 	for i := len(lines) - 1; i >= 0 && i >= len(lines)-50; i-- {
 		line := strings.TrimSpace(lines[i])
-		if rErrorRe.MatchString(line) {
+		if pattern.MatchString(line) {
 			errorStart = i
 			break
 		}
@@ -184,7 +208,7 @@ func extractRError(stderrPath string) string {
 	var errorLines []string
 	for i := errorStart; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
-		if line == "Execution halted" {
+		if skipLine != "" && line == skipLine {
 			continue
 		}
 		if line != "" {
@@ -192,9 +216,24 @@ func extractRError(stderrPath string) string {
 		}
 	}
 
-	detail := strings.Join(errorLines, "\n")
-	if len(detail) > 500 {
-		detail = detail[:497] + "..."
+	return truncateDetail(strings.Join(errorLines, "\n"))
+}
+
+// extractLastLines returns the last n non-empty lines from stderr.
+func extractLastLines(lines []string, n int) string {
+	var result []string
+	for i := len(lines) - 1; i >= 0 && len(result) < n; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line != "" {
+			result = append([]string{line}, result...)
+		}
 	}
-	return detail
+	return truncateDetail(strings.Join(result, "\n"))
+}
+
+func truncateDetail(s string) string {
+	if len(s) > 500 {
+		return s[:497] + "..."
+	}
+	return s
 }
