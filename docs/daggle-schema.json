@@ -306,6 +306,20 @@
           "type": "boolean",
           "description": "Enable step-level caching. When true, daggle hashes step inputs and skips execution if unchanged."
         },
+        "freshness": {
+          "type": "array",
+          "description": "Source freshness / data SLA checks. daggle verifies file modification times before running the step.",
+          "items": {
+            "type": "object",
+            "required": ["path", "max_age"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "type": "string", "description": "Path to the input file (relative to workdir)" },
+              "max_age": { "type": "string", "description": "Maximum acceptable age as a Go duration (e.g. '6h', '30m')" },
+              "on_stale": { "type": "string", "enum": ["fail", "warn"], "description": "Action when stale: 'fail' (default) or 'warn'" }
+            }
+          }
+        },
         "artifacts": {
           "type": "array",
           "description": "Output files produced by this step. daggle verifies they exist, computes hashes, and records metadata.",

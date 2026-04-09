@@ -199,6 +199,35 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		}
 	}
 
+	// Freshness check: verify source files are not stale
+	if len(step.Freshness) > 0 {
+		workdir := e.dag.ResolveWorkdir(step)
+		for _, fc := range step.Freshness {
+			fcPath := fc.Path
+			if !filepath.IsAbs(fcPath) {
+				fcPath = filepath.Join(workdir, fcPath)
+			}
+			maxAge, err := time.ParseDuration(fc.MaxAge)
+			if err != nil {
+				return fmt.Errorf("step %q freshness path %q: invalid max_age %q: %w", step.ID, fc.Path, fc.MaxAge, err)
+			}
+			info, err := os.Stat(fcPath)
+			if err != nil {
+				return fmt.Errorf("step %q freshness path %q: %w", step.ID, fc.Path, err)
+			}
+			age := time.Since(info.ModTime())
+			if age > maxAge {
+				msg := fmt.Sprintf("step %q source %q is stale (age %s, max %s)", step.ID, fc.Path, age.Truncate(time.Second), maxAge)
+				switch fc.OnStale {
+				case "warn":
+					e.logger.Warn(msg)
+				default:
+					return fmt.Errorf("%s", msg)
+				}
+			}
+		}
+	}
+
 	// Cache check: skip execution if inputs haven't changed
 	if step.Cache && e.cacheStore != nil {
 		cacheKey := e.computeCacheKey(step)

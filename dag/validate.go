@@ -118,6 +118,24 @@ func Validate(d *DAG) error {
 			}
 		}
 
+		// Validate freshness entries
+		for i, fc := range s.Freshness {
+			if fc.Path == "" {
+				errs = append(errs, fmt.Sprintf("step %q freshness[%d].path is required", s.ID, i))
+			}
+			if fc.MaxAge == "" {
+				errs = append(errs, fmt.Sprintf("step %q freshness[%d].max_age is required", s.ID, i))
+			} else if _, err := time.ParseDuration(fc.MaxAge); err != nil {
+				errs = append(errs, fmt.Sprintf("step %q freshness[%d].max_age %q is invalid: %v", s.ID, i, fc.MaxAge, err))
+			}
+			switch fc.OnStale {
+			case "", "fail", "warn":
+				// valid
+			default:
+				errs = append(errs, fmt.Sprintf("step %q freshness[%d].on_stale %q is invalid; must be one of: fail, warn", s.ID, i, fc.OnStale))
+			}
+		}
+
 		// Validate retry
 		if s.Retry != nil {
 			if s.Retry.Limit < 0 {

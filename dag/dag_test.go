@@ -810,6 +810,62 @@ func TestValidate_Artifacts(t *testing.T) {
 	}
 }
 
+func TestValidate_Freshness(t *testing.T) {
+	// Valid freshness entries
+	d := &DAG{Name: "t", Steps: []Step{{
+		ID:      "a",
+		Command: "echo",
+		Freshness: []FreshnessCheck{
+			{Path: "data/raw.csv", MaxAge: "6h"},
+			{Path: "data/api.json", MaxAge: "30m", OnStale: "warn"},
+			{Path: "data/other.csv", MaxAge: "1h", OnStale: "fail"},
+		},
+	}}}
+	if err := Validate(d); err != nil {
+		t.Errorf("valid freshness should pass: %v", err)
+	}
+
+	// Invalid: empty path
+	d = &DAG{Name: "t", Steps: []Step{{
+		ID:        "a",
+		Command:   "echo",
+		Freshness: []FreshnessCheck{{Path: "", MaxAge: "6h"}},
+	}}}
+	if err := Validate(d); err == nil {
+		t.Error("empty freshness path should fail")
+	}
+
+	// Invalid: empty max_age
+	d = &DAG{Name: "t", Steps: []Step{{
+		ID:        "a",
+		Command:   "echo",
+		Freshness: []FreshnessCheck{{Path: "data/raw.csv", MaxAge: ""}},
+	}}}
+	if err := Validate(d); err == nil {
+		t.Error("empty freshness max_age should fail")
+	}
+
+	// Invalid: bad max_age
+	d = &DAG{Name: "t", Steps: []Step{{
+		ID:        "a",
+		Command:   "echo",
+		Freshness: []FreshnessCheck{{Path: "data/raw.csv", MaxAge: "not-a-duration"}},
+	}}}
+	if err := Validate(d); err == nil {
+		t.Error("invalid freshness max_age should fail")
+	}
+
+	// Invalid: bad on_stale
+	d = &DAG{Name: "t", Steps: []Step{{
+		ID:        "a",
+		Command:   "echo",
+		Freshness: []FreshnessCheck{{Path: "data/raw.csv", MaxAge: "6h", OnStale: "ignore"}},
+	}}}
+	if err := Validate(d); err == nil {
+		t.Error("invalid freshness on_stale should fail")
+	}
+}
+
 func TestExpandDAG(t *testing.T) {
 	d := &DAG{
 		Name: "test",
