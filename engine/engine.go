@@ -42,6 +42,9 @@ type Engine struct {
 	// redactor replaces secret values in event error messages.
 	redactor *dag.Redactor
 
+	// hookEnvExtras holds additional env vars injected into hooks at run end.
+	hookEnvExtras []string
+
 	// outputs collects ::daggle-output:: values from completed steps.
 	// Keys are namespaced: DAGGLE_OUTPUT_<STEP_ID>_<KEY>
 	mu      sync.Mutex
@@ -144,6 +147,9 @@ func (e *Engine) Run(ctx context.Context) error {
 		}
 		e.writeMeta(e.runInfo.Dir, e.meta)
 	}
+
+	// Build richer hook context
+	e.hookEnvExtras = e.buildHookExtras(runErr)
 
 	// Run lifecycle hooks
 	e.runHooks(ctx, runErr)
@@ -514,6 +520,38 @@ func (e *Engine) collectOutputs(stepID string, outputs map[string]string) {
 	}
 }
 
+// buildHookExtras computes additional env vars for hook execution.
+func (e *Engine) buildHookExtras(runErr error) []string {
+	var extras []string
+
+	// DAGGLE_RUN_DURATION
+	if e.meta != nil {
+		dur := time.Since(e.meta.StartTime).Truncate(time.Second)
+		extras = append(extras, "DAGGLE_RUN_DURATION="+dur.String())
+	}
+
+	// DAGGLE_RUN_STATUS
+	if runErr == nil {
+		extras = append(extras, "DAGGLE_RUN_STATUS=completed")
+	} else {
+		extras = append(extras, "DAGGLE_RUN_STATUS=failed")
+	}
+
+	// DAGGLE_FAILED_STEPS — comma-separated list of failed step IDs
+	events, err := state.ReadEvents(e.runInfo.Dir)
+	if err == nil {
+		var failed []string
+		for _, ev := range events {
+			if ev.Type == state.EventStepFailed && ev.StepID != "" {
+				failed = append(failed, ev.StepID)
+			}
+		}
+		extras = append(extras, "DAGGLE_FAILED_STEPS="+strings.Join(failed, ","))
+	}
+
+	return extras
+}
+
 func (e *Engine) runHooks(ctx context.Context, runErr error) {
 	// on_exit always runs
 	if e.dag.OnExit != nil {
@@ -551,13 +589,14 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	// Set working directory (empty step falls back to DAG workdir or SourceDir)
 	cmd.Dir = e.dag.ResolveWorkdir(dag.Step{})
 
-	// Provide env with run metadata + renv + outputs
+	// Provide env with run metadata + renv + outputs + hook extras
 	cmd.Env = append(os.Environ(), buildEnv(e.dag, e.runInfo, e.renvLibPath)...)
 	e.mu.Lock()
 	for k, v := range e.outputs {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 	e.mu.Unlock()
+	cmd.Env = append(cmd.Env, e.hookEnvExtras...)
 
 	// Route hook output through log files so secrets can be redacted
 	hookStdout, err := os.Create(filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".stdout.log"))
