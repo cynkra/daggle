@@ -72,11 +72,12 @@ func (s *Server) handleRegisterProject(w http.ResponseWriter, r *http.Request) {
 	// Validate the path exists and is a directory
 	info, err := os.Stat(absPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		switch {
+		case os.IsNotExist(err):
 			writeError(w, http.StatusBadRequest, "path does not exist: "+absPath)
-		} else if os.IsPermission(err) {
+		case os.IsPermission(err):
 			writeError(w, http.StatusForbidden, "cannot access path: "+absPath)
-		} else {
+		default:
 			writeError(w, http.StatusBadRequest, "cannot stat path: "+err.Error())
 		}
 		return

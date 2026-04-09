@@ -97,8 +97,8 @@ func New(sources []state.DAGSource) *Scheduler {
 	}
 }
 
-// SchedulerStatus holds queryable scheduler state for the health endpoint.
-type SchedulerStatus struct {
+// Status holds queryable scheduler state for the health endpoint.
+type Status struct {
 	RegisteredDAGs int
 	ActiveRuns     int
 	MaxConcurrent  int
@@ -106,7 +106,7 @@ type SchedulerStatus struct {
 }
 
 // Status returns a snapshot of the scheduler's current state.
-func (s *Scheduler) Status() SchedulerStatus {
+func (s *Scheduler) Status() Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -129,7 +129,7 @@ func (s *Scheduler) Status() SchedulerStatus {
 		delete(triggers, "other")
 	}
 
-	return SchedulerStatus{
+	return Status{
 		RegisteredDAGs: len(s.registered),
 		ActiveRuns:     s.runningCount,
 		MaxConcurrent:  s.maxConcurrent,
