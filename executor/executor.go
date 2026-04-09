@@ -8,6 +8,19 @@ import (
 	"github.com/cynkra/daggle/dag"
 )
 
+// Summary holds a step summary emitted via ::daggle-summary:: markers.
+type Summary struct {
+	Format  string // "markdown"
+	Content string
+}
+
+// MetaEntry holds a metadata entry emitted via ::daggle-meta:: markers.
+type MetaEntry struct {
+	Name  string
+	Type  string // "numeric", "text", "table", "image"
+	Value string
+}
+
 // Result holds the outcome of executing a step.
 type Result struct {
 	ExitCode    int
@@ -17,6 +30,8 @@ type Result struct {
 	Err         error
 	Outputs     map[string]string // parsed ::daggle-output:: values
 	ErrorDetail string            // extracted error message from stderr (R, Quarto, or last lines)
+	Summaries   []Summary         // parsed ::daggle-summary:: values
+	Metadata    []MetaEntry       // parsed ::daggle-meta:: values
 }
 
 // Executor runs a single DAG step.

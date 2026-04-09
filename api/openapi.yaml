@@ -256,6 +256,46 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/runs/{run_id}/summaries:
+    get:
+      summary: Get step summaries for a run
+      operationId: getSummaries
+      tags: [summaries]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Flat array of summary entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SummaryEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/dags/{name}/runs/{run_id}/metadata:
+    get:
+      summary: Get step metadata for a run
+      operationId: getMetadata
+      tags: [metadata]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Flat array of metadata entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RunMetaEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/dags/{name}/runs/{run_id}/artifacts:
     get:
       summary: List artifacts for a run
@@ -637,6 +677,36 @@ components:
           type: string
         value:
           type: string
+
+    SummaryEntry:
+      type: object
+      required: [step_id, format, content]
+      properties:
+        step_id:
+          type: string
+        format:
+          type: string
+          description: Content format (e.g. "markdown").
+        content:
+          type: string
+          description: Summary content.
+
+    RunMetaEntry:
+      type: object
+      required: [step_id, name, type, value]
+      properties:
+        step_id:
+          type: string
+        name:
+          type: string
+          description: Metadata entry name.
+        type:
+          type: string
+          enum: [numeric, text, table, image]
+          description: Metadata value type.
+        value:
+          type: string
+          description: Metadata value (numeric as string, table as JSON array, image as file path).
 
     ArtifactEntry:
       type: object

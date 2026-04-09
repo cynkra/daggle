@@ -16,7 +16,11 @@ import (
 
 const gracePeriod = 5 * time.Second
 
-var outputMarkerRe = regexp.MustCompile(`^::daggle-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
+var (
+	outputMarkerRe  = regexp.MustCompile(`^::daggle-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
+	summaryMarkerRe = regexp.MustCompile(`^::daggle-summary format=([a-zA-Z]+)::(.*)$`)
+	metaMarkerRe    = regexp.MustCompile(`^::daggle-meta type=([a-zA-Z]+) name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
+)
 
 // runProcess executes a command, captures stdout/stderr to log files, and enforces
 // timeout via the provided context. On cancellation, it sends SIGTERM to the process
@@ -63,8 +67,10 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		return Result{ExitCode: -1, Err: err, Duration: time.Since(start), Stdout: stdoutPath, Stderr: stderrPath}
 	}
 
-	// Read stdout, parse output markers, write to log file and terminal
+	// Read stdout, parse output/summary/meta markers, write to log file and terminal
 	outputs := make(map[string]string)
+	var summaries []Summary
+	var metadata []MetaEntry
 	scanDone := make(chan struct{})
 	go func() {
 		defer close(scanDone)
@@ -74,6 +80,19 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 			if m := outputMarkerRe.FindStringSubmatch(line); m != nil {
 				outputs[m[1]] = strings.TrimSpace(m[2])
 				// Don't write marker lines to terminal, but still log them
+				_, _ = fmt.Fprintln(stdoutFile, line)
+			} else if m := summaryMarkerRe.FindStringSubmatch(line); m != nil {
+				summaries = append(summaries, Summary{
+					Format:  m[1],
+					Content: m[2],
+				})
+				_, _ = fmt.Fprintln(stdoutFile, line)
+			} else if m := metaMarkerRe.FindStringSubmatch(line); m != nil {
+				metadata = append(metadata, MetaEntry{
+					Type:  m[1],
+					Name:  m[2],
+					Value: m[3],
+				})
 				_, _ = fmt.Fprintln(stdoutFile, line)
 			} else {
 				_, _ = fmt.Fprintln(stdoutFile, line)
@@ -93,6 +112,8 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		_ = stderrFile.Sync()
 		r := buildResult(err, start, stdoutPath, stderrPath)
 		r.Outputs = outputs
+		r.Summaries = summaries
+		r.Metadata = metadata
 		return r
 	case <-ctx.Done():
 		killProcessGroup(cmd)
@@ -101,12 +122,14 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		_ = stdoutFile.Sync()
 		_ = stderrFile.Sync()
 		return Result{
-			ExitCode: -1,
-			Err:      ctx.Err(),
-			Duration: time.Since(start),
-			Stdout:   stdoutPath,
-			Stderr:   stderrPath,
-			Outputs:  outputs,
+			ExitCode:  -1,
+			Err:       ctx.Err(),
+			Duration:  time.Since(start),
+			Stdout:    stdoutPath,
+			Stderr:    stderrPath,
+			Outputs:   outputs,
+			Summaries: summaries,
+			Metadata:  metadata,
 		}
 	}
 }

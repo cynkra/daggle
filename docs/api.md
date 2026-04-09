@@ -59,6 +59,13 @@ No authentication by default (localhost-only). Authentication can be added in a 
 |--------|------|-------------|
 | GET | `/api/v1/dags/{name}/runs/{run_id}/outputs` | Get all step outputs (flat) |
 
+### Summaries & Metadata
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/dags/{name}/runs/{run_id}/summaries` | Get step summaries (markdown) |
+| GET | `/api/v1/dags/{name}/runs/{run_id}/metadata` | Get step metadata entries |
+
 ### Artifacts
 
 | Method | Path | Description |
@@ -179,6 +186,46 @@ GET /api/v1/dags/daily-etl/runs/abc123/artifacts
     "size": 1048576,
     "format": "parquet"
   }
+]
+```
+
+### Summaries (R-friendly flat format)
+
+Steps can emit summaries via stdout markers:
+
+```
+::daggle-summary format=markdown::This is a *summary*
+```
+
+```json
+GET /api/v1/dags/daily-etl/runs/abc123/summaries
+
+[
+  {
+    "step_id": "model",
+    "format": "markdown",
+    "content": "This is a *summary*"
+  }
+]
+```
+
+### Metadata (R-friendly flat format)
+
+Steps can emit structured metadata via stdout markers:
+
+```
+::daggle-meta type=numeric name=row_count::1542
+::daggle-meta type=text name=model_desc::Linear regression
+::daggle-meta type=table name=top5::[{"x":1},{"x":2}]
+::daggle-meta type=image name=residuals::output/residuals.png
+```
+
+```json
+GET /api/v1/dags/daily-etl/runs/abc123/metadata
+
+[
+  { "step_id": "extract", "name": "row_count", "type": "numeric", "value": "1542" },
+  { "step_id": "model",   "name": "model_desc", "type": "text", "value": "Linear regression" }
 ]
 ```
 
