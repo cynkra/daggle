@@ -290,6 +290,71 @@ func TestValidate_TriggerBlock(t *testing.T) {
 	}
 }
 
+func TestValidate_Deadline(t *testing.T) {
+	base := func() *DAG {
+		return &DAG{
+			Name:  "test",
+			Steps: []Step{{ID: "a", Command: "echo a"}},
+		}
+	}
+
+	// Valid: deadline with on_deadline
+	d := base()
+	d.Trigger = &Trigger{
+		Schedule: "@every 1h",
+		Deadline: "08:00",
+		OnDeadline: &Hook{Command: "echo missed"},
+	}
+	if err := Validate(d); err != nil {
+		t.Errorf("valid deadline should pass: %v", err)
+	}
+
+	// Valid: deadline without on_deadline (just deadline, no hook)
+	d = base()
+	d.Trigger = &Trigger{Schedule: "@every 1h", Deadline: "23:59"}
+	if err := Validate(d); err != nil {
+		t.Errorf("deadline without on_deadline should be valid: %v", err)
+	}
+
+	// Invalid: single-digit hour "8:00"
+	d = base()
+	d.Trigger = &Trigger{Schedule: "@every 1h", Deadline: "8:00"}
+	if err := Validate(d); err == nil {
+		t.Error("deadline '8:00' should fail (must be HH:MM)")
+	}
+
+	// Invalid: hour out of range "25:00"
+	d = base()
+	d.Trigger = &Trigger{Schedule: "@every 1h", Deadline: "25:00"}
+	if err := Validate(d); err == nil {
+		t.Error("deadline '25:00' should fail (hour > 23)")
+	}
+
+	// Invalid: non-numeric "abc"
+	d = base()
+	d.Trigger = &Trigger{Schedule: "@every 1h", Deadline: "abc"}
+	if err := Validate(d); err == nil {
+		t.Error("deadline 'abc' should fail")
+	}
+
+	// Invalid: minute out of range "12:60"
+	d = base()
+	d.Trigger = &Trigger{Schedule: "@every 1h", Deadline: "12:60"}
+	if err := Validate(d); err == nil {
+		t.Error("deadline '12:60' should fail (minute > 59)")
+	}
+
+	// Invalid: on_deadline without deadline
+	d = base()
+	d.Trigger = &Trigger{
+		Schedule:   "@every 1h",
+		OnDeadline: &Hook{Command: "echo missed"},
+	}
+	if err := Validate(d); err == nil {
+		t.Error("on_deadline without deadline should fail")
+	}
+}
+
 func TestResolveWorkdir(t *testing.T) {
 	tests := []struct {
 		name string

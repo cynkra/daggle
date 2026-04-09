@@ -22,6 +22,8 @@
       "properties": {
         "schedule": { "type": "string", "description": "Cron expression (e.g. '30 6 * * MON-FRI', '@every 1h')" },
         "overlap": { "type": "string", "enum": ["skip", "cancel"], "description": "What to do when a trigger fires while the DAG is already running (default: skip)" },
+        "deadline": { "type": "string", "pattern": "^\\d{2}:\\d{2}$", "description": "HH:MM deadline time. If the DAG has not started by this time, the on_deadline hook fires (alert only, does not trigger the DAG). Uses system timezone." },
+        "on_deadline": { "$ref": "#/$defs/hook", "description": "Hook to fire when the DAG misses its deadline" },
         "watch": {
           "type": "object",
           "description": "Trigger on file changes",
