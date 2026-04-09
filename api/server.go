@@ -107,6 +107,10 @@ func (s *Server) registerRoutes() {
 	// Outputs
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}/outputs", s.handleGetOutputs)
 
+	// Summaries & Metadata
+	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}/summaries", s.handleGetSummaries)
+	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}/metadata", s.handleGetMetadata)
+
 	// Artifacts
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}/artifacts", s.handleGetArtifacts)
 

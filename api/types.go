@@ -160,6 +160,21 @@ type PlanEntry struct {
 	Reason string `json:"reason,omitempty"`
 }
 
+// SummaryEntry is returned in the summaries list.
+type SummaryEntry struct {
+	StepID  string `json:"step_id"`
+	Format  string `json:"format"`
+	Content string `json:"content"`
+}
+
+// RunMetaEntry is returned in the metadata list.
+type RunMetaEntry struct {
+	StepID string `json:"step_id"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`  // numeric, text, table, image
+	Value  string `json:"value"`
+}
+
 // ErrorResponse is returned for errors.
 type ErrorResponse struct {
 	Error string `json:"error"`
