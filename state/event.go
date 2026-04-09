@@ -24,6 +24,7 @@ const (
 	EventStepApproved       = "step_approved"
 	EventStepRejected       = "step_rejected"
 	EventStepArtifact       = "step_artifact"
+	EventStepCached         = "step_cached"
 )
 
 // Event represents a lifecycle event in a DAG run.
@@ -39,6 +40,10 @@ type Event struct {
 	Attempt     int       `json:"attempt,omitempty"`
 	Message     string    `json:"message,omitempty"`    // approval message
 	Approver    string    `json:"approver,omitempty"`   // system user who approved/rejected
+
+	// Cache fields (for step_cached events)
+	CacheKey    string `json:"cache_key,omitempty"`
+	CachedRunID string `json:"cached_run_id,omitempty"`
 
 	// Artifact fields (for step_artifact events)
 	ArtifactName    string `json:"artifact_name,omitempty"`

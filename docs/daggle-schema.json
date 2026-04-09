@@ -302,6 +302,10 @@
           "enum": ["error", "warning", "message"],
           "description": "Error sensitivity for R steps (default: error). 'warning' treats R warnings as failures, 'message' treats R messages as failures."
         },
+        "cache": {
+          "type": "boolean",
+          "description": "Enable step-level caching. When true, daggle hashes step inputs and skips execution if unchanged."
+        },
         "artifacts": {
           "type": "array",
           "description": "Output files produced by this step. daggle verifies they exist, computes hashes, and records metadata.",

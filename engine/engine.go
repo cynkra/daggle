@@ -9,11 +9,13 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"sort"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/executor"
 	"github.com/cynkra/daggle/state"
@@ -33,6 +35,9 @@ type Engine struct {
 
 	// renvLibPath, if non-empty, is injected as R_LIBS_USER for all steps.
 	renvLibPath string
+
+	// cacheStore, if non-nil, enables step-level caching.
+	cacheStore *cache.Store
 
 	// redactor replaces secret values in event error messages.
 	redactor *dag.Redactor
@@ -63,6 +68,11 @@ func (e *Engine) SetMeta(meta *state.RunMeta) {
 // SetRedactor sets the secret redactor for sanitizing event messages.
 func (e *Engine) SetRedactor(r *dag.Redactor) {
 	e.redactor = r
+}
+
+// SetCacheStore configures the step-level cache store.
+func (e *Engine) SetCacheStore(s *cache.Store) {
+	e.cacheStore = s
 }
 
 // SetRenvLibPath configures the renv library path to inject as R_LIBS_USER.
@@ -189,6 +199,23 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		}
 	}
 
+	// Cache check: skip execution if inputs haven't changed
+	if step.Cache && e.cacheStore != nil {
+		cacheKey := e.computeCacheKey(step)
+		if entry, ok := e.cacheStore.Lookup(e.dag.Name, step.ID, cacheKey); ok {
+			// Replay cached outputs
+			e.collectOutputs(step.ID, entry.Outputs)
+			e.writeEvent(state.Event{
+				Type:        state.EventStepCached,
+				StepID:      step.ID,
+				CacheKey:    cacheKey,
+				CachedRunID: entry.RunID,
+			})
+			e.logger.Info("step cached", "step", step.ID, "cache_key", cacheKey[:12], "cached_run", entry.RunID)
+			return nil
+		}
+	}
+
 	ex := e.execFn(step)
 	if ex == nil {
 		return fmt.Errorf("no executor for step %q", step.ID)
@@ -246,6 +273,18 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 			// Verify and record declared artifacts
 			if err := e.verifyArtifacts(step, workdir); err != nil {
 				return err
+			}
+
+			// Save to cache after successful execution
+			if step.Cache && e.cacheStore != nil {
+				cacheKey := e.computeCacheKey(step)
+				entry := cache.Entry{
+					RunID:   e.runInfo.ID,
+					Outputs: lastResult.Outputs,
+				}
+				if err := e.cacheStore.Save(e.dag.Name, step.ID, cacheKey, entry); err != nil {
+					e.logger.Warn("failed to save cache", "step", step.ID, "error", err)
+				}
 			}
 
 			// Run step-level on_success hook
@@ -352,6 +391,68 @@ func fileHash(path string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// computeCacheKey builds a deterministic cache key for a step based on its inputs.
+func (e *Engine) computeCacheKey(step dag.Step) string {
+	var parts []string
+
+	// Step type content (script file content, expression, or command)
+	switch {
+	case step.Script != "":
+		scriptPath := step.Script
+		if !filepath.IsAbs(scriptPath) {
+			workdir := e.dag.ResolveWorkdir(step)
+			scriptPath = filepath.Join(workdir, scriptPath)
+		}
+		data, err := os.ReadFile(scriptPath)
+		if err == nil {
+			parts = append(parts, "script:"+string(data))
+		} else {
+			parts = append(parts, "script:"+step.Script)
+		}
+	case step.RExpr != "":
+		parts = append(parts, "r_expr:"+step.RExpr)
+	case step.Command != "":
+		parts = append(parts, "command:"+step.Command)
+	default:
+		parts = append(parts, "type:"+dag.StepType(step))
+	}
+
+	// Sorted env vars (DAG-level + step-level)
+	envKeys := make([]string, 0, len(e.dag.Env)+len(step.Env))
+	allEnv := make(map[string]string)
+	for k, v := range e.dag.Env {
+		allEnv[k] = v.Value
+		envKeys = append(envKeys, k)
+	}
+	for k, v := range step.Env {
+		allEnv[k] = v.Value
+		envKeys = append(envKeys, k)
+	}
+	sort.Strings(envKeys)
+	for _, k := range envKeys {
+		parts = append(parts, "env:"+k+"="+allEnv[k])
+	}
+
+	// Upstream outputs
+	e.mu.Lock()
+	outputKeys := make([]string, 0, len(e.outputs))
+	for k := range e.outputs {
+		outputKeys = append(outputKeys, k)
+	}
+	sort.Strings(outputKeys)
+	for _, k := range outputKeys {
+		parts = append(parts, "output:"+k+"="+e.outputs[k])
+	}
+	e.mu.Unlock()
+
+	// renv.lock hash
+	if e.meta != nil && e.meta.RenvLockHash != "" {
+		parts = append(parts, "renv:"+e.meta.RenvLockHash)
+	}
+
+	return cache.ComputeKey(parts...)
 }
 
 func (e *Engine) collectOutputs(stepID string, outputs map[string]string) {

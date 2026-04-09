@@ -166,6 +166,9 @@ type Step struct {
 	// Error sensitivity: "error" (default), "warning", "message"
 	ErrorOn string `yaml:"error_on,omitempty"`
 
+	// Step-level caching
+	Cache bool `yaml:"cache,omitempty"`
+
 	// Artifact declarations
 	Artifacts []Artifact `yaml:"artifacts,omitempty"`
 
