@@ -69,13 +69,38 @@ func (s *Server) handleRegisterProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate the path exists and is a directory
+	info, err := os.Stat(absPath)
+	if err != nil {
+		switch {
+		case os.IsNotExist(err):
+			writeError(w, http.StatusBadRequest, "path does not exist: "+absPath)
+		case os.IsPermission(err):
+			writeError(w, http.StatusForbidden, "cannot access path: "+absPath)
+		default:
+			writeError(w, http.StatusBadRequest, "cannot stat path: "+err.Error())
+		}
+		return
+	}
+	if !info.IsDir() {
+		writeError(w, http.StatusBadRequest, "path is not a directory: "+absPath)
+		return
+	}
+
+	// Check that the project has a .daggle/ directory
+	dagDir := filepath.Join(absPath, ".daggle")
+	dagInfo, err := os.Stat(dagDir)
+	if err != nil || !dagInfo.IsDir() {
+		writeError(w, http.StatusBadRequest, "no .daggle/ directory found in "+absPath+". Create it first with: mkdir -p "+dagDir)
+		return
+	}
+
 	name := req.Name
 	if name == "" {
 		name = filepath.Base(absPath)
 	}
 
 	// Check for DAG name collisions
-	dagDir := filepath.Join(absPath, ".daggle")
 	existingSources := state.BuildDAGSources()
 	var filteredSources []state.DAGSource
 	for _, src := range existingSources {

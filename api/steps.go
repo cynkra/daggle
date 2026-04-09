@@ -176,9 +176,48 @@ func (s *Server) buildStepSummaries(runDir string) []StepSummary {
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, HealthResponse{
+	projects, _ := state.LoadProjects()
+	sources := s.sources()
+
+	// Count total DAGs across all sources
+	totalDAGs := 0
+	for _, src := range sources {
+		totalDAGs += countDAGs(src.Dir)
+	}
+
+	resp := HealthResponse{
 		Status:        "ok",
 		Version:       s.version,
 		UptimeSeconds: time.Since(s.started).Seconds(),
-	})
+		Projects:      len(projects),
+		DAGs:          totalDAGs,
+	}
+
+	// Scheduler status (if available)
+	if s.schedulerStatus != nil {
+		resp.Scheduler = s.schedulerStatus()
+	}
+
+	// Find most recent run across all DAGs
+	dagNames := state.CollectDAGNames(sources)
+	var latestRun *state.RunInfo
+	for dagName := range dagNames {
+		run, err := state.LatestRun(dagName)
+		if err != nil || run == nil {
+			continue
+		}
+		if latestRun == nil || run.StartTime.After(latestRun.StartTime) {
+			latestRun = run
+		}
+	}
+	if latestRun != nil {
+		resp.LastRun = &LastRunInfo{
+			DAGName: latestRun.DAGName,
+			RunID:   latestRun.ID,
+			Status:  state.RunStatus(latestRun.Dir),
+			Started: formatTime(latestRun.StartTime),
+		}
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }

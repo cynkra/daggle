@@ -4,9 +4,21 @@ import "time"
 
 // HealthResponse is returned by GET /api/v1/health.
 type HealthResponse struct {
-	Status        string  `json:"status"`
-	Version       string  `json:"version"`
-	UptimeSeconds float64 `json:"uptime_seconds"`
+	Status        string         `json:"status"`
+	Version       string         `json:"version"`
+	UptimeSeconds float64        `json:"uptime_seconds"`
+	Projects      int            `json:"projects"`
+	DAGs          int            `json:"dags"`
+	Scheduler     *SchedulerInfo `json:"scheduler,omitempty"`
+	LastRun       *LastRunInfo   `json:"last_run,omitempty"`
+}
+
+// LastRunInfo holds info about the most recent run across all DAGs.
+type LastRunInfo struct {
+	DAGName string `json:"dag_name"`
+	RunID   string `json:"run_id"`
+	Status  string `json:"status"`
+	Started string `json:"started"`
 }
 
 // DAGSummary is returned in the DAG list.

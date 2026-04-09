@@ -370,7 +370,7 @@ components:
 
     HealthResponse:
       type: object
-      required: [status, version, uptime_seconds]
+      required: [status, version, uptime_seconds, projects, dags]
       properties:
         status:
           type: string
@@ -381,6 +381,39 @@ components:
         uptime_seconds:
           type: number
           format: double
+        projects:
+          type: integer
+          description: Number of registered projects
+        dags:
+          type: integer
+          description: Total number of DAGs across all sources
+        scheduler:
+          type: object
+          description: Scheduler state (present when scheduler is running)
+          properties:
+            registered_dags:
+              type: integer
+            active_runs:
+              type: integer
+            max_concurrent:
+              type: integer
+            trigger_counts:
+              type: object
+              additionalProperties:
+                type: integer
+        last_run:
+          type: object
+          description: Most recent run across all DAGs
+          properties:
+            dag_name:
+              type: string
+            run_id:
+              type: string
+            status:
+              type: string
+            started:
+              type: string
+              format: date-time
 
     DAGSummary:
       type: object

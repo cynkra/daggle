@@ -97,6 +97,46 @@ func New(sources []state.DAGSource) *Scheduler {
 	}
 }
 
+// Status holds queryable scheduler state for the health endpoint.
+type Status struct {
+	RegisteredDAGs int
+	ActiveRuns     int
+	MaxConcurrent  int
+	TriggerCounts  map[string]int // trigger type -> count (e.g. "schedule": 3)
+}
+
+// Status returns a snapshot of the scheduler's current state.
+func (s *Scheduler) Status() Status {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	triggers := make(map[string]int)
+	for _, entry := range s.registered {
+		if entry.schedule != "" {
+			triggers["schedule"]++
+		}
+		triggers["other"] += len(entry.cancelFns)
+	}
+	for name := range s.webhooks {
+		_ = name
+		triggers["webhook"]++
+	}
+	for _, listeners := range s.onDAGListeners {
+		triggers["on_dag"] += len(listeners)
+	}
+	// Remove "other" if zero
+	if triggers["other"] == 0 {
+		delete(triggers, "other")
+	}
+
+	return Status{
+		RegisteredDAGs: len(s.registered),
+		ActiveRuns:     s.runningCount,
+		MaxConcurrent:  s.maxConcurrent,
+		TriggerCounts:  triggers,
+	}
+}
+
 // Reload triggers an immediate rescan of DAG sources. If newSources is
 // non-empty, the scheduler's source list is replaced before scanning,
 // allowing newly registered projects to be picked up without a restart.
