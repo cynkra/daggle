@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/engine"
 	"github.com/cynkra/daggle/executor"
@@ -152,6 +153,10 @@ func runDAG(_ *cobra.Command, args []string) error {
 	if renvInfo.Detected && renvInfo.LibraryReady {
 		eng.SetRenvLibPath(renvInfo.LibraryPath)
 	}
+
+	// Initialize step-level cache
+	cacheDir := filepath.Join(state.DataDir(), "cache")
+	eng.SetCacheStore(cache.NewStore(cacheDir))
 
 	if err := eng.Run(ctx); err != nil {
 		fmt.Printf("\nDAG %q failed: %v\n", expanded.Name, err)

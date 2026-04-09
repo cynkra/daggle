@@ -2,12 +2,17 @@ package cli
 
 import (
 	"fmt"
+	"path/filepath"
 
+	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/state"
 	"github.com/spf13/cobra"
 )
 
-var cleanOlderThan string
+var (
+	cleanOlderThan string
+	cleanCache     bool
+)
 
 var cleanCmd = &cobra.Command{
 	Use:   "clean",
@@ -17,12 +22,26 @@ var cleanCmd = &cobra.Command{
 
 func init() {
 	cleanCmd.Flags().StringVar(&cleanOlderThan, "older-than", "", "remove runs older than this duration (e.g. 30d, 24h)")
-	_ = cleanCmd.MarkFlagRequired("older-than")
+	cleanCmd.Flags().BoolVar(&cleanCache, "cache", false, "clear the step-level cache")
 	rootCmd.AddCommand(cleanCmd)
 }
 
 func runClean(_ *cobra.Command, _ []string) error {
 	applyOverrides()
+
+	// If only --cache is requested (no --older-than), just clear cache
+	if cleanCache && cleanOlderThan == "" {
+		store := cache.NewStore(filepath.Join(state.DataDir(), "cache"))
+		if err := store.ClearAll(); err != nil {
+			return err
+		}
+		fmt.Println("Cache cleared.")
+		return nil
+	}
+
+	if cleanOlderThan == "" {
+		return fmt.Errorf("--older-than is required (unless using --cache alone)")
+	}
 
 	threshold, err := state.ParseDurationWithDays(cleanOlderThan)
 	if err != nil {
@@ -39,6 +58,16 @@ func runClean(_ *cobra.Command, _ []string) error {
 	} else {
 		fmt.Printf("Removed %d run(s), freed %s\n", result.Removed, formatBytes(result.FreedBytes))
 	}
+
+	// Also clear cache if requested alongside normal cleanup
+	if cleanCache {
+		store := cache.NewStore(filepath.Join(state.DataDir(), "cache"))
+		if err := store.ClearAll(); err != nil {
+			return err
+		}
+		fmt.Println("Cache cleared.")
+	}
+
 	return nil
 }
 

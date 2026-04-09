@@ -76,6 +76,8 @@ type StepSummary struct {
 	Attempts        int     `json:"attempts,omitempty"`
 	Error           string  `json:"error,omitempty"`
 	Message         string  `json:"message,omitempty"` // approval message
+	Cached          bool    `json:"cached,omitempty"`
+	CacheKey        string  `json:"cache_key,omitempty"`
 }
 
 // StepLog is returned by GET .../steps/{step_id}/log.

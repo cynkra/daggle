@@ -566,6 +566,7 @@ components:
             - approved
             - rejected
             - skipped
+            - cached
         duration_seconds:
           type: number
           format: double
@@ -576,6 +577,12 @@ components:
         message:
           type: string
           description: Approval message.
+        cached:
+          type: boolean
+          description: Whether the step was served from cache.
+        cache_key:
+          type: string
+          description: Cache key used for the cached result.
 
     StepLog:
       type: object

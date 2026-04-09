@@ -113,6 +113,8 @@ func (s *Server) buildStepSummaries(runDir string) []StepSummary {
 		attempts int
 		err      string
 		message  string
+		cached   bool
+		cacheKey string
 	}
 
 	steps := make(map[string]*stepState)
@@ -156,6 +158,10 @@ func (s *Server) buildStepSummaries(runDir string) []StepSummary {
 			ss.status = "rejected"
 		case "step_skipped":
 			ss.status = "skipped"
+		case state.EventStepCached:
+			ss.status = "cached"
+			ss.cached = true
+			ss.cacheKey = e.CacheKey
 		}
 	}
 
@@ -169,6 +175,8 @@ func (s *Server) buildStepSummaries(runDir string) []StepSummary {
 			Attempts:        ss.attempts,
 			Error:           ss.err,
 			Message:         ss.message,
+			Cached:          ss.cached,
+			CacheKey:        ss.cacheKey,
 		})
 	}
 

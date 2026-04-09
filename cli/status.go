@@ -120,6 +120,8 @@ func showStatus(_ *cobra.Command, args []string) error {
 			si.status = "approved"
 		case state.EventStepRejected:
 			si.status = "rejected"
+		case state.EventStepCached:
+			si.status = "cached"
 		}
 	}
 
