@@ -157,33 +157,61 @@ func TestNew_AllStepTypes(t *testing.T) {
 	}
 }
 
-func TestExtractRError(t *testing.T) {
+func TestExtractErrorDetail_RError(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Test with R error pattern
 	stderrPath := filepath.Join(tmpDir, "test.stderr.log")
 	_ = os.WriteFile(stderrPath, []byte("some output\nWarning message:\nError in foo(): bar is not defined\nExecution halted\n"), 0644)
 
-	detail := extractRError(stderrPath)
+	detail := extractErrorDetail(stderrPath)
 	if detail == "" {
 		t.Fatal("expected error detail, got empty string")
 	}
 	if !strings.Contains(detail, "Error in foo()") {
 		t.Errorf("error detail = %q, want it to contain 'Error in foo()'", detail)
 	}
+	if strings.Contains(detail, "Execution halted") {
+		t.Errorf("error detail should not contain 'Execution halted'")
+	}
+}
 
-	// Test with no R error
-	noErrPath := filepath.Join(tmpDir, "noerr.stderr.log")
-	_ = os.WriteFile(noErrPath, []byte("just some warnings\n"), 0644)
+func TestExtractErrorDetail_QuartoError(t *testing.T) {
+	tmpDir := t.TempDir()
 
-	detail = extractRError(noErrPath)
-	if detail != "" {
-		t.Errorf("expected empty detail for non-error, got %q", detail)
+	stderrPath := filepath.Join(tmpDir, "quarto.stderr.log")
+	_ = os.WriteFile(stderrPath, []byte("Rendering document.qmd\nERROR: YAMLError: bad indentation of a mapping entry at line 15\n"), 0644)
+
+	detail := extractErrorDetail(stderrPath)
+	if !strings.Contains(detail, "ERROR: YAMLError") {
+		t.Errorf("error detail = %q, want it to contain 'ERROR: YAMLError'", detail)
+	}
+}
+
+func TestExtractErrorDetail_ShellFallback(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	stderrPath := filepath.Join(tmpDir, "shell.stderr.log")
+	_ = os.WriteFile(stderrPath, []byte("ls: cannot access '/no/such/path': No such file or directory\n"), 0644)
+
+	detail := extractErrorDetail(stderrPath)
+	if !strings.Contains(detail, "No such file or directory") {
+		t.Errorf("error detail = %q, want it to contain 'No such file or directory'", detail)
+	}
+}
+
+func TestExtractErrorDetail_EmptyStderr(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Empty file
+	emptyPath := filepath.Join(tmpDir, "empty.stderr.log")
+	_ = os.WriteFile(emptyPath, []byte(""), 0644)
+	if detail := extractErrorDetail(emptyPath); detail != "" {
+		t.Errorf("expected empty detail for empty stderr, got %q", detail)
 	}
 
-	// Test with nonexistent file
-	detail = extractRError(filepath.Join(tmpDir, "nonexistent"))
-	if detail != "" {
+	// Nonexistent file
+	if detail := extractErrorDetail(filepath.Join(tmpDir, "nonexistent")); detail != "" {
 		t.Errorf("expected empty detail for missing file, got %q", detail)
 	}
 }

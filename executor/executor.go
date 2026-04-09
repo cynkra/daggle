@@ -16,7 +16,7 @@ type Result struct {
 	Duration    time.Duration
 	Err         error
 	Outputs     map[string]string // parsed ::daggle-output:: values
-	ErrorDetail string            // extracted R error message from stderr
+	ErrorDetail string            // extracted error message from stderr (R, Quarto, or last lines)
 }
 
 // Executor runs a single DAG step.
