@@ -153,6 +153,13 @@ type UnregisterResponse struct {
 	Name string `json:"name"`
 }
 
+// PlanEntry describes the cache status of a single step in a plan.
+type PlanEntry struct {
+	StepID string `json:"step_id"`
+	Status string `json:"status"` // "cached", "outdated", "no-cache"
+	Reason string `json:"reason,omitempty"`
+}
+
 // ErrorResponse is returned for errors.
 type ErrorResponse struct {
 	Error string `json:"error"`

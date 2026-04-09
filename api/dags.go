@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/engine"
 	"github.com/cynkra/daggle/executor"
@@ -186,5 +188,126 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 		RunID:  run.ID,
 		Status: "started",
 	})
+}
+
+func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	path := s.dagPath(name)
+	if path == "" {
+		writeError(w, http.StatusNotFound, "DAG "+name+" not found")
+		return
+	}
+
+	d, err := dag.ParseFile(path)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "parse DAG: "+err.Error())
+		return
+	}
+
+	// Apply base defaults
+	baseDefaults, _ := dag.LoadBaseDefaults(filepath.Dir(path))
+	dag.ApplyBaseDefaults(d, baseDefaults)
+
+	// Expand templates (no params)
+	expanded, err := dag.ExpandDAG(d, nil)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "expand templates: "+err.Error())
+		return
+	}
+
+	// Expand matrix, topo sort
+	expanded.Steps = dag.ExpandMatrix(expanded.Steps)
+	tiers, err := dag.TopoSort(expanded.Steps)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "topo sort: "+err.Error())
+		return
+	}
+
+	// Flatten tiers
+	var steps []dag.Step
+	for _, tier := range tiers {
+		steps = append(steps, tier...)
+	}
+
+	// Set up cache store
+	cacheDir := filepath.Join(state.DataDir(), "cache")
+	store := cache.NewStore(cacheDir)
+
+	// Build plan entries
+	entries := buildPlanEntries(expanded, steps, store)
+
+	writeJSON(w, http.StatusOK, entries)
+}
+
+// buildPlanEntries computes cache status for each step.
+func buildPlanEntries(d *dag.DAG, steps []dag.Step, store *cache.Store) []PlanEntry {
+	entries := make([]PlanEntry, 0, len(steps))
+	outdatedSteps := make(map[string]bool)
+
+	for _, step := range steps {
+		if !step.Cache {
+			entries = append(entries, PlanEntry{
+				StepID: step.ID,
+				Status: "no-cache",
+				Reason: "caching not enabled",
+			})
+			continue
+		}
+
+		// Check upstream
+		upstreamOutdated := ""
+		for _, dep := range step.Depends {
+			if outdatedSteps[dep] {
+				upstreamOutdated = dep
+				break
+			}
+		}
+
+		if upstreamOutdated != "" {
+			outdatedSteps[step.ID] = true
+			entries = append(entries, PlanEntry{
+				StepID: step.ID,
+				Status: "outdated",
+				Reason: fmt.Sprintf("upstream %s changed", upstreamOutdated),
+			})
+			continue
+		}
+
+		// Compute cache key
+		stepType := engine.StepCacheType(step, d)
+		var envVars []string
+		for k, v := range d.Env {
+			envVars = append(envVars, k+"="+v.Value)
+		}
+		for k, v := range step.Env {
+			envVars = append(envVars, k+"="+v.Value)
+		}
+		cacheKey := cache.ComputeStepKey(stepType, envVars, nil, "")
+
+		if _, ok := store.Lookup(d.Name, step.ID, cacheKey); ok {
+			entries = append(entries, PlanEntry{
+				StepID: step.ID,
+				Status: "cached",
+			})
+		} else {
+			outdatedSteps[step.ID] = true
+			reason := "inputs changed"
+			if step.Script != "" {
+				entries = append(entries, PlanEntry{
+					StepID: step.ID,
+					Status: "outdated",
+					Reason: fmt.Sprintf("script %s changed", step.Script),
+				})
+			} else {
+				entries = append(entries, PlanEntry{
+					StepID: step.ID,
+					Status: "outdated",
+					Reason: reason,
+				})
+			}
+		}
+	}
+
+	return entries
 }
 
