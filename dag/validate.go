@@ -103,11 +103,12 @@ func Validate(d *DAG) error {
 		if len(s.Artifacts) > 0 {
 			artNames := make(map[string]bool)
 			for _, art := range s.Artifacts {
-				if art.Name == "" {
+				switch {
+				case art.Name == "":
 					errs = append(errs, fmt.Sprintf("step %q artifact name is required", s.ID))
-				} else if !artifactNameRe.MatchString(art.Name) {
+				case !artifactNameRe.MatchString(art.Name):
 					errs = append(errs, fmt.Sprintf("step %q artifact name %q must match [a-zA-Z_][a-zA-Z0-9_]*", s.ID, art.Name))
-				} else if artNames[art.Name] {
+				case artNames[art.Name]:
 					errs = append(errs, fmt.Sprintf("step %q has duplicate artifact name %q", s.ID, art.Name))
 				}
 				artNames[art.Name] = true
