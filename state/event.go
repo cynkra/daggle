@@ -23,6 +23,7 @@ const (
 	EventStepWaitApproval   = "step_waiting_approval"
 	EventStepApproved       = "step_approved"
 	EventStepRejected       = "step_rejected"
+	EventStepArtifact       = "step_artifact"
 )
 
 // Event represents a lifecycle event in a DAG run.
@@ -38,6 +39,14 @@ type Event struct {
 	Attempt     int       `json:"attempt,omitempty"`
 	Message     string    `json:"message,omitempty"`    // approval message
 	Approver    string    `json:"approver,omitempty"`   // system user who approved/rejected
+
+	// Artifact fields (for step_artifact events)
+	ArtifactName    string `json:"artifact_name,omitempty"`
+	ArtifactPath    string `json:"artifact_path,omitempty"`     // relative to workdir
+	ArtifactAbsPath string `json:"artifact_abs_path,omitempty"` // resolved absolute path
+	ArtifactHash    string `json:"artifact_hash,omitempty"`     // SHA-256
+	ArtifactSize    int64  `json:"artifact_size,omitempty"`     // bytes
+	ArtifactFormat  string `json:"artifact_format,omitempty"`
 }
 
 // EventWriter provides thread-safe JSONL event writing.

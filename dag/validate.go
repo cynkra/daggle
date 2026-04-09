@@ -2,9 +2,13 @@ package dag
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
+
+// artifactNameRe validates artifact names: alphanumeric + underscores, starting with letter or underscore.
+var artifactNameRe = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 // Validate checks that a DAG definition is well-formed.
 func Validate(d *DAG) error {
@@ -92,6 +96,24 @@ func Validate(d *DAG) error {
 			validErrorOn := map[string]bool{"error": true, "warning": true, "message": true}
 			if !validErrorOn[s.ErrorOn] {
 				errs = append(errs, fmt.Sprintf("step %q error_on %q is invalid; must be one of: error, warning, message", s.ID, s.ErrorOn))
+			}
+		}
+
+		// Validate artifacts
+		if len(s.Artifacts) > 0 {
+			artNames := make(map[string]bool)
+			for _, art := range s.Artifacts {
+				if art.Name == "" {
+					errs = append(errs, fmt.Sprintf("step %q artifact name is required", s.ID))
+				} else if !artifactNameRe.MatchString(art.Name) {
+					errs = append(errs, fmt.Sprintf("step %q artifact name %q must match [a-zA-Z_][a-zA-Z0-9_]*", s.ID, art.Name))
+				} else if artNames[art.Name] {
+					errs = append(errs, fmt.Sprintf("step %q has duplicate artifact name %q", s.ID, art.Name))
+				}
+				artNames[art.Name] = true
+				if art.Path == "" {
+					errs = append(errs, fmt.Sprintf("step %q artifact %q path is required", s.ID, art.Name))
+				}
 			}
 		}
 

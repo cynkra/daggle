@@ -302,6 +302,21 @@
           "enum": ["error", "warning", "message"],
           "description": "Error sensitivity for R steps (default: error). 'warning' treats R warnings as failures, 'message' treats R messages as failures."
         },
+        "artifacts": {
+          "type": "array",
+          "description": "Output files produced by this step. daggle verifies they exist, computes hashes, and records metadata.",
+          "items": {
+            "type": "object",
+            "required": ["name", "path"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$", "description": "Unique artifact name within the step" },
+              "path": { "type": "string", "description": "Path relative to workdir" },
+              "format": { "type": "string", "description": "File format hint (e.g. parquet, rds, csv, png)" },
+              "versioned": { "type": "boolean", "description": "If true, append epoch timestamp to filename to avoid overwrites" }
+            }
+          }
+        },
         "on_success": { "$ref": "#/$defs/hook" },
         "on_failure": { "$ref": "#/$defs/hook" }
       }

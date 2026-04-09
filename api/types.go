@@ -92,6 +92,17 @@ type OutputEntry struct {
 	Value  string `json:"value"`
 }
 
+// ArtifactEntry is returned in the artifact list.
+type ArtifactEntry struct {
+	StepID  string `json:"step_id"`
+	Name    string `json:"name"`
+	Path    string `json:"path"`      // relative to workdir
+	AbsPath string `json:"abs_path"`  // resolved absolute path
+	Hash    string `json:"hash"`      // SHA-256
+	Size    int64  `json:"size"`      // bytes
+	Format  string `json:"format,omitempty"`
+}
+
 // TriggerRequest is the body for POST /api/v1/dags/{name}/run.
 type TriggerRequest struct {
 	Params map[string]string `json:"params,omitempty"`

@@ -237,6 +237,26 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/runs/{run_id}/artifacts:
+    get:
+      summary: List artifacts for a run
+      operationId: getArtifacts
+      tags: [artifacts]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Flat array of artifact entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ArtifactEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/projects:
     get:
       summary: List registered projects
@@ -578,6 +598,32 @@ components:
           type: string
         value:
           type: string
+
+    ArtifactEntry:
+      type: object
+      required: [step_id, name, path, abs_path, hash, size]
+      properties:
+        step_id:
+          type: string
+        name:
+          type: string
+          description: Artifact name declared in the step.
+        path:
+          type: string
+          description: Path relative to workdir.
+        abs_path:
+          type: string
+          description: Resolved absolute path.
+        hash:
+          type: string
+          description: SHA-256 hash of the file.
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes.
+        format:
+          type: string
+          description: File format hint (e.g. parquet, rds, csv, png).
 
     ProjectSummary:
       type: object

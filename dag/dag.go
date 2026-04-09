@@ -166,9 +166,20 @@ type Step struct {
 	// Error sensitivity: "error" (default), "warning", "message"
 	ErrorOn string `yaml:"error_on,omitempty"`
 
+	// Artifact declarations
+	Artifacts []Artifact `yaml:"artifacts,omitempty"`
+
 	// Step-level hooks
 	OnSuccess *Hook `yaml:"on_success,omitempty"`
 	OnFailure *Hook `yaml:"on_failure,omitempty"`
+}
+
+// Artifact declares an output file produced by a step.
+type Artifact struct {
+	Name      string `yaml:"name"`                 // unique name within the step
+	Path      string `yaml:"path"`                 // path relative to workdir
+	Format    string `yaml:"format,omitempty"`      // file format hint (parquet, rds, csv, png, etc.)
+	Versioned bool   `yaml:"versioned,omitempty"`   // if true, append epoch timestamp to filename
 }
 
 // EnvVar represents an environment variable value that may be a secret.

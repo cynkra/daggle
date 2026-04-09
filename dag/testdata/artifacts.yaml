@@ -1,0 +1,15 @@
+name: artifact-dag
+steps:
+  - id: extract
+    command: echo "extracting"
+    artifacts:
+      - name: raw_data
+        path: output/raw.parquet
+        format: parquet
+      - name: summary_plot
+        path: output/summary.png
+        format: png
+        versioned: true
+  - id: transform
+    command: echo "transforming"
+    depends: [extract]

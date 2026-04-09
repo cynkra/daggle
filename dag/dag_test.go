@@ -734,6 +734,82 @@ func TestDAG_VersionField(t *testing.T) {
 	}
 }
 
+func TestParseFile_Artifacts(t *testing.T) {
+	d, err := ParseFile("testdata/artifacts.yaml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(d.Steps[0].Artifacts) != 2 {
+		t.Fatalf("step extract artifacts = %d, want 2", len(d.Steps[0].Artifacts))
+	}
+	art := d.Steps[0].Artifacts[0]
+	if art.Name != "raw_data" || art.Path != "output/raw.parquet" || art.Format != "parquet" {
+		t.Errorf("artifact 0 = %+v", art)
+	}
+	if d.Steps[0].Artifacts[1].Versioned != true {
+		t.Error("artifact 1 should be versioned")
+	}
+}
+
+func TestValidate_Artifacts(t *testing.T) {
+	// Valid artifacts
+	d := &DAG{Name: "t", Steps: []Step{{
+		ID:      "a",
+		Command: "echo",
+		Artifacts: []Artifact{
+			{Name: "output_data", Path: "out/data.csv"},
+			{Name: "plot", Path: "out/plot.png", Format: "png"},
+		},
+	}}}
+	if err := Validate(d); err != nil {
+		t.Errorf("valid artifacts should pass: %v", err)
+	}
+
+	// Invalid: empty name
+	d = &DAG{Name: "t", Steps: []Step{{
+		ID:        "a",
+		Command:   "echo",
+		Artifacts: []Artifact{{Name: "", Path: "out/data.csv"}},
+	}}}
+	if err := Validate(d); err == nil {
+		t.Error("empty artifact name should fail")
+	}
+
+	// Invalid: bad name pattern
+	d = &DAG{Name: "t", Steps: []Step{{
+		ID:        "a",
+		Command:   "echo",
+		Artifacts: []Artifact{{Name: "123bad", Path: "out/data.csv"}},
+	}}}
+	if err := Validate(d); err == nil {
+		t.Error("artifact name starting with digit should fail")
+	}
+
+	// Invalid: duplicate name
+	d = &DAG{Name: "t", Steps: []Step{{
+		ID:      "a",
+		Command: "echo",
+		Artifacts: []Artifact{
+			{Name: "data", Path: "out/a.csv"},
+			{Name: "data", Path: "out/b.csv"},
+		},
+	}}}
+	if err := Validate(d); err == nil {
+		t.Error("duplicate artifact name should fail")
+	}
+
+	// Invalid: empty path
+	d = &DAG{Name: "t", Steps: []Step{{
+		ID:        "a",
+		Command:   "echo",
+		Artifacts: []Artifact{{Name: "data", Path: ""}},
+	}}}
+	if err := Validate(d); err == nil {
+		t.Error("empty artifact path should fail")
+	}
+}
+
 func TestExpandDAG(t *testing.T) {
 	d := &DAG{
 		Name: "test",
