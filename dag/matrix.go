@@ -55,6 +55,14 @@ func ExpandMatrix(steps []Step) []Step {
 				instance.Args[i] = arg
 			}
 
+			// Interpolate OutputDir and OutputName with matrix values
+			for k, v := range combo {
+				instance.OutputDir = strings.ReplaceAll(instance.OutputDir, "{{ .Matrix."+k+" }}", v)
+				instance.OutputDir = strings.ReplaceAll(instance.OutputDir, "{{.Matrix."+k+"}}", v)
+				instance.OutputName = strings.ReplaceAll(instance.OutputName, "{{ .Matrix."+k+" }}", v)
+				instance.OutputName = strings.ReplaceAll(instance.OutputName, "{{.Matrix."+k+"}}", v)
+			}
+
 			expanded = append(expanded, instance)
 		}
 

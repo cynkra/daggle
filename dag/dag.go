@@ -155,6 +155,10 @@ type Step struct {
 	// Posit Connect deployment
 	Connect *ConnectDeploy `yaml:"connect,omitempty"`
 
+	// Output control for rendered reports
+	OutputDir  string `yaml:"output_dir,omitempty"`
+	OutputName string `yaml:"output_name,omitempty"`
+
 	// Matrix: expand step into parameter grid
 	Matrix      map[string][]string `yaml:"matrix,omitempty"`
 	MaxParallel int                 `yaml:"max_parallel,omitempty"`
