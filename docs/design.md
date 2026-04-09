@@ -126,12 +126,18 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 These features target the daily needs of R users doing data analysis, going beyond step types into workflow-level improvements.
 
-- **Artifacts & data lineage** — Register output files (CSV, RDS, parquet, plots) per step. Track file hashes across runs. Answer "which run produced this dataset?" Browsable in the status UI and via API/daggleR.
+- **Artifacts & data lineage** — Register output files (CSV, RDS, parquet, plots) per step. Track file hashes across runs. Answer "which run produced this dataset?" Available via API/daggleR for building custom Shiny dashboards.
 - **Step-level caching** — Hash step inputs (script content + input files + env vars + upstream outputs) and skip execution if unchanged. Opt-in per step via `cache: true`. Transforms daggle from batch runner to interactive development companion.
-- **Data validation protocol** — Richer than exit code 0/1. Structured validation results (pass/warn/fail with thresholds, column-level details) that show up in status output and the UI. Integration points for pointblank, assertr, data.validator.
+- **`daggle plan`** — Dry-run command showing which steps would run vs skip when caching is enabled, and *why* each step is outdated (which input changed). The natural companion to step-level caching. Inspired by targets' `tar_outdated()`.
+- **Step summaries / rich metadata** — Extend the output protocol with `::daggle-summary::` markers for structured metadata (markdown tables, row counts, key metrics). Exposed via API so custom dashboards (Shiny, etc.) can render rich step results beyond pass/fail. daggleR functions for reading summaries.
+- **Source freshness / data SLAs** — Declare freshness expectations on input files or data sources in YAML: `freshness: { path: "data/raw.csv", max_age: "6h" }`. daggle checks *before* running and warns or fails if stale. Catches the "ran on stale data" problem that plagues the check-pull-transform-report pattern.
+- **Deadline / absence alerting** — `deadline: "08:00"` in the trigger block. Alert if a scheduled DAG hasn't started by the deadline. Different from scheduling *at* 8am — catches cases where the scheduler was down, the trigger didn't fire, or upstream data never arrived.
+- **Data validation protocol** — Richer than exit code 0/1. Structured validation results (pass/warn/fail with thresholds, column-level details) exposed via API and CLI. Integration points for pointblank, assertr, data.validator.
 - **Parameterized reports at scale** — Smooth workflow for rendering the same Quarto/Rmd report across N parameter sets. Auto-naming output files by parameter values, collecting rendered reports into an output directory, summary index page.
-- **Run comparison** — Diff outputs across runs. API endpoint + daggleR function + UI view. Even a simple table diff of step outputs between two run IDs.
+- **Run comparison** — Diff outputs across runs. API endpoint + daggleR function. Even a simple table diff of step outputs between two run IDs.
 - **Richer notification context** — Hook templates that auto-include step outputs and artifacts. Send the *result* (a summary table, a plot, "3 new outliers detected"), not just "pipeline succeeded."
+- **Cross-DAG output dependencies** — A step can declare it needs a specific file from another DAG's latest run: `inputs: [{dag: "etl", step: "extract", file: "data.parquet"}]`. More precise than `on_dag` trigger + env vars. Inspired by orderly2's packet dependencies.
+- **Exposure / impact tracking** — Declare which Shiny apps, dashboards, or reports consume a DAG's outputs. `daggle impact <dag>` answers "what breaks if this fails?" Valuable as teams grow.
 - `daggle logs <dag> [--step <id>] [--follow]` — direct log access without going through `daggle status`
 - `daggle diff <dag> <run1> <run2>` — compare meta.json, DAG hash, parameters, and outputs between two runs
 - Interactive TUI monitor — terminal UI showing live DAG execution status
