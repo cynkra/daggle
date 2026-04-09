@@ -21,6 +21,13 @@ type MetaEntry struct {
 	Value string
 }
 
+// ValidationResult holds a validation result emitted via ::daggle-validation:: markers.
+type ValidationResult struct {
+	Name    string
+	Status  string // "pass", "warn", "fail"
+	Message string
+}
+
 // Result holds the outcome of executing a step.
 type Result struct {
 	ExitCode    int
@@ -32,6 +39,7 @@ type Result struct {
 	ErrorDetail string            // extracted error message from stderr (R, Quarto, or last lines)
 	Summaries   []Summary         // parsed ::daggle-summary:: values
 	Metadata    []MetaEntry       // parsed ::daggle-meta:: values
+	Validations []ValidationResult // parsed ::daggle-validation:: values
 }
 
 // Executor runs a single DAG step.

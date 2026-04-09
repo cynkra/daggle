@@ -66,6 +66,12 @@ No authentication by default (localhost-only). Authentication can be added in a 
 | GET | `/api/v1/dags/{name}/runs/{run_id}/summaries` | Get step summaries (markdown) |
 | GET | `/api/v1/dags/{name}/runs/{run_id}/metadata` | Get step metadata entries |
 
+### Validations
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/dags/{name}/runs/{run_id}/validations` | Get validation results for a run |
+
 ### Artifacts
 
 | Method | Path | Description |
@@ -188,6 +194,28 @@ GET /api/v1/dags/daily-etl/runs/abc123/artifacts
   }
 ]
 ```
+
+### Validations (R-friendly flat format)
+
+Steps can emit validation results via stdout markers:
+
+```
+::daggle-validation status=pass name=row_count::Expected > 0, got 1542
+::daggle-validation status=warn name=missing_pct::12% missing (threshold: 20%)
+::daggle-validation status=fail name=schema::Column 'date' expected date, got character
+```
+
+```json
+GET /api/v1/dags/daily-etl/runs/abc123/validations
+
+[
+  { "step_id": "extract", "name": "row_count", "status": "pass", "message": "Expected > 0, got 1542" },
+  { "step_id": "extract", "name": "missing_pct", "status": "warn", "message": "12% missing (threshold: 20%)" },
+  { "step_id": "transform", "name": "schema", "status": "fail", "message": "Column 'date' expected date, got character" }
+]
+```
+
+A validation with `status=fail` will cause the step to fail (exit code 0 but treated as error) when the step's `error_on` is set to `"error"` or is left at the default.
 
 ### Summaries (R-friendly flat format)
 

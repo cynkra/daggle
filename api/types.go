@@ -175,6 +175,14 @@ type RunMetaEntry struct {
 	Value  string `json:"value"`
 }
 
+// ValidationEntry is returned in the validations list.
+type ValidationEntry struct {
+	StepID  string `json:"step_id"`
+	Name    string `json:"name"`
+	Status  string `json:"status"`  // pass, warn, fail
+	Message string `json:"message"`
+}
+
 // ErrorResponse is returned for errors.
 type ErrorResponse struct {
 	Error string `json:"error"`

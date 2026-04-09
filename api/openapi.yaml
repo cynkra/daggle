@@ -296,6 +296,26 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/runs/{run_id}/validations:
+    get:
+      summary: Get validation results for a run
+      operationId: getValidations
+      tags: [validations]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Flat array of validation entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ValidationEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/dags/{name}/runs/{run_id}/artifacts:
     get:
       summary: List artifacts for a run
@@ -707,6 +727,23 @@ components:
         value:
           type: string
           description: Metadata value (numeric as string, table as JSON array, image as file path).
+
+    ValidationEntry:
+      type: object
+      required: [step_id, name, status, message]
+      properties:
+        step_id:
+          type: string
+        name:
+          type: string
+          description: Validation check name.
+        status:
+          type: string
+          enum: [pass, warn, fail]
+          description: Validation result status.
+        message:
+          type: string
+          description: Human-readable validation message.
 
     ArtifactEntry:
       type: object

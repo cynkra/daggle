@@ -270,9 +270,30 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 			// Collect outputs, namespaced by step ID
 			e.collectOutputs(step.ID, lastResult.Outputs)
 
-			// Write summary and metadata files
+			// Write summary, metadata, and validation files
 			e.writeSummaryFile(step.ID, lastResult.Summaries)
 			e.writeMetadataFile(step.ID, lastResult.Metadata)
+			e.writeValidationFile(step.ID, lastResult.Validations)
+
+			// Check for validation failures: if error_on is "error" (or empty/default)
+			// and any validation has status="fail", treat the step as failed.
+			if step.ErrorOn == "" || step.ErrorOn == "error" {
+				if err := checkValidationFailures(lastResult.Validations); err != nil {
+					e.writeEvent(state.Event{
+						Type:     state.EventStepFailed,
+						StepID:   step.ID,
+						ExitCode: 0,
+						Error:    err.Error(),
+						Duration: lastResult.Duration.String(),
+						Attempt:  attempt,
+					})
+					e.logger.Error("step failed due to validation", "step", step.ID, "error", err)
+					if step.OnFailure != nil {
+						e.runHook(ctx, step.OnFailure, "step "+step.ID+" on_failure")
+					}
+					return err
+				}
+			}
 
 			// Verify and record declared artifacts
 			if err := e.verifyArtifacts(step, workdir); err != nil {
@@ -659,6 +680,45 @@ func (e *Engine) writeMetadataFile(stepID string, metadata []executor.MetaEntry)
 	if err := os.WriteFile(path, data, 0644); err != nil {
 		e.logger.Warn("failed to write metadata file", "step", stepID, "error", err)
 	}
+}
+
+// writeValidationFile writes validation results as a JSON array to {step.ID}.validations.json.
+func (e *Engine) writeValidationFile(stepID string, validations []executor.ValidationResult) {
+	if len(validations) == 0 {
+		return
+	}
+	type validationJSON struct {
+		Name    string `json:"name"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
+	}
+	entries := make([]validationJSON, len(validations))
+	for i, v := range validations {
+		entries[i] = validationJSON{Name: v.Name, Status: v.Status, Message: v.Message}
+	}
+	data, err := json.Marshal(entries)
+	if err != nil {
+		e.logger.Warn("failed to marshal validations", "step", stepID, "error", err)
+		return
+	}
+	path := filepath.Join(e.runInfo.Dir, stepID+".validations.json")
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		e.logger.Warn("failed to write validations file", "step", stepID, "error", err)
+	}
+}
+
+// checkValidationFailures returns an error if any validation result has status "fail".
+func checkValidationFailures(validations []executor.ValidationResult) error {
+	var failed []string
+	for _, v := range validations {
+		if v.Status == "fail" {
+			failed = append(failed, v.Name)
+		}
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("validation failed: %s", strings.Join(failed, ", "))
+	}
+	return nil
 }
 
 func retryDelay(attempt int, retry *dag.Retry) time.Duration {

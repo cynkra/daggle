@@ -19,7 +19,8 @@ const gracePeriod = 5 * time.Second
 var (
 	outputMarkerRe  = regexp.MustCompile(`^::daggle-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
 	summaryMarkerRe = regexp.MustCompile(`^::daggle-summary format=([a-zA-Z]+)::(.*)$`)
-	metaMarkerRe    = regexp.MustCompile(`^::daggle-meta type=([a-zA-Z]+) name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
+	metaMarkerRe       = regexp.MustCompile(`^::daggle-meta type=([a-zA-Z]+) name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
+	validationMarkerRe = regexp.MustCompile(`^::daggle-validation status=(pass|warn|fail) name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
 )
 
 // runProcess executes a command, captures stdout/stderr to log files, and enforces
@@ -67,10 +68,11 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		return Result{ExitCode: -1, Err: err, Duration: time.Since(start), Stdout: stdoutPath, Stderr: stderrPath}
 	}
 
-	// Read stdout, parse output/summary/meta markers, write to log file and terminal
+	// Read stdout, parse output/summary/meta/validation markers, write to log file and terminal
 	outputs := make(map[string]string)
 	var summaries []Summary
 	var metadata []MetaEntry
+	var validations []ValidationResult
 	scanDone := make(chan struct{})
 	go func() {
 		defer close(scanDone)
@@ -94,6 +96,13 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 					Value: m[3],
 				})
 				_, _ = fmt.Fprintln(stdoutFile, line)
+			} else if m := validationMarkerRe.FindStringSubmatch(line); m != nil {
+				validations = append(validations, ValidationResult{
+					Status:  m[1],
+					Name:    m[2],
+					Message: m[3],
+				})
+				_, _ = fmt.Fprintln(stdoutFile, line)
 			} else {
 				_, _ = fmt.Fprintln(stdoutFile, line)
 				_, _ = fmt.Fprintln(os.Stdout, line)
@@ -114,6 +123,7 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		r.Outputs = outputs
 		r.Summaries = summaries
 		r.Metadata = metadata
+		r.Validations = validations
 		return r
 	case <-ctx.Done():
 		killProcessGroup(cmd)
@@ -122,14 +132,15 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		_ = stdoutFile.Sync()
 		_ = stderrFile.Sync()
 		return Result{
-			ExitCode:  -1,
-			Err:       ctx.Err(),
-			Duration:  time.Since(start),
-			Stdout:    stdoutPath,
-			Stderr:    stderrPath,
-			Outputs:   outputs,
-			Summaries: summaries,
-			Metadata:  metadata,
+			ExitCode:    -1,
+			Err:         ctx.Err(),
+			Duration:    time.Since(start),
+			Stdout:      stdoutPath,
+			Stderr:      stderrPath,
+			Outputs:     outputs,
+			Summaries:   summaries,
+			Metadata:    metadata,
+			Validations: validations,
 		}
 	}
 }
