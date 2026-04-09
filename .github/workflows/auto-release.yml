@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   auto-release:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'skip-release')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
