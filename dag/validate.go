@@ -10,6 +10,9 @@ import (
 // artifactNameRe validates artifact names: alphanumeric + underscores, starting with letter or underscore.
 var artifactNameRe = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
+// deadlineRe validates HH:MM time format.
+var deadlineRe = regexp.MustCompile(`^\d{2}:\d{2}$`)
+
 // Validate checks that a DAG definition is well-formed.
 func Validate(d *DAG) error {
 	var errs []string
@@ -206,6 +209,18 @@ func Validate(d *DAG) error {
 				}
 			}
 		}
+		if d.Trigger.Deadline != "" {
+			if !deadlineRe.MatchString(d.Trigger.Deadline) {
+				errs = append(errs, fmt.Sprintf("trigger.deadline %q is invalid; must be HH:MM format", d.Trigger.Deadline))
+			} else {
+				if err := validateDeadlineTime(d.Trigger.Deadline); err != nil {
+					errs = append(errs, fmt.Sprintf("trigger.deadline %q is invalid: %v", d.Trigger.Deadline, err))
+				}
+			}
+		}
+		if d.Trigger.OnDeadline != nil && d.Trigger.Deadline == "" {
+			errs = append(errs, "trigger.on_deadline requires trigger.deadline to be set")
+		}
 	}
 
 	// Cycle detection via TopoSort
@@ -317,4 +332,19 @@ func compareVersions(a, b string) int {
 		}
 	}
 	return 0
+}
+
+// validateDeadlineTime checks that an HH:MM string has valid hour (00-23) and minute (00-59) values.
+func validateDeadlineTime(s string) error {
+	var h, m int
+	if _, err := fmt.Sscanf(s, "%d:%d", &h, &m); err != nil {
+		return fmt.Errorf("cannot parse time: %w", err)
+	}
+	if h < 0 || h > 23 {
+		return fmt.Errorf("hour %d out of range 0-23", h)
+	}
+	if m < 0 || m > 59 {
+		return fmt.Errorf("minute %d out of range 0-59", m)
+	}
+	return nil
 }

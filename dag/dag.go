@@ -35,13 +35,15 @@ type DAG struct {
 // Trigger defines when a DAG should be automatically executed.
 // Multiple trigger types can coexist — any matching trigger starts a run.
 type Trigger struct {
-	Schedule  string            `yaml:"schedule,omitempty"`
-	Watch     *WatchTrigger     `yaml:"watch,omitempty"`
-	Webhook   *WebhookTrigger   `yaml:"webhook,omitempty"`
-	OnDAG     *OnDAGTrigger     `yaml:"on_dag,omitempty"`
-	Condition *ConditionTrigger `yaml:"condition,omitempty"`
-	Git       *GitTrigger       `yaml:"git,omitempty"`
-	Overlap   string            `yaml:"overlap,omitempty"` // "skip" (default) or "cancel"
+	Schedule   string            `yaml:"schedule,omitempty"`
+	Watch      *WatchTrigger     `yaml:"watch,omitempty"`
+	Webhook    *WebhookTrigger   `yaml:"webhook,omitempty"`
+	OnDAG      *OnDAGTrigger     `yaml:"on_dag,omitempty"`
+	Condition  *ConditionTrigger `yaml:"condition,omitempty"`
+	Git        *GitTrigger       `yaml:"git,omitempty"`
+	Overlap    string            `yaml:"overlap,omitempty"` // "skip" (default) or "cancel"
+	Deadline   string            `yaml:"deadline,omitempty"`     // HH:MM format
+	OnDeadline *Hook             `yaml:"on_deadline,omitempty"`
 }
 
 // WatchTrigger fires when files matching a pattern change in a directory.
