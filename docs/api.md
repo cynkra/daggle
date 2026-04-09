@@ -58,6 +58,12 @@ No authentication by default (localhost-only). Authentication can be added in a 
 |--------|------|-------------|
 | GET | `/api/v1/dags/{name}/runs/{run_id}/outputs` | Get all step outputs (flat) |
 
+### Artifacts
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/dags/{name}/runs/{run_id}/artifacts` | List declared artifacts with hashes and sizes |
+
 ### Maintenance
 
 | Method | Path | Description |
@@ -142,6 +148,24 @@ POST /api/v1/dags/daily-etl/run
 Body: { "params": { "dept": "marketing" } }
 
 Response: { "run_id": "abc123", "status": "started" }
+```
+
+### Artifacts (R-friendly flat format)
+
+```json
+GET /api/v1/dags/daily-etl/runs/abc123/artifacts
+
+[
+  {
+    "step_id": "extract",
+    "name": "raw_data",
+    "path": "output/raw.parquet",
+    "abs_path": "/home/user/project/output/raw.parquet",
+    "hash": "a1b2c3d4e5f6...",
+    "size": 1048576,
+    "format": "parquet"
+  }
+]
 ```
 
 ### Error Responses
