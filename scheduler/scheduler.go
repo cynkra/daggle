@@ -129,11 +129,43 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	// Start on_dag completion dispatcher
 	go s.dispatchCompletions(ctx)
 
+	// Start auto-cleanup if configured
+	cfg, err := state.LoadConfig()
+	if err != nil {
+		s.logger.Warn("failed to load config, skipping auto-cleanup", "error", err)
+	}
+	var cleanupTicker *time.Ticker
+	var cleanupThreshold time.Duration
+	if cfg.Cleanup != nil && cfg.Cleanup.OlderThan != "" {
+		cleanupThreshold, err = state.ParseDurationWithDays(cfg.Cleanup.OlderThan)
+		if err != nil {
+			s.logger.Warn("invalid cleanup.older_than, skipping auto-cleanup", "error", err)
+		} else {
+			interval := time.Hour // default
+			if cfg.Cleanup.Interval != "" {
+				if parsed, err := state.ParseDurationWithDays(cfg.Cleanup.Interval); err == nil {
+					interval = parsed
+				}
+			}
+			cleanupTicker = time.NewTicker(interval)
+			s.logger.Info("auto-cleanup enabled", "older_than", cfg.Cleanup.OlderThan, "interval", interval)
+		}
+	}
+	if cleanupTicker != nil {
+		defer cleanupTicker.Stop()
+	}
+
 	// Poll for DAG file changes
 	ticker := time.NewTicker(defaultPollInterval)
 	defer ticker.Stop()
 
 	for {
+		// Build cleanup channel (nil if disabled, which means select never fires)
+		var cleanupCh <-chan time.Time
+		if cleanupTicker != nil {
+			cleanupCh = cleanupTicker.C
+		}
+
 		select {
 		case <-ctx.Done():
 			s.logger.Info("scheduler stopping")
@@ -142,6 +174,13 @@ func (s *Scheduler) Start(ctx context.Context) error {
 		case <-ticker.C:
 			if err := s.syncDAGs(ctx); err != nil {
 				s.logger.Error("DAG sync failed", "error", err)
+			}
+		case <-cleanupCh:
+			result, err := state.CleanupRuns(cleanupThreshold)
+			if err != nil {
+				s.logger.Error("auto-cleanup failed", "error", err)
+			} else if result.Removed > 0 {
+				s.logger.Info("auto-cleanup completed", "removed", result.Removed, "freed_bytes", result.FreedBytes)
 			}
 		}
 	}

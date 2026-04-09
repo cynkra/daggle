@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/cynkra/daggle/state"
 )
@@ -100,67 +98,22 @@ func (s *Server) handleCleanup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	threshold, err := parseDurationWithDays(req.OlderThan)
+	threshold, err := state.ParseDurationWithDays(req.OlderThan)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid duration: "+err.Error())
 		return
 	}
 
-	cutoff := time.Now().Add(-threshold)
-	runsDir := state.RunsDir()
-
-	var removed int
-	var freedBytes int64
-
-	dagDirs, err := os.ReadDir(runsDir)
+	result, err := state.CleanupRuns(threshold)
 	if err != nil {
-		writeJSON(w, http.StatusOK, CleanupResponse{Removed: 0, FreedBytes: 0, Freed: "0 B"})
+		writeError(w, http.StatusInternalServerError, "cleanup failed: "+err.Error())
 		return
 	}
 
-	for _, dagDir := range dagDirs {
-		if !dagDir.IsDir() {
-			continue
-		}
-		dagPath := filepath.Join(runsDir, dagDir.Name())
-		dateDirs, _ := os.ReadDir(dagPath)
-		for _, dateDir := range dateDirs {
-			if !dateDir.IsDir() {
-				continue
-			}
-			datePath := filepath.Join(dagPath, dateDir.Name())
-			runDirs, _ := os.ReadDir(datePath)
-			for _, runDir := range runDirs {
-				if !runDir.IsDir() || !strings.HasPrefix(runDir.Name(), "run_") {
-					continue
-				}
-				runPath := filepath.Join(datePath, runDir.Name())
-				info, err := runDir.Info()
-				if err != nil {
-					continue
-				}
-				if info.ModTime().Before(cutoff) {
-					size := dirSize(runPath)
-					if err := os.RemoveAll(runPath); err != nil {
-						continue
-					}
-					removed++
-					freedBytes += size
-				}
-			}
-			if remaining, _ := os.ReadDir(datePath); len(remaining) == 0 {
-				_ = os.Remove(datePath)
-			}
-		}
-		if remaining, _ := os.ReadDir(dagPath); len(remaining) == 0 {
-			_ = os.Remove(dagPath)
-		}
-	}
-
 	writeJSON(w, http.StatusOK, CleanupResponse{
-		Removed:    removed,
-		FreedBytes: freedBytes,
-		Freed:      formatBytes(freedBytes),
+		Removed:    result.Removed,
+		FreedBytes: result.FreedBytes,
+		Freed:      formatBytes(result.FreedBytes),
 	})
 }
 
@@ -216,18 +169,6 @@ func (s *Server) buildRunDetail(dagName string, run *state.RunInfo) RunDetail {
 type notFoundError struct{ msg string }
 
 func (e *notFoundError) Error() string { return e.msg }
-
-func dirSize(path string) int64 {
-	var size int64
-	_ = filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
-		}
-		size += info.Size()
-		return nil
-	})
-	return size
-}
 
 func formatBytes(b int64) string {
 	const unit = 1024

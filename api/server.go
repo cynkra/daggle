@@ -3,7 +3,6 @@ package api
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -137,15 +136,3 @@ func (s *Server) dagPath(name string) string {
 	return ""
 }
 
-// parseDurationWithDays parses a duration string that may include "d" suffix for days.
-func parseDurationWithDays(s string) (time.Duration, error) {
-	if strings.HasSuffix(s, "d") {
-		numStr := strings.TrimSuffix(s, "d")
-		var days float64
-		if _, err := fmt.Sscanf(numStr, "%f", &days); err != nil {
-			return 0, fmt.Errorf("invalid day count %q", numStr)
-		}
-		return time.Duration(days * float64(24*time.Hour)), nil
-	}
-	return time.ParseDuration(s)
-}
