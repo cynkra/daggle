@@ -122,34 +122,30 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 ### Planned
 
-**Phase 7 — User Experience:**
+**Phase 7 — Analyst Workflow Features:**
+
+These features target the daily needs of R users doing data analysis, going beyond step types into workflow-level improvements.
+
+- **Artifacts & data lineage** — Register output files (CSV, RDS, parquet, plots) per step. Track file hashes across runs. Answer "which run produced this dataset?" Browsable in the status UI and via API/daggleR.
+- **Step-level caching** — Hash step inputs (script content + input files + env vars + upstream outputs) and skip execution if unchanged. Opt-in per step via `cache: true`. Transforms daggle from batch runner to interactive development companion.
+- **Data validation protocol** — Richer than exit code 0/1. Structured validation results (pass/warn/fail with thresholds, column-level details) that show up in status output and the UI. Integration points for pointblank, assertr, data.validator.
+- **Parameterized reports at scale** — Smooth workflow for rendering the same Quarto/Rmd report across N parameter sets. Auto-naming output files by parameter values, collecting rendered reports into an output directory, summary index page.
+- **Run comparison** — Diff outputs across runs. API endpoint + daggleR function + UI view. Even a simple table diff of step outputs between two run IDs.
+- **Richer notification context** — Hook templates that auto-include step outputs and artifacts. Send the *result* (a summary table, a plot, "3 new outliers detected"), not just "pipeline succeeded."
 - `daggle logs <dag> [--step <id>] [--follow]` — direct log access without going through `daggle status`
 - `daggle diff <dag> <run1> <run2>` — compare meta.json, DAG hash, parameters, and outputs between two runs
-- Global notification config — always notify on DAG completion/failure (desktop, ntfy.sh, webhook)
 - Interactive TUI monitor — terminal UI showing live DAG execution status
 
-**Phase 8 — Testing & Quality:**
-- Integration test suite with real R — end-to-end tests that run actual R scripts through daggle
-- Example DAGs repository — real-world examples (penguin analysis, package CI, report pipeline) as both documentation and integration tests
-
-**Phase 9 — Enterprise (if needed):**
+**Phase 8 — Enterprise (if needed):**
 - Distributed workers
-- Queue system with concurrency limits
+- Queue system with concurrency limits (including queue overlap policy)
 - RBAC
-- Prometheus metrics (basic run/step metrics could land earlier)
+- Prometheus metrics
 - SSH remote execution
 - R session pooling (keep warm Rscript processes for fast inline expressions)
-- Webhook auth improvements (bearer tokens, IP allowlists)
-- Declarative retention policies (`retention: 30d` or `retention: 100` in YAML or global config)
 
 ## Open design questions
 
 These are topics where the design is not yet settled:
 
-- **~~R version enforcement~~** — **Resolved.** Syntax: `r_version: ">=4.1.0"` (single constraint). Warn by default, `r_version_strict: true` to fail. Check at DAG start via `Rscript --version`. Phase 4.
-- **~~`error_on:` field~~** — **Resolved.** Step-level `error_on:` with three levels: `error` (default), `warning`, `message`. Applies to all R step types. Implemented via `withCallingHandlers()` wrapper. For `script:` steps, generate a thin wrapper that sources the user script inside the handler. Phase 4.
-- **~~`base.yaml` defaults~~** — **Resolved.** `base.yaml` in the DAGs directory. Shallow merge: `env` maps merged (DAG wins on conflict), scalars (`workdir`, `timeout`) overridden by DAG. Mergeable fields: `env`, `on_success`, `on_failure`, `on_exit`, default `timeout`, default `retry`. Steps are never merged. No-op if `base.yaml` absent. Phase 4.
-- **~~Windows support~~** — **Not supported.** The process model uses Unix-only APIs (process groups, SIGTERM). macOS and Linux only. Revisit if user demand appears.
-- **~~Companion R package~~** — **Implemented.** Phase 5b delivered the `daggleR` package ([cynkra/daggleR](https://github.com/cynkra/daggleR)). In-step helpers (base R), API wrappers and approval helpers (httr2). Scope maintained: read, write, approve, and API calls only — never parsing YAML or managing state.
-- **~~DAG templates~~** — **Resolved.** Three templates for Phase 4: `pkg-check`, `pkg-release`, `data-pipeline` (all sketched in features.md).
-- **~~Telemetry~~** — **Dropped.** Rely on GitHub issues for feedback. Not worth the trust cost.
+- **R version change detection** — R version is recorded in `meta.json`, but if the system R is upgraded between runs, renv library paths may break silently (the platform-specific path like `renv/library/R-4.4/aarch64-apple-darwin20/` changes with R minor version bumps). daggle currently does not warn about this. Suggested direction: add a `daggle doctor` check that compares the current R version against the last recorded version in recent runs. Warn if the R minor version changed and renv is in use.

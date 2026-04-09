@@ -21,13 +21,18 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
 │  └──────────────────┬─────────────────────────┘          │
 │                     │                                     │
 │  ┌──────────────────┼──────────────────────┐             │
-│  │          Executor Layer                  │             │
+│  │          Executor Layer (15 impls)       │             │
 │  │                                          │             │
 │  │  ScriptExecutor   (Rscript <file>)       │             │
 │  │  InlineRExecutor  (Rscript -e <expr>)    │             │
 │  │  ShellExecutor    (sh -c <cmd>)          │             │
 │  │  QuartoExecutor   (quarto render <path>) │             │
-│  │  RPkgExecutor     (devtools/rcmdcheck/..│             │
+│  │  RPkgExecutor     (test/check/document/ │             │
+│  │                    lint/style/coverage/  │             │
+│  │                    renv_restore/install/ │             │
+│  │                    pkgdown/shinytest/    │             │
+│  │                    targets/benchmark/    │             │
+│  │                    revdepcheck)          │             │
 │  │  ConnectExecutor  (rsconnect deploy)     │             │
 │  │  RmdExecutor      (rmarkdown::render()) │             │
 │  │  ValidateExecutor (validation scripts)  │             │
@@ -63,14 +68,15 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
 
 ```
 cmd/daggle/       Entry point (main.go)
-api/              REST API server: handlers, response types
-cli/              Cobra commands: run, validate, status, list, serve
-dag/              YAML parsing, validation, topo sort, template expansion
+api/              REST API server: handlers, response types, embedded UI
+cli/              Cobra commands (18 subcommands): run, validate, status, list, serve, etc.
+dag/              YAML parsing, validation, topo sort, template expansion, matrix, secrets
 engine/           DAG orchestration: tier walking, retries, hooks, output passing
-executor/         Process supervision: one type per step kind
+executor/         Process supervision: 15 executor implementations for 24 step types
+examples/         Example DAG projects
 renv/             renv.lock detection and R_LIBS_USER resolution
-scheduler/        Cron scheduling, PID file management
-state/            XDG paths, JSONL events, run directories, metadata
+scheduler/        Cron scheduling, PID file management, webhook server
+state/            XDG paths, JSONL events, run directories, metadata, config, cleanup
 ```
 
 ## Data flow
@@ -124,7 +130,8 @@ daggle does not embed R. Every R step spawns a fresh `Rscript` process:
 All state is file-based, following XDG conventions:
 
 ```
-~/.config/daggle/              Config (planned)
+~/.config/daggle/              Config
+  config.yaml                  Global config (cleanup settings)
   dags/                        Global DAG definitions
 
 ~/.local/share/daggle/         Data
