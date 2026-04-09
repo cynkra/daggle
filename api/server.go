@@ -94,6 +94,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/plan", s.handleGetPlan)
 
 	// Runs
+	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/compare", s.handleCompareRuns)
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs", s.handleListRuns)
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}", s.handleGetRun)
 	s.mux.HandleFunc("POST /api/v1/dags/{name}/runs/{run_id}/cancel", s.handleCancelRun)

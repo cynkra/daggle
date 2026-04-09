@@ -117,6 +117,124 @@ func (s *Server) handleCleanup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleCompareRuns(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	run1ID := r.URL.Query().Get("run1")
+	run2ID := r.URL.Query().Get("run2")
+
+	if run1ID == "" || run2ID == "" {
+		writeError(w, http.StatusBadRequest, "both run1 and run2 query parameters are required")
+		return
+	}
+
+	run1, err := s.findRun(name, run1ID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	run2, err := s.findRun(name, run2ID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	resp := s.buildCompareResponse(run1, run2)
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s *Server) buildCompareResponse(run1, run2 *state.RunInfo) CompareResponse {
+	var resp CompareResponse
+
+	// Collect outputs for both runs.
+	out1 := s.collectRunOutputs(run1.Dir)
+	out2 := s.collectRunOutputs(run2.Dir)
+
+	// Build combined key set and find differences.
+	type oKey struct{ step, key string }
+	allKeys := make(map[oKey]bool)
+	for k := range out1 {
+		allKeys[k] = true
+	}
+	for k := range out2 {
+		allKeys[k] = true
+	}
+
+	for k := range allKeys {
+		v1, v2 := out1[k], out2[k]
+		if v1 != v2 {
+			resp.OutputsDiff = append(resp.OutputsDiff, OutputDiff{
+				StepID: k.step,
+				Key:    k.key,
+				Value1: v1,
+				Value2: v2,
+			})
+		}
+	}
+	if resp.OutputsDiff == nil {
+		resp.OutputsDiff = []OutputDiff{}
+	}
+
+	// Duration comparison.
+	meta1, _ := state.ReadMeta(run1.Dir)
+	meta2, _ := state.ReadMeta(run2.Dir)
+
+	if meta1 != nil && meta2 != nil {
+		d1 := meta1.EndTime.Sub(meta1.StartTime).Seconds()
+		d2 := meta2.EndTime.Sub(meta2.StartTime).Seconds()
+		if meta1.EndTime.IsZero() {
+			d1 = 0
+		}
+		if meta2.EndTime.IsZero() {
+			d2 = 0
+		}
+		resp.DurationDiff = DurationDiff{
+			Run1Seconds: d1,
+			Run2Seconds: d2,
+			DiffSeconds: d2 - d1,
+		}
+	}
+
+	// DAG hash comparison.
+	hash1, hash2 := "", ""
+	if meta1 != nil {
+		hash1 = meta1.DAGHash
+	}
+	if meta2 != nil {
+		hash2 = meta2.DAGHash
+	}
+	resp.MetaDiff = MetaDiff{
+		DAGHash1: hash1,
+		DAGHash2: hash2,
+		Changed:  hash1 != hash2,
+	}
+
+	return resp
+}
+
+func (s *Server) collectRunOutputs(runDir string) map[struct{ step, key string }]string {
+	events, err := state.ReadEvents(runDir)
+	if err != nil {
+		return nil
+	}
+
+	stepIDs := make(map[string]bool)
+	for _, e := range events {
+		if e.StepID != "" {
+			stepIDs[e.StepID] = true
+		}
+	}
+
+	type oKey = struct{ step, key string }
+	result := make(map[oKey]string)
+	for stepID := range stepIDs {
+		markers := ParseOutputMarkers(runDir, stepID)
+		for k, v := range markers {
+			result[oKey{step: stepID, key: k}] = v
+		}
+	}
+	return result
+}
+
 func (s *Server) findRun(dagName, runID string) (*state.RunInfo, error) {
 	if runID == "latest" {
 		run, err := state.LatestRun(dagName)
