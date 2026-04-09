@@ -49,3 +49,14 @@ Visualize exposure/impact tracking — which Shiny apps, dashboards, and reports
 ## Run comparison view
 
 Side-by-side diff of outputs, durations, and metadata between two runs of the same DAG. Highlight changes in step outputs and performance regressions.
+
+## Report index page
+
+When using matrix runs to render parameterized reports (e.g. the same Quarto report across 50 clients), daggle does not generate a summary index page — that's the user's responsibility. A Shiny dashboard could:
+
+- List all rendered reports for a matrix run, organized by parameter values
+- Provide download links for each rendered file (via the artifacts API)
+- Show render status per parameter combination (success, failed, cached)
+- Link to step logs for failed renders
+
+This is a natural companion to the `output_dir` / `output_name` template fields that daggle provides for auto-naming matrix report outputs.
