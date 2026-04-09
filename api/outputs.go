@@ -44,7 +44,7 @@ func (s *Server) handleGetOutputs(w http.ResponseWriter, r *http.Request) {
 
 	// Parse output markers from each step's stdout log
 	for stepID := range stepIDs {
-		markers := parseOutputMarkers(run.Dir, stepID)
+		markers := ParseOutputMarkers(run.Dir, stepID)
 		for k, v := range markers {
 			outputs = append(outputs, OutputEntry{
 				StepID: stepID,
@@ -60,8 +60,8 @@ func (s *Server) handleGetOutputs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, outputs)
 }
 
-// parseOutputMarkers reads a step's stdout log and extracts ::daggle-output:: markers.
-func parseOutputMarkers(runDir, stepID string) map[string]string {
+// ParseOutputMarkers reads a step's stdout log and extracts ::daggle-output:: markers.
+func ParseOutputMarkers(runDir, stepID string) map[string]string {
 	data, err := os.ReadFile(runDir + "/" + stepID + ".stdout.log")
 	if err != nil {
 		return nil

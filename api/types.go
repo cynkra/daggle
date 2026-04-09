@@ -183,6 +183,35 @@ type ValidationEntry struct {
 	Message string `json:"message"`
 }
 
+// CompareResponse is returned by GET /api/v1/dags/{name}/runs/compare.
+type CompareResponse struct {
+	OutputsDiff  []OutputDiff `json:"outputs_diff"`
+	DurationDiff DurationDiff `json:"duration_diff"`
+	MetaDiff     MetaDiff     `json:"meta_diff"`
+}
+
+// OutputDiff describes a difference in a single output key between two runs.
+type OutputDiff struct {
+	StepID string `json:"step_id"`
+	Key    string `json:"key"`
+	Value1 string `json:"value1"`
+	Value2 string `json:"value2"`
+}
+
+// DurationDiff describes the duration difference between two runs.
+type DurationDiff struct {
+	Run1Seconds float64 `json:"run1_seconds"`
+	Run2Seconds float64 `json:"run2_seconds"`
+	DiffSeconds float64 `json:"diff_seconds"`
+}
+
+// MetaDiff describes DAG hash differences between two runs.
+type MetaDiff struct {
+	DAGHash1 string `json:"dag_hash1"`
+	DAGHash2 string `json:"dag_hash2"`
+	Changed  bool   `json:"changed"`
+}
+
 // ErrorResponse is returned for errors.
 type ErrorResponse struct {
 	Error string `json:"error"`

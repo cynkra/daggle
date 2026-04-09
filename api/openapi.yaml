@@ -117,6 +117,37 @@ paths:
                 items:
                   $ref: "#/components/schemas/RunSummary"
 
+  /api/v1/dags/{name}/runs/compare:
+    get:
+      summary: Compare two runs
+      operationId: compareRuns
+      tags: [runs]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - name: run1
+          in: query
+          required: true
+          schema:
+            type: string
+          description: First run ID.
+        - name: run2
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Second run ID.
+      responses:
+        "200":
+          description: Comparison result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompareResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/dags/{name}/runs/{run_id}:
     get:
       summary: Get run details
@@ -842,6 +873,60 @@ components:
           type: string
           description: 'Duration string, e.g. "30d", "24h", "1h30m".'
           example: "30d"
+
+    CompareResponse:
+      type: object
+      required: [outputs_diff, duration_diff, meta_diff]
+      properties:
+        outputs_diff:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutputDiff"
+        duration_diff:
+          $ref: "#/components/schemas/DurationDiff"
+        meta_diff:
+          $ref: "#/components/schemas/MetaDiff"
+
+    OutputDiff:
+      type: object
+      required: [step_id, key, value1, value2]
+      properties:
+        step_id:
+          type: string
+        key:
+          type: string
+        value1:
+          type: string
+          description: Value from run1.
+        value2:
+          type: string
+          description: Value from run2.
+
+    DurationDiff:
+      type: object
+      required: [run1_seconds, run2_seconds, diff_seconds]
+      properties:
+        run1_seconds:
+          type: number
+          format: double
+        run2_seconds:
+          type: number
+          format: double
+        diff_seconds:
+          type: number
+          format: double
+          description: run2 - run1 in seconds.
+
+    MetaDiff:
+      type: object
+      required: [dag_hash1, dag_hash2, changed]
+      properties:
+        dag_hash1:
+          type: string
+        dag_hash2:
+          type: string
+        changed:
+          type: boolean
 
     CleanupResponse:
       type: object

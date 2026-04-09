@@ -208,7 +208,7 @@ func (s *Server) uiRunDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	for stepID := range stepIDs {
-		markers := parseOutputMarkers(run.Dir, stepID)
+		markers := ParseOutputMarkers(run.Dir, stepID)
 		for k, v := range markers {
 			outputs = append(outputs, OutputEntry{StepID: stepID, Key: k, Value: v})
 		}

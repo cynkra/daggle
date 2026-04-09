@@ -40,6 +40,7 @@ No authentication by default (localhost-only). Authentication can be added in a 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/dags/{name}/runs` | List runs for a DAG |
+| GET | `/api/v1/dags/{name}/runs/compare?run1=X&run2=Y` | Compare two runs |
 | GET | `/api/v1/dags/{name}/runs/{run_id}` | Get run detail with step status |
 | GET | `/api/v1/dags/{name}/runs/latest` | Alias for most recent run |
 | POST | `/api/v1/dags/{name}/runs/{run_id}/cancel` | Cancel an in-flight run |
@@ -141,6 +142,29 @@ GET /api/v1/dags/daily-etl/runs/abc123
       "attempts": 1
     }
   ]
+}
+```
+
+### Run Comparison
+
+```json
+GET /api/v1/dags/daily-etl/runs/compare?run1=abc123&run2=def456
+
+{
+  "outputs_diff": [
+    { "step_id": "extract", "key": "row_count", "value1": "1542", "value2": "1587" },
+    { "step_id": "model",   "key": "accuracy",  "value1": "0.923", "value2": "0.918" }
+  ],
+  "duration_diff": {
+    "run1_seconds": 252.0,
+    "run2_seconds": 238.0,
+    "diff_seconds": -14.0
+  },
+  "meta_diff": {
+    "dag_hash1": "a1b2c3d4e5f6",
+    "dag_hash2": "d4e5f6a1b2c3",
+    "changed": true
+  }
 }
 ```
 
