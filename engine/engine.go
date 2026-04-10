@@ -184,80 +184,27 @@ func (e *Engine) runTier(ctx context.Context, steps []dag.Step, env []string) er
 const eventStepSkipped = "step_skipped"
 
 func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error {
-	// Check `when` condition — skip (not fail) if false
-	if step.When != nil {
-		if skip, err := e.evaluateCondition(ctx, step.When, env); err != nil {
-			return fmt.Errorf("step %q when condition failed: %w", step.ID, err)
-		} else if skip {
-			e.writeEvent(state.Event{Type: eventStepSkipped, StepID: step.ID})
-			e.logger.Info("step skipped (condition not met)", "step", step.ID)
-			return nil
-		}
+	if skip, err := e.checkWhenCondition(ctx, step, env); err != nil {
+		return err
+	} else if skip {
+		return nil
 	}
 
-	// Check preconditions — fail if not met
-	for i, pre := range step.Preconditions {
-		cond := &dag.StepCondition{RExpr: pre.RExpr, Command: pre.Command}
-		if fail, err := e.evaluateCondition(ctx, cond, env); err != nil {
-			return fmt.Errorf("step %q precondition %d failed: %w", step.ID, i+1, err)
-		} else if fail {
-			return fmt.Errorf("step %q precondition %d not met", step.ID, i+1)
-		}
+	if err := e.checkPreconditions(ctx, step, env); err != nil {
+		return err
 	}
 
-	// Freshness check: verify source files are not stale
-	if len(step.Freshness) > 0 {
-		workdir := e.dag.ResolveWorkdir(step)
-		for _, fc := range step.Freshness {
-			fcPath := fc.Path
-			if !filepath.IsAbs(fcPath) {
-				fcPath = filepath.Join(workdir, fcPath)
-			}
-			maxAge, err := time.ParseDuration(fc.MaxAge)
-			if err != nil {
-				return fmt.Errorf("step %q freshness path %q: invalid max_age %q: %w", step.ID, fc.Path, fc.MaxAge, err)
-			}
-			info, err := os.Stat(fcPath)
-			if err != nil {
-				return fmt.Errorf("step %q freshness path %q: %w", step.ID, fc.Path, err)
-			}
-			age := time.Since(info.ModTime())
-			if age > maxAge {
-				msg := fmt.Sprintf("step %q source %q is stale (age %s, max %s)", step.ID, fc.Path, age.Truncate(time.Second), maxAge)
-				switch fc.OnStale {
-				case "warn":
-					e.logger.Warn(msg)
-				default:
-					return fmt.Errorf("%s", msg)
-				}
-			}
-		}
-	}
-
-	// Cache check: skip execution if inputs haven't changed
-	if step.Cache && e.cacheStore != nil {
-		cacheKey := e.computeCacheKey(step)
-		if entry, ok := e.cacheStore.Lookup(e.dag.Name, step.ID, cacheKey); ok {
-			// Replay cached outputs
-			e.collectOutputs(step.ID, entry.Outputs)
-			e.writeEvent(state.Event{
-				Type:        state.EventStepCached,
-				StepID:      step.ID,
-				CacheKey:    cacheKey,
-				CachedRunID: entry.RunID,
-			})
-			e.logger.Info("step cached", "step", step.ID, "cache_key", cacheKey[:12], "cached_run", entry.RunID)
-			return nil
-		}
-	}
-
-	ex := e.execFn(step)
-	if ex == nil {
-		return fmt.Errorf("no executor for step %q", step.ID)
-	}
-
-	// Resolve working directory
 	workdir := e.dag.ResolveWorkdir(step)
+
+	if err := e.checkFreshness(step, workdir); err != nil {
+		return err
+	}
+
+	if hit, err := e.tryCacheHit(step, workdir, env); err != nil {
+		return err
+	} else if hit {
+		return nil
+	}
 
 	// Merge step-level env + accumulated outputs from prior steps
 	stepEnv := make([]string, len(env))
@@ -270,6 +217,100 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		stepEnv = append(stepEnv, k+"="+v)
 	}
 	e.mu.Unlock()
+
+	return e.executeWithRetries(ctx, step, workdir, stepEnv)
+}
+
+// checkWhenCondition evaluates the step's when condition.
+// Returns (true, nil) if the step should be skipped.
+func (e *Engine) checkWhenCondition(ctx context.Context, step dag.Step, env []string) (bool, error) {
+	if step.When == nil {
+		return false, nil
+	}
+	skip, err := e.evaluateCondition(ctx, step.When, env)
+	if err != nil {
+		return false, fmt.Errorf("step %q when condition failed: %w", step.ID, err)
+	}
+	if skip {
+		e.writeEvent(state.Event{Type: eventStepSkipped, StepID: step.ID})
+		e.logger.Info("step skipped (condition not met)", "step", step.ID)
+		return true, nil
+	}
+	return false, nil
+}
+
+// checkPreconditions evaluates all preconditions for a step, returning an error if any fail.
+func (e *Engine) checkPreconditions(ctx context.Context, step dag.Step, env []string) error {
+	for i, pre := range step.Preconditions {
+		cond := &dag.StepCondition{RExpr: pre.RExpr, Command: pre.Command}
+		if fail, err := e.evaluateCondition(ctx, cond, env); err != nil {
+			return fmt.Errorf("step %q precondition %d failed: %w", step.ID, i+1, err)
+		} else if fail {
+			return fmt.Errorf("step %q precondition %d not met", step.ID, i+1)
+		}
+	}
+	return nil
+}
+
+// checkFreshness verifies that source files referenced by a step are not stale.
+func (e *Engine) checkFreshness(step dag.Step, workdir string) error {
+	for _, fc := range step.Freshness {
+		fcPath := fc.Path
+		if !filepath.IsAbs(fcPath) {
+			fcPath = filepath.Join(workdir, fcPath)
+		}
+		maxAge, err := time.ParseDuration(fc.MaxAge)
+		if err != nil {
+			return fmt.Errorf("step %q freshness path %q: invalid max_age %q: %w", step.ID, fc.Path, fc.MaxAge, err)
+		}
+		info, err := os.Stat(fcPath)
+		if err != nil {
+			return fmt.Errorf("step %q freshness path %q: %w", step.ID, fc.Path, err)
+		}
+		age := time.Since(info.ModTime())
+		if age > maxAge {
+			msg := fmt.Sprintf("step %q source %q is stale (age %s, max %s)", step.ID, fc.Path, age.Truncate(time.Second), maxAge)
+			switch fc.OnStale {
+			case "warn":
+				e.logger.Warn(msg)
+			default:
+				return fmt.Errorf("%s", msg)
+			}
+		}
+	}
+	return nil
+}
+
+// tryCacheHit checks whether the step can be satisfied from cache.
+// Returns (true, nil) if a cache hit was found and outputs were replayed.
+func (e *Engine) tryCacheHit(step dag.Step, _ string, _ []string) (bool, error) {
+	if !step.Cache || e.cacheStore == nil {
+		return false, nil
+	}
+	cacheKey := e.computeCacheKey(step)
+	entry, ok := e.cacheStore.Lookup(e.dag.Name, step.ID, cacheKey)
+	if !ok {
+		return false, nil
+	}
+	// Replay cached outputs
+	e.collectOutputs(step.ID, entry.Outputs)
+	e.writeEvent(state.Event{
+		Type:        state.EventStepCached,
+		StepID:      step.ID,
+		CacheKey:    cacheKey,
+		CachedRunID: entry.RunID,
+	})
+	e.logger.Info("step cached", "step", step.ID, "cache_key", cacheKey[:12], "cached_run", entry.RunID)
+	return true, nil
+}
+
+// executeWithRetries runs the step executor with retry logic, delegating
+// post-execution handling to onStepSuccess and onStepFailure.
+func (e *Engine) executeWithRetries(ctx context.Context, step dag.Step, workdir string, stepEnv []string) error {
+	ex := e.execFn(step)
+	if ex == nil {
+		return fmt.Errorf("no executor for step %q", step.ID)
+	}
 
 	// Apply step-level timeout
 	stepCtx := ctx
@@ -293,66 +334,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		lastResult = ex.Run(stepCtx, step, e.runInfo.Dir, workdir, stepEnv)
 
 		if lastResult.Err == nil {
-			e.writeEvent(state.Event{
-				Type:     state.EventStepCompleted,
-				StepID:   step.ID,
-				ExitCode: lastResult.ExitCode,
-				Duration: lastResult.Duration.String(),
-				Attempt:  attempt,
-			})
-			e.logger.Info("step completed", "step", step.ID, "duration", lastResult.Duration)
-
-			// Collect outputs, namespaced by step ID
-			e.collectOutputs(step.ID, lastResult.Outputs)
-
-			// Write summary, metadata, and validation files
-			e.writeSummaryFile(step.ID, lastResult.Summaries)
-			e.writeMetadataFile(step.ID, lastResult.Metadata)
-			e.writeValidationFile(step.ID, lastResult.Validations)
-
-			// Check for validation failures: if error_on is "error" (or empty/default)
-			// and any validation has status="fail", treat the step as failed.
-			if step.ErrorOn == "" || step.ErrorOn == "error" {
-				if err := checkValidationFailures(lastResult.Validations); err != nil {
-					e.writeEvent(state.Event{
-						Type:     state.EventStepFailed,
-						StepID:   step.ID,
-						ExitCode: 0,
-						Error:    err.Error(),
-						Duration: lastResult.Duration.String(),
-						Attempt:  attempt,
-					})
-					e.logger.Error("step failed due to validation", "step", step.ID, "error", err)
-					if step.OnFailure != nil {
-						e.runHook(ctx, step.OnFailure, "step "+step.ID+" on_failure")
-					}
-					return err
-				}
-			}
-
-			// Verify and record declared artifacts
-			if err := e.verifyArtifacts(step, workdir); err != nil {
-				return err
-			}
-
-			// Save to cache after successful execution
-			if step.Cache && e.cacheStore != nil {
-				cacheKey := e.computeCacheKey(step)
-				entry := cache.Entry{
-					RunID:   e.runInfo.ID,
-					Outputs: lastResult.Outputs,
-				}
-				if err := e.cacheStore.Save(e.dag.Name, step.ID, cacheKey, entry); err != nil {
-					e.logger.Warn("failed to save cache", "step", step.ID, "error", err)
-				}
-			}
-
-			// Run step-level on_success hook
-			if step.OnSuccess != nil {
-				e.runHook(ctx, step.OnSuccess, "step "+step.ID+" on_success")
-			}
-
-			return nil
+			return e.onStepSuccess(ctx, step, lastResult, workdir, stepEnv, attempt)
 		}
 
 		if attempt < maxAttempts {
@@ -367,23 +349,96 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		}
 	}
 
+	return e.onStepFailure(ctx, step, lastResult, maxAttempts)
+}
+
+// onStepSuccess handles post-execution work after a successful step attempt:
+// writing the completed event, collecting outputs, writing summary/meta/validation
+// files, checking validations, verifying artifacts, saving cache, and running
+// the on_success hook.
+func (e *Engine) onStepSuccess(ctx context.Context, step dag.Step, result executor.Result, workdir string, _ []string, attempt int) error {
+	e.writeEvent(state.Event{
+		Type:     state.EventStepCompleted,
+		StepID:   step.ID,
+		ExitCode: result.ExitCode,
+		Duration: result.Duration.String(),
+		Attempt:  attempt,
+	})
+	e.logger.Info("step completed", "step", step.ID, "duration", result.Duration)
+
+	// Collect outputs, namespaced by step ID
+	e.collectOutputs(step.ID, result.Outputs)
+
+	// Write summary, metadata, and validation files
+	e.writeSummaryFile(step.ID, result.Summaries)
+	e.writeMetadataFile(step.ID, result.Metadata)
+	e.writeValidationFile(step.ID, result.Validations)
+
+	// Check for validation failures: if error_on is "error" (or empty/default)
+	// and any validation has status="fail", treat the step as failed.
+	if step.ErrorOn == "" || step.ErrorOn == "error" {
+		if err := checkValidationFailures(result.Validations); err != nil {
+			e.writeEvent(state.Event{
+				Type:     state.EventStepFailed,
+				StepID:   step.ID,
+				ExitCode: 0,
+				Error:    err.Error(),
+				Duration: result.Duration.String(),
+				Attempt:  attempt,
+			})
+			e.logger.Error("step failed due to validation", "step", step.ID, "error", err)
+			if step.OnFailure != nil {
+				e.runHook(ctx, step.OnFailure, "step "+step.ID+" on_failure")
+			}
+			return err
+		}
+	}
+
+	// Verify and record declared artifacts
+	if err := e.verifyArtifacts(step, workdir); err != nil {
+		return err
+	}
+
+	// Save to cache after successful execution
+	if step.Cache && e.cacheStore != nil {
+		cacheKey := e.computeCacheKey(step)
+		entry := cache.Entry{
+			RunID:   e.runInfo.ID,
+			Outputs: result.Outputs,
+		}
+		if err := e.cacheStore.Save(e.dag.Name, step.ID, cacheKey, entry); err != nil {
+			e.logger.Warn("failed to save cache", "step", step.ID, "error", err)
+		}
+	}
+
+	// Run step-level on_success hook
+	if step.OnSuccess != nil {
+		e.runHook(ctx, step.OnSuccess, "step "+step.ID+" on_success")
+	}
+
+	return nil
+}
+
+// onStepFailure handles the final failure of a step after all retries are exhausted:
+// writing the failed event and running the on_failure hook.
+func (e *Engine) onStepFailure(ctx context.Context, step dag.Step, result executor.Result, maxAttempts int) error {
 	e.writeEvent(state.Event{
 		Type:        state.EventStepFailed,
 		StepID:      step.ID,
-		ExitCode:    lastResult.ExitCode,
-		Error:       lastResult.Err.Error(),
-		ErrorDetail: lastResult.ErrorDetail,
-		Duration:    lastResult.Duration.String(),
+		ExitCode:    result.ExitCode,
+		Error:       result.Err.Error(),
+		ErrorDetail: result.ErrorDetail,
+		Duration:    result.Duration.String(),
 		Attempt:     maxAttempts,
 	})
-	e.logger.Error("step failed", "step", step.ID, "error", lastResult.Err)
+	e.logger.Error("step failed", "step", step.ID, "error", result.Err)
 
 	// Run step-level on_failure hook
 	if step.OnFailure != nil {
 		e.runHook(ctx, step.OnFailure, "step "+step.ID+" on_failure")
 	}
 
-	return lastResult.Err
+	return result.Err
 }
 
 // verifyArtifacts checks that declared artifacts exist, computes hashes, and writes events.
