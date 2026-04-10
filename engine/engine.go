@@ -284,10 +284,12 @@ func (e *Engine) tryCacheHit(step dag.Step, _ string, _ []string) (bool, error) 
 	// Replay cached outputs
 	e.collectOutputs(step.ID, entry.Outputs)
 	e.writeEvent(state.Event{
-		Type:        state.EventStepCached,
-		StepID:      step.ID,
-		CacheKey:    cacheKey,
-		CachedRunID: entry.RunID,
+		Type:   state.EventStepCached,
+		StepID: step.ID,
+		CacheInfo: &state.CacheInfo{
+			CacheKey:    cacheKey,
+			CachedRunID: entry.RunID,
+		},
 	})
 	e.logger.Info("step cached", "step", step.ID, "cache_key", cacheKey[:12], "cached_run", entry.RunID)
 	return true, nil
@@ -485,14 +487,16 @@ func (e *Engine) verifyArtifacts(step dag.Step, workdir string) error {
 		}
 
 		e.writeEvent(state.Event{
-			Type:            state.EventStepArtifact,
-			StepID:          step.ID,
-			ArtifactName:    art.Name,
-			ArtifactPath:    relPath,
-			ArtifactAbsPath: absPath,
-			ArtifactHash:    hash,
-			ArtifactSize:    info.Size(),
-			ArtifactFormat:  art.Format,
+			Type:   state.EventStepArtifact,
+			StepID: step.ID,
+			ArtifactInfo: &state.ArtifactInfo{
+				ArtifactName:    art.Name,
+				ArtifactPath:    relPath,
+				ArtifactAbsPath: absPath,
+				ArtifactHash:    hash,
+				ArtifactSize:    info.Size(),
+				ArtifactFormat:  art.Format,
+			},
 		})
 		e.logger.Info("artifact recorded", "step", step.ID, "artifact", art.Name, "path", absPath, "size", info.Size())
 	}

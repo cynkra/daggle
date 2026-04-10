@@ -24,7 +24,7 @@ func (s *Server) handleGetArtifacts(w http.ResponseWriter, r *http.Request) {
 
 	var artifacts []ArtifactEntry
 	for _, e := range events {
-		if e.Type == state.EventStepArtifact {
+		if e.Type == state.EventStepArtifact && e.ArtifactInfo != nil {
 			artifacts = append(artifacts, ArtifactEntry{
 				StepID:  e.StepID,
 				Name:    e.ArtifactName,

@@ -63,7 +63,9 @@ func BuildStepSummaries(events []Event) []StepState {
 		case EventStepCached:
 			ss.Status = "cached"
 			ss.Cached = true
-			ss.CacheKey = e.CacheKey
+			if e.CacheInfo != nil {
+				ss.CacheKey = e.CacheKey
+			}
 		}
 	}
 
