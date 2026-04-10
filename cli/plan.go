@@ -35,24 +35,11 @@ func planDAG(_ *cobra.Command, args []string) error {
 	dagName := args[0]
 	applyOverrides()
 
-	// Resolve and parse DAG file
+	// Resolve, parse, apply defaults, and expand
 	dagPath := resolveDAGPath(dagName)
-	d, err := dag.ParseFile(dagPath)
+	expanded, err := dag.LoadAndExpand(dagPath, nil)
 	if err != nil {
-		return fmt.Errorf("parse DAG %q: %w", dagName, err)
-	}
-
-	// Apply base.yaml defaults
-	baseDefaults, err := dag.LoadBaseDefaults(filepath.Dir(dagPath))
-	if err != nil {
-		return fmt.Errorf("load base.yaml: %w", err)
-	}
-	dag.ApplyBaseDefaults(d, baseDefaults)
-
-	// Expand templates (no params for plan)
-	expanded, err := dag.ExpandDAG(d, nil)
-	if err != nil {
-		return fmt.Errorf("expand templates: %w", err)
+		return fmt.Errorf("DAG %q: %w", dagName, err)
 	}
 
 	// Expand matrix steps

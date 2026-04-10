@@ -45,25 +45,14 @@ func runDAG(_ *cobra.Command, args []string) error {
 
 	// Resolve DAG file
 	dagPath := resolveDAGPath(dagName)
-	d, err := dag.ParseFile(dagPath)
-	if err != nil {
-		return fmt.Errorf("parse DAG %q: %w", dagName, err)
-	}
-
-	// Apply base.yaml defaults if present
-	baseDefaults, err := dag.LoadBaseDefaults(filepath.Dir(dagPath))
-	if err != nil {
-		return fmt.Errorf("load base.yaml: %w", err)
-	}
-	dag.ApplyBaseDefaults(d, baseDefaults)
 
 	// Parse param overrides
 	params := parseParams(runParams)
 
-	// Expand templates
-	expanded, err := dag.ExpandDAG(d, params)
+	// Load, apply defaults, and expand templates
+	expanded, err := dag.LoadAndExpand(dagPath, params)
 	if err != nil {
-		return fmt.Errorf("expand templates: %w", err)
+		return fmt.Errorf("DAG %q: %w", dagName, err)
 	}
 
 	// Resolve secret references in env vars (${env:}, ${file:}, ${vault:})
