@@ -102,14 +102,20 @@ engine.Run()           Walk tiers sequentially
   │
   ├── For each tier: run steps concurrently (goroutines + WaitGroup)
   │     │
+  │     ├── Check when condition → skip if false
+  │     ├── Check preconditions → fail if not met
+  │     ├── Check freshness → fail/warn if sources stale
+  │     ├── Check cache → skip if hit (replay outputs)
+  │     │
   │     ├── executor.New(step)     Select executor by step type
   │     ├── executor.Run()         Spawn subprocess, capture I/O
   │     │     │
   │     │     ├── stdout → log file + terminal (markers stripped)
   │     │     ├── stderr → log file + terminal
-  │     │     └── ::daggle-output:: markers → Result.Outputs
+  │     │     └── ::daggle-output/summary/meta/validation:: → Result
   │     │
-  │     ├── On success: collect outputs, run on_success hook
+  │     ├── On success: collect outputs, verify artifacts, write
+  │     │   summary/meta/validation files, save cache, run hook
   │     ├── On failure: retry (with backoff), then run on_failure hook
   │     └── Write JSONL events for each state transition
   │
@@ -124,7 +130,7 @@ daggle does not embed R. Every R step spawns a fresh `Rscript` process:
 - **Process groups** (`Setpgid: true`) — ensures child processes (e.g. R spawning further processes) are killed on timeout
 - **Timeout enforcement** — context deadline triggers SIGTERM to the process group, 5s grace period, then SIGKILL
 - **Environment isolation** — each step gets: parent env + DAG env + renv `R_LIBS_USER` (if detected) + step env + accumulated `DAGGLE_OUTPUT_*` vars + metadata (`DAGGLE_RUN_ID`, `DAGGLE_DAG_NAME`, `DAGGLE_RUN_DIR`)
-- **Log capture** — stdout and stderr written to per-step log files; stdout also parsed line-by-line for `::daggle-output::` markers
+- **Log capture** — stdout and stderr written to per-step log files; stdout parsed line-by-line for four marker protocols: `::daggle-output::` (inter-step data), `::daggle-summary::` (rich summaries), `::daggle-meta::` (typed metadata), `::daggle-validation::` (validation results). See [protocols.md](protocols.md)
 
 ## State and storage
 
@@ -145,6 +151,13 @@ All state is file-based, following XDG conventions:
           <step>.stdout.log    Captured stdout
           <step>.stderr.log    Captured stderr
           <step>.inline.R      Generated R code (for r_expr, rpkg, connect steps)
+          <step>.summary.md   Step summary (if ::daggle-summary:: emitted)
+          <step>.meta.json    Typed metadata (if ::daggle-meta:: emitted)
+          <step>.validations.json  Validation results (if ::daggle-validation:: emitted)
+  cache/
+    <dag-name>/
+      <step-id>/
+        <cache-key>.json       Cached outputs and artifact hashes
   proc/
     scheduler.pid              Scheduler process ID file
 ```
@@ -210,13 +223,13 @@ Total: 5 external Go dependencies. R and quarto are runtime dependencies only.
 The `daggleR` package ([cynkra/daggleR](https://github.com/cynkra/daggleR)) is a thin R wrapper around the daggle protocol. It lives in a separate repository and has no build-time dependency on the Go codebase.
 
 **In-step helpers** (base R, no network) run inside R steps executed by daggle. They read/write the same env vars and stdout markers that daggle uses natively:
-- `output(name, value)` — emits `::daggle-output name=<key>::<value>` to stdout
-- `run_id()`, `dag_name()`, `run_dir()` — read `DAGGLE_RUN_ID`, `DAGGLE_DAG_NAME`, `DAGGLE_RUN_DIR`
-- `get_output(step, key)` — reads `DAGGLE_OUTPUT_<STEP>_<KEY>` env var
+- `output()`, `run_id()`, `dag_name()`, `run_dir()`, `get_output()`, `get_matrix()`
+- Phase 7 additions: `summary_md()`, `meta_numeric()`, `meta_text()`, `meta_table()`, `meta_image()`, `validation()`
 
 **API wrappers** (httr2) talk to the REST API served by `daggle serve --port`:
-- DAG management: `list_dags()`, `get_dag()`
-- Run management: `trigger()`, `list_runs()`, `get_run()`, `get_outputs()`, `get_step_log()`, `cancel_run()`
+- DAG management: `list_dags()`, `get_dag()`, `plan()`
+- Run management: `trigger()`, `list_runs()`, `get_run()`, `get_outputs()`, `get_step_log()`, `cancel_run()`, `compare_runs()`
+- Artifacts & metadata: `list_artifacts()`, `get_summaries()`, `get_metadata()`, `get_validations()`
 - Approval: `approve()`, `reject()`
 - Operations: `health()`, `cleanup()`
 

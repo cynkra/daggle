@@ -120,23 +120,9 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 6 — Minimal Status UI:** Read-only status dashboard embedded in the Go binary via `go:embed`. DAG list, run detail with step status, log viewer. Served alongside the REST API on `daggle serve --port`. No JS framework — Go HTML templates + CSS only. For custom dashboards, use the REST API with daggleR/Shiny or any HTTP client.
 
+**Phase 7 — Analyst Workflow Features:** 11 features targeting daily data analysis needs. Artifact declaration with SHA-256 hashing. Step-level caching (input hashing, `daggle plan` dry-run). Rich metadata protocols (`::daggle-summary::`, `::daggle-meta::`, `::daggle-validation::`). Source freshness checks with `on_stale: fail | warn`. Deadline alerting for scheduled DAGs. Parameterized report rendering (`output_dir`/`output_name` templates). Run comparison (`daggle diff`). Richer hook context env vars. Direct log access (`daggle logs`). 6 new API endpoints, 3 new CLI commands, 7 new YAML fields.
+
 ### Planned
-
-**Phase 7 — Analyst Workflow Features:**
-
-These features target the daily needs of R users doing data analysis, going beyond step types into workflow-level improvements. See `.claude/plans/phase7.md` for the detailed implementation plan.
-
-- **Artifacts & data lineage** — Steps declare output files in YAML (`artifacts:` block). daggle verifies they exist, records SHA-256 hash and size, and exposes them via API. Paths are relative to workdir. Optional epoch-based filename versioning to avoid overwrites.
-- **Step-level caching** — Hash step inputs (script content + env vars + upstream outputs + renv.lock hash) and skip execution if unchanged. Opt-in per step via `cache: true`. Per-DAG cache store.
-- **`daggle plan`** — Standalone dry-run command showing which steps would run vs skip when caching is enabled, and *why* each step is outdated (which input changed). Also available as API endpoint for Shiny dashboards.
-- **Step summaries / rich metadata** — New `::daggle-summary::` and `::daggle-meta::` marker protocols. Metadata types: numeric, text, table (JSON), image (artifact path). Stored in per-step files (not events.jsonl). Exposed via API for custom dashboards.
-- **Source freshness / data SLAs** — Step-level `freshness:` block declaring input file age expectations. Checked before step execution. Configurable behavior via `on_stale: fail | warn`.
-- **Deadline / absence alerting** — `deadline: "08:00"` in the trigger block with `on_deadline:` hook. Fires if a scheduled DAG hasn't started by the deadline. Alert only, does not trigger.
-- **Data validation protocol** — Separate `::daggle-validation::` marker protocol for structured pass/warn/fail results. Respects step-level `error_on:` settings. Exposed via dedicated API endpoint.
-- **Parameterized reports at scale** — `output_dir` and `output_name` template fields on steps, supporting `{{ .Matrix.* }}` variables for auto-naming rendered reports across parameter sets.
-- **Run comparison** — `daggle diff` CLI command and API endpoint comparing outputs, durations, and metadata between two runs.
-- **Richer notification context** — Additional env vars in hooks: `DAGGLE_RUN_DURATION`, `DAGGLE_RUN_STATUS`, `DAGGLE_FAILED_STEPS`, `DAGGLE_RUN_URL`, plus all output and artifact vars.
-- `daggle logs <dag> [--step <id>] [--follow]` — direct log access with tail-follow mode
 
 **Phase 8 — Workflow Composition & UX:**
 - **Cross-DAG output dependencies** — Steps declare inputs from other DAGs' runs. Deferred until the artifact system is proven in practice.
