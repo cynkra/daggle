@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.36">
+<meta name="generator" content="quarto-1.9.37">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -40,14 +40,14 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-975e726794ce811e14261b5ab5acfd7c.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-3ff4805f19b0085abba01199065d0a21.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-975e726794ce811e14261b5ab5acfd7c.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-cad2a2f8a56dfe71ee895a68e79c9b9a.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-70be5ccd51f03de5ce195d75fadf0882.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-cad2a2f8a56dfe71ee895a68e79c9b9a.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-eb4dfb67da3ccbfb40ee136100626296.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-8693b9f4212a3999dc759f9068adc934.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-eb4dfb67da3ccbfb40ee136100626296.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-8032fdaff60d9edb6975f8f3445510b7.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -369,6 +369,7 @@ ul.task-list li input[type="checkbox"] {
   <ul class="collapse">
   <li><a href="#configuration" id="toc-configuration" class="nav-link active" data-scroll-target="#configuration">Configuration</a></li>
   <li><a href="#runtime-available-in-steps" id="toc-runtime-available-in-steps" class="nav-link" data-scroll-target="#runtime-available-in-steps">Runtime (available in steps)</a></li>
+  <li><a href="#hook-context-available-in-hooks" id="toc-hook-context-available-in-hooks" class="nav-link" data-scroll-target="#hook-context-available-in-hooks">Hook context (available in hooks)</a></li>
   <li><a href="#secret-resolution" id="toc-secret-resolution" class="nav-link" data-scroll-target="#secret-resolution">Secret resolution</a></li>
   <li><a href="#xdg-fallbacks" id="toc-xdg-fallbacks" class="nav-link" data-scroll-target="#xdg-fallbacks">XDG fallbacks</a></li>
   </ul>
@@ -468,6 +469,36 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td><code>DAGGLE_MATRIX_&lt;KEY&gt;</code></td>
 <td>Current matrix parameter value. Key is uppercased. See <a href="../writing-dags/matrix.html">Matrix Runs</a>.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="hook-context-available-in-hooks" class="level2">
+<h2 class="anchored" data-anchor-id="hook-context-available-in-hooks">Hook context (available in hooks)</h2>
+<p>These variables are set by the engine and available inside <code>on_success</code>, <code>on_failure</code>, <code>on_exit</code>, and <code>on_deadline</code> hooks.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 43%">
+<col style="width: 56%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>DAGGLE_RUN_DURATION</code></td>
+<td>Total run duration as a human-readable string (e.g.&nbsp;<code>"2m34s"</code>).</td>
+</tr>
+<tr class="even">
+<td><code>DAGGLE_RUN_STATUS</code></td>
+<td>Final status of the run (e.g.&nbsp;<code>"success"</code>, <code>"failure"</code>, <code>"cancelled"</code>).</td>
+</tr>
+<tr class="odd">
+<td><code>DAGGLE_FAILED_STEPS</code></td>
+<td>Comma-separated list of step IDs that failed, or empty if none.</td>
 </tr>
 </tbody>
 </table>

@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.36">
+<meta name="generator" content="quarto-1.9.37">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -75,14 +75,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-975e726794ce811e14261b5ab5acfd7c.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-3ff4805f19b0085abba01199065d0a21.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-975e726794ce811e14261b5ab5acfd7c.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-cad2a2f8a56dfe71ee895a68e79c9b9a.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-70be5ccd51f03de5ce195d75fadf0882.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-cad2a2f8a56dfe71ee895a68e79c9b9a.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-eb4dfb67da3ccbfb40ee136100626296.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-8693b9f4212a3999dc759f9068adc934.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-eb4dfb67da3ccbfb40ee136100626296.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-8032fdaff60d9edb6975f8f3445510b7.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -406,6 +406,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#environment-variable-naming" id="toc-environment-variable-naming" class="nav-link" data-scroll-target="#environment-variable-naming">Environment variable naming</a></li>
   <li><a href="#parsing-behavior" id="toc-parsing-behavior" class="nav-link" data-scroll-target="#parsing-behavior">Parsing behavior</a></li>
   <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples">Examples</a></li>
+  <li><a href="#summary-markers" id="toc-summary-markers" class="nav-link" data-scroll-target="#summary-markers">Summary markers</a></li>
+  <li><a href="#metadata-markers" id="toc-metadata-markers" class="nav-link" data-scroll-target="#metadata-markers">Metadata markers</a></li>
+  <li><a href="#validation-markers" id="toc-validation-markers" class="nav-link" data-scroll-target="#validation-markers">Validation markers</a></li>
+  <li><a href="#general-notes" id="toc-general-notes" class="nav-link" data-scroll-target="#general-notes">General notes</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -492,9 +496,110 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">args</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"--accuracy"</span><span class="kw">,</span><span class="at"> </span><span class="st">"$DAGGLE_OUTPUT_FIT_MODEL_ACCURACY"</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Or read directly in R:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>accuracy <span class="ot">&lt;-</span> <span class="fu">Sys.getenv</span>(<span class="st">"DAGGLE_OUTPUT_FIT_MODEL_ACCURACY"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-
-
 </section>
+</section>
+<section id="summary-markers" class="level2">
+<h2 class="anchored" data-anchor-id="summary-markers">Summary markers</h2>
+<p>Steps can emit rich summaries (typically markdown) for display in dashboards and the API.</p>
+<section id="format" class="level3">
+<h3 class="anchored" data-anchor-id="format">Format</h3>
+<pre><code>::daggle-summary format=&lt;format&gt;::&lt;content&gt;</code></pre>
+<ul>
+<li><strong>format</strong>: Content format identifier (e.g.&nbsp;<code>markdown</code>).</li>
+<li><strong>content</strong>: The summary content.</li>
+</ul>
+</section>
+<section id="examples-1" class="level3">
+<h3 class="anchored" data-anchor-id="examples-1">Examples</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-summary format=markdown::## Results</span><span class="sc">\n\n</span><span class="st">Processed **42** rows successfully.</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-summary format=markdown::Model accuracy: 0.95</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">"::daggle-summary format=markdown::## Deploy complete"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="behavior" class="level3">
+<h3 class="anchored" data-anchor-id="behavior">Behavior</h3>
+<ul>
+<li>Multiple summaries per step are concatenated with newlines.</li>
+<li>Written to <code>{step_id}.summary.md</code> in the run directory.</li>
+<li>Available via <code>GET /api/v1/dags/{name}/runs/{run_id}/summaries</code>.</li>
+</ul>
+</section>
+</section>
+<section id="metadata-markers" class="level2">
+<h2 class="anchored" data-anchor-id="metadata-markers">Metadata markers</h2>
+<p>Steps can emit typed metadata entries for structured reporting.</p>
+<section id="format-1" class="level3">
+<h3 class="anchored" data-anchor-id="format-1">Format</h3>
+<pre><code>::daggle-meta type=&lt;type&gt; name=&lt;name&gt;::&lt;value&gt;</code></pre>
+<ul>
+<li><strong>type</strong>: One of <code>numeric</code>, <code>text</code>, <code>table</code>, <code>image</code>.</li>
+<li><strong>name</strong>: Identifier matching <code>[a-zA-Z_][a-zA-Z0-9_]*</code>.</li>
+<li><strong>value</strong>: Interpretation depends on type:
+<ul>
+<li><code>numeric</code> – A number as a string (e.g.&nbsp;<code>1542</code>, <code>0.95</code>).</li>
+<li><code>text</code> – Free-form text.</li>
+<li><code>table</code> – A JSON array of objects (e.g.&nbsp;<code>[{"x":1},{"x":2}]</code>).</li>
+<li><code>image</code> – A file path relative to the working directory.</li>
+</ul></li>
+</ul>
+</section>
+<section id="examples-2" class="level3">
+<h3 class="anchored" data-anchor-id="examples-2">Examples</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-meta type=numeric name=row_count::1542</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-meta type=text name=model_desc::Linear regression with 3 predictors</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">'::daggle-meta type=table name=top5::[{"name":"Alice","score":98},{"name":"Bob","score":95}]</span><span class="sc">\n</span><span class="st">'</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-meta type=image name=residuals::output/residuals.png</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">"::daggle-meta type=numeric name=elapsed_sec::34"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="behavior-1" class="level3">
+<h3 class="anchored" data-anchor-id="behavior-1">Behavior</h3>
+<ul>
+<li>Multiple metadata entries per step are supported.</li>
+<li>Written to <code>{step_id}.meta.json</code> in the run directory.</li>
+<li>Available via <code>GET /api/v1/dags/{name}/runs/{run_id}/metadata</code>.</li>
+</ul>
+</section>
+</section>
+<section id="validation-markers" class="level2">
+<h2 class="anchored" data-anchor-id="validation-markers">Validation markers</h2>
+<p>Steps can emit structured validation results for data quality checks.</p>
+<section id="format-2" class="level3">
+<h3 class="anchored" data-anchor-id="format-2">Format</h3>
+<pre><code>::daggle-validation status=&lt;status&gt; name=&lt;name&gt;::&lt;message&gt;</code></pre>
+<ul>
+<li><strong>status</strong>: One of <code>pass</code>, <code>warn</code>, <code>fail</code>.</li>
+<li><strong>name</strong>: Identifier matching <code>[a-zA-Z_][a-zA-Z0-9_]*</code>.</li>
+<li><strong>message</strong>: Human-readable description of the validation result.</li>
+</ul>
+</section>
+<section id="examples-3" class="level3">
+<h3 class="anchored" data-anchor-id="examples-3">Examples</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-validation status=pass name=row_count::Expected &gt; 0, got 1542</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-validation status=warn name=missing_pct::12% missing (threshold: 20%)</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-validation status=fail name=schema::Column 'date' expected date, got character</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">"::daggle-validation status=pass name=file_exists::data.csv found"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="behavior-2" class="level3">
+<h3 class="anchored" data-anchor-id="behavior-2">Behavior</h3>
+<ul>
+<li>Multiple validations per step are supported.</li>
+<li>Written to <code>{step_id}.validations.json</code> in the run directory.</li>
+<li>Available via <code>GET /api/v1/dags/{name}/runs/{run_id}/validations</code>.</li>
+<li>A validation with <code>status=fail</code> causes the step to be treated as failed when the step’s <code>error_on</code> setting is <code>"error"</code> (the default). This applies even when the step process exits with code 0.</li>
+<li>Validations with <code>status=warn</code> are recorded but do not affect step success.</li>
+<li>Validations with <code>status=pass</code> are informational.</li>
+</ul>
+</section>
+</section>
+<section id="general-notes" class="level2">
+<h2 class="anchored" data-anchor-id="general-notes">General notes</h2>
+<ul>
+<li>All markers (output, summary, metadata, validation) are stripped from terminal output but preserved in log files.</li>
+<li>Marker names must start with a letter or underscore, followed by letters, digits, or underscores.</li>
+<li>Markers are parsed line-by-line from stdout only (not stderr).</li>
+<li>Invalid marker lines (wrong format, unknown status, etc.) are treated as regular output.</li>
+</ul>
+
+
 </section>
 
 </main> <!-- /main -->

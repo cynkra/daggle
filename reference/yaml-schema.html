@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.9.36">
+<meta name="generator" content="quarto-1.9.37">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -75,14 +75,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-975e726794ce811e14261b5ab5acfd7c.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-3ff4805f19b0085abba01199065d0a21.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-975e726794ce811e14261b5ab5acfd7c.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-cad2a2f8a56dfe71ee895a68e79c9b9a.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-70be5ccd51f03de5ce195d75fadf0882.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-cad2a2f8a56dfe71ee895a68e79c9b9a.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-eb4dfb67da3ccbfb40ee136100626296.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-8693b9f4212a3999dc759f9068adc934.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-eb4dfb67da3ccbfb40ee136100626296.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-8032fdaff60d9edb6975f8f3445510b7.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -408,6 +408,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#step-fields" id="toc-step-fields" class="nav-link" data-scroll-target="#step-fields">Step fields</a></li>
   <li><a href="#retry-config" id="toc-retry-config" class="nav-link" data-scroll-target="#retry-config">Retry config</a></li>
   <li><a href="#hook-fields" id="toc-hook-fields" class="nav-link" data-scroll-target="#hook-fields">Hook fields</a></li>
+  <li><a href="#artifacts-config" id="toc-artifacts-config" class="nav-link" data-scroll-target="#artifacts-config">Artifacts config</a></li>
+  <li><a href="#freshness-config" id="toc-freshness-config" class="nav-link" data-scroll-target="#freshness-config">Freshness config</a></li>
   <li><a href="#template-variables" id="toc-template-variables" class="nav-link" data-scroll-target="#template-variables">Template variables</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -571,6 +573,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>overlap</code></td>
 <td>enum</td>
 <td><code>"skip"</code> (default) or <code>"cancel"</code> – what to do if DAG is already running</td>
+</tr>
+<tr class="odd">
+<td><code>deadline</code></td>
+<td>string</td>
+<td>Time-of-day deadline in <code>HH:MM</code> format. Used with <code>on_deadline</code> hook</td>
+</tr>
+<tr class="even">
+<td><code>on_deadline</code></td>
+<td>hook</td>
+<td>Hook executed when the deadline is reached and the DAG is still running</td>
 </tr>
 <tr class="odd">
 <td><code>watch</code></td>
@@ -872,13 +884,48 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Max concurrent matrix instances</td>
 </tr>
 <tr class="odd">
+<td><code>artifacts</code></td>
+<td>array</td>
+<td>no</td>
+<td><code>[]</code></td>
+<td>Output file declarations. Each entry has <code>name</code>, <code>path</code>, <code>format</code> (optional), <code>versioned</code> (optional). See <a href="#artifacts-config">artifacts config</a></td>
+</tr>
+<tr class="even">
+<td><code>cache</code></td>
+<td>boolean</td>
+<td>no</td>
+<td><code>false</code></td>
+<td>Enable step-level caching. When <code>true</code>, the step is skipped if inputs have not changed since the last successful run</td>
+</tr>
+<tr class="odd">
+<td><code>freshness</code></td>
+<td>array</td>
+<td>no</td>
+<td><code>[]</code></td>
+<td>Source freshness checks on input files. Each entry has <code>path</code>, <code>max_age</code>, <code>on_stale</code> (optional). See <a href="#freshness-config">freshness config</a></td>
+</tr>
+<tr class="even">
+<td><code>output_dir</code></td>
+<td>string</td>
+<td>no</td>
+<td>(none)</td>
+<td>Output directory template for rendered reports (Quarto/Rmd). Supports template variables</td>
+</tr>
+<tr class="odd">
+<td><code>output_name</code></td>
+<td>string</td>
+<td>no</td>
+<td>(none)</td>
+<td>Output filename template for rendered reports. Supports template variables</td>
+</tr>
+<tr class="even">
 <td><code>on_success</code></td>
 <td>hook</td>
 <td>no</td>
 <td>(none)</td>
 <td>Step success hook</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>on_failure</code></td>
 <td>hook</td>
 <td>no</td>
@@ -1178,6 +1225,127 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
+</section>
+<section id="artifacts-config" class="level2">
+<h2 class="anchored" data-anchor-id="artifacts-config">Artifacts config</h2>
+<p>Each entry in the <code>artifacts</code> array declares an output file produced by the step.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 13%">
+<col style="width: 22%">
+<col style="width: 20%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>name</code></td>
+<td>string</td>
+<td>yes</td>
+<td>–</td>
+<td>Unique name within the step</td>
+</tr>
+<tr class="even">
+<td><code>path</code></td>
+<td>string</td>
+<td>yes</td>
+<td>–</td>
+<td>Path relative to workdir</td>
+</tr>
+<tr class="odd">
+<td><code>format</code></td>
+<td>string</td>
+<td>no</td>
+<td>(none)</td>
+<td>File format hint (e.g.&nbsp;<code>parquet</code>, <code>rds</code>, <code>csv</code>, <code>png</code>)</td>
+</tr>
+<tr class="even">
+<td><code>versioned</code></td>
+<td>boolean</td>
+<td>no</td>
+<td><code>false</code></td>
+<td>If <code>true</code>, append epoch timestamp to filename</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">steps</span><span class="kw">:</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> train</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">script</span><span class="kw">:</span><span class="at"> train.R</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">artifacts</span><span class="kw">:</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> model</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">path</span><span class="kw">:</span><span class="at"> output/model.rds</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">format</span><span class="kw">:</span><span class="at"> rds</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">versioned</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> metrics</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">path</span><span class="kw">:</span><span class="at"> output/metrics.csv</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">format</span><span class="kw">:</span><span class="at"> csv</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Artifacts are tracked by the engine. After a run, their hashes and sizes are recorded and available via <code>GET /api/v1/dags/{name}/runs/{run_id}/artifacts</code>.</p>
+</section>
+<section id="freshness-config" class="level2">
+<h2 class="anchored" data-anchor-id="freshness-config">Freshness config</h2>
+<p>Each entry in the <code>freshness</code> array declares a freshness expectation on an input file.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 13%">
+<col style="width: 22%">
+<col style="width: 20%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>path</code></td>
+<td>string</td>
+<td>yes</td>
+<td>–</td>
+<td>Path to the input file</td>
+</tr>
+<tr class="even">
+<td><code>max_age</code></td>
+<td>duration</td>
+<td>yes</td>
+<td>–</td>
+<td>Maximum acceptable age (e.g.&nbsp;<code>"24h"</code>, <code>"1h30m"</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>on_stale</code></td>
+<td>enum</td>
+<td>no</td>
+<td><code>"fail"</code></td>
+<td><code>"fail"</code> (default) or <code>"warn"</code> – action when the file is older than <code>max_age</code></td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">steps</span><span class="kw">:</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> transform</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">script</span><span class="kw">:</span><span class="at"> transform.R</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">freshness</span><span class="kw">:</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">path</span><span class="kw">:</span><span class="at"> data/raw.csv</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">max_age</span><span class="kw">:</span><span class="at"> </span><span class="st">"24h"</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">on_stale</span><span class="kw">:</span><span class="at"> fail</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">path</span><span class="kw">:</span><span class="at"> data/lookup.csv</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">max_age</span><span class="kw">:</span><span class="at"> </span><span class="st">"7d"</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">on_stale</span><span class="kw">:</span><span class="at"> warn</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="template-variables" class="level2">
 <h2 class="anchored" data-anchor-id="template-variables">Template variables</h2>
