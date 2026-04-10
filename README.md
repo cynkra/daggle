@@ -195,31 +195,6 @@ Downstream steps receive these as environment variables, namespaced by step ID:
 
 Output markers are parsed and stripped from terminal output but kept in log files.
 
-### Lifecycle hooks
-
-Hooks run after DAG or step completion. They can be R expressions or shell commands:
-
-```yaml
-# DAG-level hooks
-on_success:
-  r_expr: 'slackr::slackr_msg("Pipeline succeeded")'
-on_failure:
-  command: echo "FAILED" >> /var/log/alerts.log
-on_exit:
-  r_expr: 'logger::log_info("Done")'
-
-steps:
-  - id: model
-    script: fit.R
-    # Step-level hooks
-    on_success:
-      r_expr: 'saveRDS(Sys.time(), "last_success.rds")'
-    on_failure:
-      r_expr: 'saveRDS(last.warning, "debug.rds")'
-```
-
-Hooks receive all run metadata and accumulated step outputs as environment variables.
-
 ## R package development
 
 daggle has first-class support for R package workflows:
@@ -248,181 +223,33 @@ steps:
 
 Each step checks for its required R package (devtools, rcmdcheck, roxygen2, lintr, styler, covr, renv) and fails with a clear install instruction if missing. Test results, check errors/warnings/notes, lint issue counts, and coverage percentages are emitted as `::daggle-output::` markers for downstream use.
 
-## Posit Connect deployment
-
-Deploy Shiny apps, Quarto docs, or Plumber APIs to Posit Connect:
-
-```yaml
-steps:
-  - id: render
-    quarto: reports/dashboard.qmd
-  - id: deploy
-    connect:
-      type: quarto
-      path: reports/dashboard.qmd
-      name: sales-dashboard
-    depends: [render]
-```
-
-Authentication via environment variables:
-
-```yaml
-env:
-  CONNECT_SERVER: "https://connect.example.com"
-  CONNECT_API_KEY: "${env:CONNECT_API_KEY}"
-```
-
-Supported types: `shiny`, `quarto`, `plumber`. Requires the `rsconnect` R package.
-
 ## Triggers
 
-DAGs can be triggered automatically via the `trigger:` block. Multiple triggers can coexist — any matching trigger starts a run. Run `daggle serve` to start the trigger daemon.
+DAGs can be triggered automatically via the `trigger:` block. Run `daggle serve` to start the trigger daemon. Multiple triggers can coexist — any matching trigger starts a run.
 
-### Cron schedule
-
-```yaml
-name: daily-report
-trigger:
-  schedule: "30 6 * * MON-FRI"  # 6:30 AM weekdays
-steps:
-  - id: report
-    script: reports/daily.R
-```
-
-Supports standard 5-field cron plus `@every 5m`, `@hourly`, etc.
-
-### File watcher
-
-```yaml
-name: process-uploads
-trigger:
-  watch:
-    path: /data/incoming/
-    pattern: "*.csv"
-    debounce: 5s
-steps:
-  - id: process
-    script: etl/process.R
-```
-
-Triggers when files matching the pattern are created or modified in the watched directory. Debounce prevents firing on partial writes.
-
-### DAG completion
-
-```yaml
-name: send-report
-trigger:
-  on_dag:
-    name: daily-etl
-    status: completed             # completed (default), failed, or any
-steps:
-  - id: notify
-    r_expr: 'slackr::slackr_msg("ETL finished, report sent")'
-```
-
-Triggers when another DAG completes or fails. Enables multi-DAG workflows without sub-DAG composition.
-
-### Webhook
-
-```yaml
-name: deploy-on-push
-trigger:
-  webhook:
-    secret: "${WEBHOOK_SECRET}"
-steps:
-  - id: deploy
-    connect:
-      type: quarto
-      path: reports/dashboard.qmd
-```
-
-Triggers on HTTP POST to `/webhook/{dag-name}`. When `daggle serve` detects webhook triggers, it starts an HTTP server on a local port. Validate requests with HMAC-SHA256 via the `X-Daggle-Signature` header (format: `sha256=<hex>`).
-
-### Condition polling
-
-```yaml
-name: process-new-data
-trigger:
-  condition:
-    command: 'test -f /data/ready.flag'
-    poll_interval: 5m
-steps:
-  - id: process
-    script: etl/process.R
-```
-
-Evaluates a shell command or R expression (`r_expr:`) on an interval. Triggers when it succeeds (exit code 0). Subsumes database polling, API readiness checks, and any other evaluatable condition.
-
-### Git changes
-
-```yaml
-name: local-ci
-trigger:
-  git:
-    branch: main
-    poll_interval: 30s
-steps:
-  - id: test
-    test: "."
-  - id: check
-    check: "."
-    depends: [test]
-```
-
-Polls the local git repository for new commits. Triggers when the commit hash changes. Useful for local CI workflows.
-
-### Combined triggers
-
-Triggers are additive — any matching trigger starts a run:
+| Trigger | Field | Mechanism |
+|---------|-------|-----------|
+| Cron | `schedule:` | Standard 5-field cron or `@every 5m`, `@hourly` |
+| File watcher | `watch:` | fsnotify with debounce |
+| Webhook | `webhook:` | HTTP POST with optional HMAC-SHA256 |
+| DAG completion | `on_dag:` | Fires when another DAG completes/fails |
+| Condition | `condition:` | Polls an R expression or shell command |
+| Git | `git:` | Polls for new commits by branch |
 
 ```yaml
 name: etl-pipeline
 trigger:
-  schedule: "0 6 * * *"        # daily at 6 AM
-  watch:
+  schedule: "30 6 * * MON-FRI"   # cron
+  watch:                           # also trigger on file drops
     path: /data/incoming/
     pattern: "*.csv"
     debounce: 5s
-```
-
-### Overlap policy
-
-By default, triggers are skipped if the DAG is already running. Set `overlap: cancel` to kill the old run and start fresh:
-
-```yaml
-trigger:
-  schedule: "@every 5m"
-  overlap: cancel
+  overlap: skip                    # skip (default) or cancel running instance
 ```
 
 ## Scheduler
 
-`daggle serve` starts a long-running daemon that monitors DAG files and executes triggers automatically.
-
-```bash
-# Start the scheduler
-daggle serve
-
-# Start with REST API enabled
-daggle serve --port 8787
-
-# Stop the scheduler
-daggle stop
-```
-
-The scheduler:
-- Scans the DAG directory for files with `trigger:` blocks
-- Manages cron schedules, file watchers, webhooks, condition polling, git polling, and DAG-completion listeners
-- Hot-reloads DAG files every 30 seconds, or immediately on SIGHUP
-- Enforces overlap policy per DAG: `skip` (default) or `cancel`
-- Limits to 4 concurrent DAG runs
-- Writes a PID file (`~/.local/share/daggle/proc/scheduler.pid`) for process management
-- Shuts down gracefully on SIGINT/SIGTERM — stops accepting new runs and waits up to 5 minutes for in-flight runs to finish
-- Optionally serves the REST API and a read-only status dashboard when `--port` is specified
-
-Without `daggle serve`, you can still run DAGs manually with `daggle run` — the scheduler is only needed for automated triggers.
-
-When `--port` is set, opening `http://127.0.0.1:<port>/` in a browser shows a status dashboard with DAG list, run details, and log viewer.
+`daggle serve` runs a long-lived daemon managing all triggers. `daggle serve --port 8787` also starts the REST API and a read-only status dashboard. Hot-reloads DAGs every 30s (or immediately on SIGHUP), limits to 4 concurrent runs, and shuts down gracefully on SIGINT/SIGTERM. Without `daggle serve`, use `daggle run` for manual execution.
 
 ## REST API
 
@@ -619,67 +446,11 @@ retry:
 
 ## DAG discovery
 
-daggle looks for DAG files in this order:
-
-1. `--dags-dir` flag (explicit override)
-2. `.daggle/` in the current working directory (project-local)
-3. `~/.config/daggle/dags/` (global default)
-
-## Project registration
-
-Register project directories so the scheduler picks up their `.daggle/` DAGs:
-
-```bash
-# Register current project
-cd my-project
-daggle register
-
-# Register with explicit path and name
-daggle register /opt/analytics/etl --name etl-pipeline
-
-# List registered projects
-daggle projects
-
-# Remove a project
-daggle unregister my-project
-```
-
-The registry is stored at `~/.config/daggle/projects.yaml`. When `daggle serve` starts, it watches all registered projects plus the global DAGs directory. `daggle list` and `daggle run` search across all sources.
-
-DAG names must be unique across all registered projects. `daggle register` checks for collisions before adding.
-
-Project-local discovery means DAGs can live alongside the R project they orchestrate. Steps execute in the project root (parent of `.daggle/`) by default — no `workdir:` needed:
-
-```
-my-project/                    # ← steps run here by default
-  .daggle/
-    daily-etl.yaml
-    pkg-check.yaml
-  R/
-    extract.R
-    transform.R
-  renv.lock
-```
+daggle looks for DAG files in order: `--dags-dir` flag, `.daggle/` in the current directory, `~/.config/daggle/dags/`. Register additional project directories with `daggle register <path>` so the scheduler picks up their DAGs. Steps execute in the project root (parent of `.daggle/`) by default.
 
 ## File layout
 
-```
-~/.config/daggle/              # XDG_CONFIG_HOME/daggle
-  dags/                        # Global DAG definitions
-
-~/.local/share/daggle/         # XDG_DATA_HOME/daggle
-  runs/                        # Run history
-    my-pipeline/
-      2026-04-01/
-        run_abc123/
-          events.jsonl
-          extract.stdout.log
-          extract.stderr.log
-  proc/
-    scheduler.pid              # Scheduler PID file
-```
-
-Override with `DAGGLE_CONFIG_DIR` / `DAGGLE_DATA_DIR` environment variables or `--dags-dir` / `--data-dir` flags.
+Config in `~/.config/daggle/`, data in `~/.local/share/daggle/` (XDG-compliant). Override with `DAGGLE_CONFIG_DIR` / `DAGGLE_DATA_DIR` or `--dags-dir` / `--data-dir` flags.
 
 ## Editor support
 
