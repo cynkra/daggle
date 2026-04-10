@@ -68,14 +68,15 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
 
 ```
 cmd/daggle/       Entry point (main.go)
-api/              REST API server: handlers, response types, embedded UI
-cli/              Cobra commands (18 subcommands): run, validate, status, list, serve, etc.
+api/              REST API server (21 endpoints): handlers, response types, embedded UI
+cache/            Step-level caching: key computation, on-disk cache store
+cli/              Cobra commands (20 subcommands): run, plan, diff, logs, status, serve, etc.
 dag/              YAML parsing, validation, topo sort, template expansion, matrix, secrets
-engine/           DAG orchestration: tier walking, retries, hooks, output passing
+engine/           DAG orchestration: tier walking, retries, hooks, caching, artifacts, freshness
 executor/         Process supervision: 15 executor implementations for 24 step types
 examples/         Example DAG projects
 renv/             renv.lock detection and R_LIBS_USER resolution
-scheduler/        Cron scheduling, PID file management, webhook server
+scheduler/        Cron scheduling, PID file management, webhook server, deadline alerting
 state/            XDG paths, JSONL events, run directories, metadata, config, cleanup
 ```
 

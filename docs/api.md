@@ -23,7 +23,7 @@ No authentication by default (localhost-only). Authentication can be added in a 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/health` | Server health check |
-| GET | `/api/v1/openapi.json` | OpenAPI 3.0 specification |
+| GET | `/openapi.yaml` | OpenAPI 3.0 specification |
 
 ### DAGs
 
@@ -33,7 +33,6 @@ No authentication by default (localhost-only). Authentication can be added in a 
 | GET | `/api/v1/dags/{name}` | Get DAG definition and latest run status |
 | POST | `/api/v1/dags/{name}/run` | Trigger a DAG run (async) |
 | GET | `/api/v1/dags/{name}/plan` | Show execution plan with cache status |
-| POST | `/api/v1/dags/{name}/validate` | Validate a DAG without running |
 
 ### Runs
 
@@ -41,8 +40,7 @@ No authentication by default (localhost-only). Authentication can be added in a 
 |--------|------|-------------|
 | GET | `/api/v1/dags/{name}/runs` | List runs for a DAG |
 | GET | `/api/v1/dags/{name}/runs/compare?run1=X&run2=Y` | Compare two runs |
-| GET | `/api/v1/dags/{name}/runs/{run_id}` | Get run detail with step status |
-| GET | `/api/v1/dags/{name}/runs/latest` | Alias for most recent run |
+| GET | `/api/v1/dags/{name}/runs/{run_id}` | Get run detail (`run_id` can be "latest") |
 | POST | `/api/v1/dags/{name}/runs/{run_id}/cancel` | Cancel an in-flight run |
 
 ### Steps & Approval

@@ -27,6 +27,16 @@ These variables are set by the daggle engine and available inside running steps.
 | `DAGGLE_OUTPUT_<STEP>_<KEY>` | Output value from an upstream step. Step ID is uppercased with hyphens replaced by underscores. See [Output Protocol](output-protocol.qmd). |
 | `DAGGLE_MATRIX_<KEY>` | Current matrix parameter value. Key is uppercased. See [Matrix Runs](../writing-dags/matrix.qmd). |
 
+## Hook context (available in hooks)
+
+These variables are set by the engine and available inside `on_success`, `on_failure`, `on_exit`, and `on_deadline` hooks.
+
+| Variable | Description |
+|----------|-------------|
+| `DAGGLE_RUN_DURATION` | Total run duration as a human-readable string (e.g. `"2m34s"`). |
+| `DAGGLE_RUN_STATUS` | Final status of the run (e.g. `"success"`, `"failure"`, `"cancelled"`). |
+| `DAGGLE_FAILED_STEPS` | Comma-separated list of step IDs that failed, or empty if none. |
+
 ## Secret resolution
 
 Used when DAG definitions reference secrets via the `${{ secrets.<name> }}` syntax.

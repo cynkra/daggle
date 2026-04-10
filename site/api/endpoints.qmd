@@ -102,6 +102,30 @@ curl -s -X POST http://localhost:8787/api/v1/dags/etl-daily/run \
   -d '{"params": {"date": "2025-01-15"}}' | jq .
 ```
 
+### GET /api/v1/dags/{name}/plan
+
+Get the execution plan for a DAG, showing which steps are cached, outdated, or have no cache. Useful for dry-run previews before triggering.
+
+**Response:** flat array.
+
+```json
+[
+  {"step_id": "fetch", "status": "outdated", "reason": "input file changed"},
+  {"step_id": "transform", "status": "cached", "reason": "inputs unchanged since last run"},
+  {"step_id": "report", "status": "no-cache", "reason": "caching not enabled"}
+]
+```
+
+Each entry has:
+
+- `step_id` -- Step identifier.
+- `status` -- One of `cached`, `outdated`, `no-cache`.
+- `reason` -- Human-readable explanation.
+
+```bash
+curl -s http://localhost:8787/api/v1/dags/etl-daily/plan | jq .
+```
+
 ### POST /api/v1/dags/{name}/validate
 
 Validate a DAG definition without running it.
@@ -278,6 +302,128 @@ Get all outputs for a run.
 
 ```bash
 curl -s http://localhost:8787/api/v1/dags/etl-daily/runs/latest/outputs | jq .
+```
+
+## Artifacts
+
+### GET /api/v1/dags/{name}/runs/{run_id}/artifacts
+
+List all declared artifacts for a run. Each entry includes the file hash and size.
+
+**Response:** flat array.
+
+```json
+[
+  {
+    "step_id": "train",
+    "name": "model",
+    "path": "output/model.rds",
+    "abs_path": "/home/user/etl/output/model.rds",
+    "hash": "e3b0c44298fc1c149afbf4c8996fb924",
+    "size": 204800,
+    "format": "rds"
+  }
+]
+```
+
+```bash
+curl -s http://localhost:8787/api/v1/dags/etl-daily/runs/latest/artifacts | jq .
+```
+
+## Summaries
+
+### GET /api/v1/dags/{name}/runs/{run_id}/summaries
+
+Get step summaries emitted via `::daggle-summary` markers during a run.
+
+**Response:** flat array.
+
+```json
+[
+  {
+    "step_id": "transform",
+    "format": "markdown",
+    "content": "## Results\n\nProcessed **42** rows successfully."
+  }
+]
+```
+
+```bash
+curl -s http://localhost:8787/api/v1/dags/etl-daily/runs/latest/summaries | jq .
+```
+
+## Metadata
+
+### GET /api/v1/dags/{name}/runs/{run_id}/metadata
+
+Get typed metadata entries emitted via `::daggle-meta` markers during a run.
+
+**Response:** flat array.
+
+```json
+[
+  {"step_id": "train", "name": "row_count", "type": "numeric", "value": "1542"},
+  {"step_id": "train", "name": "model_desc", "type": "text", "value": "Linear regression"},
+  {"step_id": "train", "name": "residuals", "type": "image", "value": "output/residuals.png"}
+]
+```
+
+```bash
+curl -s http://localhost:8787/api/v1/dags/etl-daily/runs/latest/metadata | jq .
+```
+
+## Validations
+
+### GET /api/v1/dags/{name}/runs/{run_id}/validations
+
+Get validation results emitted via `::daggle-validation` markers during a run.
+
+**Response:** flat array.
+
+```json
+[
+  {"step_id": "validate", "name": "row_count", "status": "pass", "message": "Expected > 0, got 1542"},
+  {"step_id": "validate", "name": "schema", "status": "fail", "message": "Column 'date' expected date, got character"}
+]
+```
+
+```bash
+curl -s http://localhost:8787/api/v1/dags/etl-daily/runs/latest/validations | jq .
+```
+
+## Run Comparison
+
+### GET /api/v1/dags/{name}/runs/compare?run1=X&run2=Y
+
+Compare two runs side-by-side. Returns diffs for outputs, durations, and DAG metadata.
+
+**Query parameters:**
+
+- `run1` -- First run ID (required).
+- `run2` -- Second run ID (required).
+
+**Response:**
+
+```json
+{
+  "outputs_diff": [
+    {"step_id": "transform", "key": "row_count", "value1": "1432", "value2": "1501"}
+  ],
+  "duration_diff": {
+    "run1_seconds": 47.2,
+    "run2_seconds": 52.8,
+    "diff_seconds": 5.6
+  },
+  "meta_diff": {
+    "dag_hash1": "a1b2c3d4e5f6",
+    "dag_hash2": "f6e5d4c3b2a1",
+    "changed": true
+  }
+}
+```
+
+```bash
+curl -s "http://localhost:8787/api/v1/dags/etl-daily/runs/compare?run1=20250115T030012-abc12&run2=20250116T030015-def34" | jq .
 ```
 
 ## Maintenance
