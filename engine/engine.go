@@ -206,18 +206,7 @@ func (e *Engine) runStep(ctx context.Context, step dag.Step, env []string) error
 		return nil
 	}
 
-	// Merge step-level env + accumulated outputs from prior steps
-	stepEnv := make([]string, len(env))
-	copy(stepEnv, env)
-	for k, v := range step.Env {
-		stepEnv = append(stepEnv, k+"="+v.Value)
-	}
-	e.mu.Lock()
-	for k, v := range e.outputs {
-		stepEnv = append(stepEnv, k+"="+v)
-	}
-	e.mu.Unlock()
-
+	stepEnv := e.buildStepEnv(env, step)
 	return e.executeWithRetries(ctx, step, workdir, stepEnv)
 }
 
@@ -302,6 +291,22 @@ func (e *Engine) tryCacheHit(step dag.Step, _ string, _ []string) (bool, error) 
 	})
 	e.logger.Info("step cached", "step", step.ID, "cache_key", cacheKey[:12], "cached_run", entry.RunID)
 	return true, nil
+}
+
+// buildStepEnv merges base env with step-level env vars and cached outputs
+// from prior steps.
+func (e *Engine) buildStepEnv(baseEnv []string, step dag.Step) []string {
+	env := make([]string, len(baseEnv))
+	copy(env, baseEnv)
+	for k, v := range step.Env {
+		env = append(env, k+"="+v.Value)
+	}
+	e.mu.Lock()
+	for k, v := range e.outputs {
+		env = append(env, k+"="+v)
+	}
+	e.mu.Unlock()
+	return env
 }
 
 // executeWithRetries runs the step executor with retry logic, delegating
@@ -645,12 +650,8 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	cmd.Dir = e.dag.ResolveWorkdir(dag.Step{})
 
 	// Provide env with run metadata + renv + outputs + hook extras
-	cmd.Env = append(os.Environ(), buildEnv(e.dag, e.runInfo, e.renvLibPath)...)
-	e.mu.Lock()
-	for k, v := range e.outputs {
-		cmd.Env = append(cmd.Env, k+"="+v)
-	}
-	e.mu.Unlock()
+	baseEnv := buildEnv(e.dag, e.runInfo, e.renvLibPath)
+	cmd.Env = append(os.Environ(), e.buildStepEnv(baseEnv, dag.Step{})...)
 	cmd.Env = append(cmd.Env, e.hookEnvExtras...)
 
 	// Route hook output through log files so secrets can be redacted
