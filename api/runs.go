@@ -260,6 +260,8 @@ func (s *Server) buildRunDetail(dagName string, run *state.RunInfo) RunDetail {
 	return detail
 }
 
+const byteUnits = "KMGTPE"
+
 func formatBytes(b int64) string {
 	const unit = 1024
 	if b < unit {
@@ -270,5 +272,5 @@ func formatBytes(b int64) string {
 		div *= unit
 		exp++
 	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), byteUnits[exp])
 }
