@@ -28,33 +28,9 @@ func showStatus(_ *cobra.Command, args []string) error {
 	dagName := args[0]
 	applyOverrides()
 
-	var run *state.RunInfo
-
-	if statusRunID != "" {
-		// Find specific run
-		runs, err := state.ListRuns(dagName)
-		if err != nil {
-			return err
-		}
-		for _, r := range runs {
-			if r.ID == statusRunID {
-				run = &r
-				break
-			}
-		}
-		if run == nil {
-			return fmt.Errorf("run %q not found for DAG %q", statusRunID, dagName)
-		}
-	} else {
-		var err error
-		run, err = state.LatestRun(dagName)
-		if err != nil {
-			return err
-		}
-		if run == nil {
-			fmt.Printf("No runs found for DAG %q\n", dagName)
-			return nil
-		}
+	run, err := state.FindRun(dagName, statusRunID)
+	if err != nil {
+		return err
 	}
 
 	// Read events

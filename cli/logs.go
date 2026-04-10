@@ -33,13 +33,9 @@ func showLogs(_ *cobra.Command, args []string) error {
 	dagName := args[0]
 	applyOverrides()
 
-	run, err := findRun(dagName, logsRunID)
+	run, err := state.FindRun(dagName, logsRunID)
 	if err != nil {
 		return err
-	}
-	if run == nil {
-		fmt.Printf("No runs found for DAG %q\n", dagName)
-		return nil
 	}
 
 	ext := ".stdout.log"

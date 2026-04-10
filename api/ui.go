@@ -178,7 +178,7 @@ func (s *Server) uiRunDetail(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	runID := r.PathValue("run_id")
 
-	run, err := s.findRun(name, runID)
+	run, err := state.FindRun(name, runID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -249,7 +249,7 @@ func (s *Server) uiStepLog(w http.ResponseWriter, r *http.Request) {
 	runID := r.PathValue("run_id")
 	stepID := r.PathValue("step_id")
 
-	run, err := s.findRun(name, runID)
+	run, err := state.FindRun(name, runID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

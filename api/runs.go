@@ -48,7 +48,7 @@ func (s *Server) handleGetRun(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	runID := r.PathValue("run_id")
 
-	run, err := s.findRun(name, runID)
+	run, err := state.FindRun(name, runID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -62,7 +62,7 @@ func (s *Server) handleCancelRun(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	runID := r.PathValue("run_id")
 
-	run, err := s.findRun(name, runID)
+	run, err := state.FindRun(name, runID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -127,12 +127,12 @@ func (s *Server) handleCompareRuns(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	run1, err := s.findRun(name, run1ID)
+	run1, err := state.FindRun(name, run1ID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
-	run2, err := s.findRun(name, run2ID)
+	run2, err := state.FindRun(name, run2ID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -235,30 +235,6 @@ func (s *Server) collectRunOutputs(runDir string) map[struct{ step, key string }
 	return result
 }
 
-func (s *Server) findRun(dagName, runID string) (*state.RunInfo, error) {
-	if runID == "latest" {
-		run, err := state.LatestRun(dagName)
-		if err != nil {
-			return nil, err
-		}
-		if run == nil {
-			return nil, &notFoundError{"no runs found for DAG " + dagName}
-		}
-		return run, nil
-	}
-
-	runs, err := state.ListRuns(dagName)
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range runs {
-		if r.ID == runID {
-			return &r, nil
-		}
-	}
-	return nil, &notFoundError{"run " + runID + " not found for DAG " + dagName}
-}
-
 func (s *Server) buildRunDetail(dagName string, run *state.RunInfo) RunDetail {
 	detail := RunDetail{
 		RunID:   run.ID,
@@ -283,10 +259,6 @@ func (s *Server) buildRunDetail(dagName string, run *state.RunInfo) RunDetail {
 	detail.Steps = s.buildStepSummaries(run.Dir)
 	return detail
 }
-
-type notFoundError struct{ msg string }
-
-func (e *notFoundError) Error() string { return e.msg }
 
 func formatBytes(b int64) string {
 	const unit = 1024

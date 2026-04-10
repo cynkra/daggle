@@ -31,11 +31,11 @@ func runDiff(_ *cobra.Command, args []string) error {
 	run2ID := args[2]
 	applyOverrides()
 
-	run1, err := findRunByID(dagName, run1ID)
+	run1, err := state.FindRun(dagName, run1ID)
 	if err != nil {
 		return err
 	}
-	run2, err := findRunByID(dagName, run2ID)
+	run2, err := state.FindRun(dagName, run2ID)
 	if err != nil {
 		return err
 	}
@@ -47,30 +47,6 @@ func runDiff(_ *cobra.Command, args []string) error {
 	printMetaDiff(cmp.MetaDiff)
 
 	return nil
-}
-
-func findRunByID(dagName, runID string) (*state.RunInfo, error) {
-	if runID == "latest" {
-		run, err := state.LatestRun(dagName)
-		if err != nil {
-			return nil, err
-		}
-		if run == nil {
-			return nil, fmt.Errorf("no runs found for DAG %q", dagName)
-		}
-		return run, nil
-	}
-
-	runs, err := state.ListRuns(dagName)
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range runs {
-		if r.ID == runID {
-			return &r, nil
-		}
-	}
-	return nil, fmt.Errorf("run %q not found for DAG %q", runID, dagName)
 }
 
 func buildComparison(run1, run2 *state.RunInfo) api.CompareResponse {
