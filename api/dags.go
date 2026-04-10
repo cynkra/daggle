@@ -128,20 +128,9 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d, err := dag.ParseFile(path)
+	expanded, err := dag.LoadAndExpand(path, req.Params)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "parse DAG: "+err.Error())
-		return
-	}
-
-	// Apply base defaults
-	baseDefaults, _ := dag.LoadBaseDefaults(filepath.Dir(path))
-	dag.ApplyBaseDefaults(d, baseDefaults)
-
-	// Expand templates
-	expanded, err := dag.ExpandDAG(d, req.Params)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "expand templates: "+err.Error())
+		writeError(w, http.StatusBadRequest, "load DAG: "+err.Error())
 		return
 	}
 
@@ -198,20 +187,9 @@ func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d, err := dag.ParseFile(path)
+	expanded, err := dag.LoadAndExpand(path, nil)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "parse DAG: "+err.Error())
-		return
-	}
-
-	// Apply base defaults
-	baseDefaults, _ := dag.LoadBaseDefaults(filepath.Dir(path))
-	dag.ApplyBaseDefaults(d, baseDefaults)
-
-	// Expand templates (no params)
-	expanded, err := dag.ExpandDAG(d, nil)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "expand templates: "+err.Error())
+		writeError(w, http.StatusBadRequest, "load DAG: "+err.Error())
 		return
 	}
 

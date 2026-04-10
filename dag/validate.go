@@ -2,6 +2,7 @@ package dag
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -117,6 +118,8 @@ func Validate(d *DAG) error {
 				artNames[art.Name] = true
 				if art.Path == "" {
 					errs = append(errs, fmt.Sprintf("step %q artifact %q path is required", s.ID, art.Name))
+				} else if filepath.IsAbs(art.Path) {
+					errs = append(errs, fmt.Sprintf("step %q artifact %q path must be relative, got %q", s.ID, art.Name, art.Path))
 				}
 			}
 		}
@@ -136,6 +139,16 @@ func Validate(d *DAG) error {
 				// valid
 			default:
 				errs = append(errs, fmt.Sprintf("step %q freshness[%d].on_stale %q is invalid; must be one of: fail, warn", s.ID, i, fc.OnStale))
+			}
+		}
+
+		// Validate cache compatibility
+		if s.Cache {
+			if s.Approve != nil {
+				errs = append(errs, fmt.Sprintf("step %q: cache is incompatible with approve steps", s.ID))
+			}
+			if s.Call != nil {
+				errs = append(errs, fmt.Sprintf("step %q: cache is incompatible with call steps", s.ID))
 			}
 		}
 

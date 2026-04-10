@@ -27,6 +27,22 @@ const (
 	EventStepCached         = "step_cached"
 )
 
+// ArtifactInfo groups artifact-related fields for step_artifact events.
+type ArtifactInfo struct {
+	ArtifactName    string `json:"artifact_name,omitempty"`
+	ArtifactPath    string `json:"artifact_path,omitempty"`     // relative to workdir
+	ArtifactAbsPath string `json:"artifact_abs_path,omitempty"` // resolved absolute path
+	ArtifactHash    string `json:"artifact_hash,omitempty"`     // SHA-256
+	ArtifactSize    int64  `json:"artifact_size,omitempty"`     // bytes
+	ArtifactFormat  string `json:"artifact_format,omitempty"`
+}
+
+// CacheInfo groups cache-related fields for step_cached events.
+type CacheInfo struct {
+	CacheKey    string `json:"cache_key,omitempty"`
+	CachedRunID string `json:"cached_run_id,omitempty"`
+}
+
 // Event represents a lifecycle event in a DAG run.
 type Event struct {
 	Version     int       `json:"v"`
@@ -41,17 +57,8 @@ type Event struct {
 	Message     string    `json:"message,omitempty"`    // approval message
 	Approver    string    `json:"approver,omitempty"`   // system user who approved/rejected
 
-	// Cache fields (for step_cached events)
-	CacheKey    string `json:"cache_key,omitempty"`
-	CachedRunID string `json:"cached_run_id,omitempty"`
-
-	// Artifact fields (for step_artifact events)
-	ArtifactName    string `json:"artifact_name,omitempty"`
-	ArtifactPath    string `json:"artifact_path,omitempty"`     // relative to workdir
-	ArtifactAbsPath string `json:"artifact_abs_path,omitempty"` // resolved absolute path
-	ArtifactHash    string `json:"artifact_hash,omitempty"`     // SHA-256
-	ArtifactSize    int64  `json:"artifact_size,omitempty"`     // bytes
-	ArtifactFormat  string `json:"artifact_format,omitempty"`
+	*ArtifactInfo `json:",omitempty"`
+	*CacheInfo    `json:",omitempty"`
 }
 
 // EventWriter provides thread-safe JSONL event writing.

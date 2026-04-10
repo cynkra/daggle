@@ -963,3 +963,59 @@ func TestExpandDAG(t *testing.T) {
 		t.Errorf("args[1] = %q, want date string", expanded.Steps[0].Args[1])
 	}
 }
+
+func TestValidate_ArtifactAbsolutePath(t *testing.T) {
+	d := &DAG{Name: "t", Steps: []Step{{
+		ID:        "a",
+		Command:   "echo",
+		Artifacts: []Artifact{{Name: "data", Path: "/tmp/data.csv"}},
+	}}}
+	err := Validate(d)
+	if err == nil {
+		t.Fatal("absolute artifact path should fail validation")
+	}
+	if !strings.Contains(err.Error(), "must be relative") {
+		t.Errorf("error should mention 'must be relative', got: %s", err.Error())
+	}
+}
+
+func TestValidate_CacheIncompatibleWithApprove(t *testing.T) {
+	d := &DAG{Name: "t", Steps: []Step{{
+		ID:      "a",
+		Approve: &ApproveStep{Message: "ok?"},
+		Cache:   true,
+	}}}
+	err := Validate(d)
+	if err == nil {
+		t.Fatal("cache + approve should fail validation")
+	}
+	if !strings.Contains(err.Error(), "incompatible with approve") {
+		t.Errorf("error should mention incompatibility, got: %s", err.Error())
+	}
+}
+
+func TestValidate_CacheIncompatibleWithCall(t *testing.T) {
+	d := &DAG{Name: "t", Steps: []Step{{
+		ID:    "a",
+		Call:  &CallStep{DAG: "other"},
+		Cache: true,
+	}}}
+	err := Validate(d)
+	if err == nil {
+		t.Fatal("cache + call should fail validation")
+	}
+	if !strings.Contains(err.Error(), "incompatible with call") {
+		t.Errorf("error should mention incompatibility, got: %s", err.Error())
+	}
+}
+
+func TestValidate_CacheWithScriptIsValid(t *testing.T) {
+	d := &DAG{Name: "t", Steps: []Step{{
+		ID:     "a",
+		Script: "run.R",
+		Cache:  true,
+	}}}
+	if err := Validate(d); err != nil {
+		t.Errorf("cache + script should be valid: %v", err)
+	}
+}

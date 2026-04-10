@@ -107,79 +107,20 @@ func (s *Server) buildStepSummaries(runDir string) []StepSummary {
 		return []StepSummary{}
 	}
 
-	type stepState struct {
-		status   string
-		duration time.Duration
-		attempts int
-		err      string
-		message  string
-		cached   bool
-		cacheKey string
-	}
-
-	steps := make(map[string]*stepState)
-	var order []string
-
-	for _, e := range events {
-		if e.StepID == "" {
-			continue
-		}
-		ss, ok := steps[e.StepID]
-		if !ok {
-			ss = &stepState{}
-			steps[e.StepID] = ss
-			order = append(order, e.StepID)
-		}
-		switch e.Type {
-		case state.EventStepStarted:
-			ss.status = "running"
-			ss.attempts = e.Attempt
-		case state.EventStepCompleted:
-			ss.status = "completed"
-			if d, err := time.ParseDuration(e.Duration); err == nil {
-				ss.duration = d
-			}
-			ss.attempts = e.Attempt
-		case state.EventStepFailed:
-			ss.status = "failed"
-			if d, err := time.ParseDuration(e.Duration); err == nil {
-				ss.duration = d
-			}
-			ss.attempts = e.Attempt
-			ss.err = e.Error
-		case state.EventStepRetrying:
-			ss.status = "retrying"
-		case state.EventStepWaitApproval:
-			ss.status = "waiting"
-			ss.message = e.Message
-		case state.EventStepApproved:
-			ss.status = "approved"
-		case state.EventStepRejected:
-			ss.status = "rejected"
-		case "step_skipped":
-			ss.status = "skipped"
-		case state.EventStepCached:
-			ss.status = "cached"
-			ss.cached = true
-			ss.cacheKey = e.CacheKey
-		}
-	}
-
-	result := make([]StepSummary, 0, len(order))
-	for _, id := range order {
-		ss := steps[id]
+	states := state.BuildStepSummaries(events)
+	result := make([]StepSummary, 0, len(states))
+	for _, ss := range states {
 		result = append(result, StepSummary{
-			StepID:          id,
-			Status:          ss.status,
-			DurationSeconds: ss.duration.Seconds(),
-			Attempts:        ss.attempts,
-			Error:           ss.err,
-			Message:         ss.message,
-			Cached:          ss.cached,
-			CacheKey:        ss.cacheKey,
+			StepID:          ss.StepID,
+			Status:          ss.Status,
+			DurationSeconds: ss.Duration.Seconds(),
+			Attempts:        ss.Attempts,
+			Error:           ss.Error,
+			Message:         ss.Message,
+			Cached:          ss.Cached,
+			CacheKey:        ss.CacheKey,
 		})
 	}
-
 	return result
 }
 

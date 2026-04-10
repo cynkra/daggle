@@ -14,7 +14,11 @@ import (
 	"time"
 )
 
-const gracePeriod = 5 * time.Second
+const (
+	gracePeriod        = 5 * time.Second
+	errorContextLines  = 50
+	errorDetailMaxLen  = 500
+)
 
 var (
 	// OutputMarkerRe matches ::daggle-output name=<key>::<value> markers in step stdout.
@@ -229,7 +233,7 @@ func extractErrorDetail(stderrPath string) string {
 // and returns the error line plus following context.
 func extractPatternError(lines []string, pattern *regexp.Regexp, skipLine string) string {
 	errorStart := -1
-	for i := len(lines) - 1; i >= 0 && i >= len(lines)-50; i-- {
+	for i := len(lines) - 1; i >= 0 && i >= len(lines)-errorContextLines; i-- {
 		line := strings.TrimSpace(lines[i])
 		if pattern.MatchString(line) {
 			errorStart = i
@@ -267,8 +271,8 @@ func extractLastLines(lines []string, n int) string {
 }
 
 func truncateDetail(s string) string {
-	if len(s) > 500 {
-		return s[:497] + "..."
+	if len(s) > errorDetailMaxLen {
+		return s[:errorDetailMaxLen-3] + "..."
 	}
 	return s
 }
