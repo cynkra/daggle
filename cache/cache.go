@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // Entry stores the cached result of a step execution.
@@ -21,8 +22,9 @@ type Entry struct {
 	ArtifactHashes map[string]string `json:"artifact_hashes,omitempty"`
 }
 
-// Store manages the on-disk cache.
+// Store manages the on-disk cache. All methods are safe for concurrent use.
 type Store struct {
+	mu      sync.RWMutex
 	baseDir string
 }
 
@@ -34,6 +36,8 @@ func NewStore(baseDir string) *Store {
 // Lookup reads a cached entry for the given DAG, step, and cache key.
 // Returns the entry and true on hit, or nil and false on miss.
 func (s *Store) Lookup(dagName, stepID, cacheKey string) (*Entry, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	p := s.entryPath(dagName, stepID, cacheKey)
 	data, err := os.ReadFile(p)
 	if err != nil {
@@ -48,6 +52,8 @@ func (s *Store) Lookup(dagName, stepID, cacheKey string) (*Entry, bool) {
 
 // Save writes a cache entry to disk.
 func (s *Store) Save(dagName, stepID, cacheKey string, entry Entry) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	p := s.entryPath(dagName, stepID, cacheKey)
 	if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
 		return fmt.Errorf("create cache dir: %w", err)
@@ -61,6 +67,8 @@ func (s *Store) Save(dagName, stepID, cacheKey string, entry Entry) error {
 
 // Clear removes all cached entries for a specific DAG.
 func (s *Store) Clear(dagName string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	dir := filepath.Join(s.baseDir, dagName)
 	if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("clear cache for %q: %w", dagName, err)
@@ -70,6 +78,8 @@ func (s *Store) Clear(dagName string) error {
 
 // ClearAll removes the entire cache directory.
 func (s *Store) ClearAll() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if err := os.RemoveAll(s.baseDir); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("clear all cache: %w", err)
 	}
