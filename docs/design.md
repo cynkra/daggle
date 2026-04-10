@@ -142,6 +142,7 @@ These features target the daily needs of R users doing data analysis, going beyo
 - **Cross-DAG output dependencies** — Steps declare inputs from other DAGs' runs. Deferred until the artifact system is proven in practice.
 - **Exposure / impact tracking** — Declare downstream consumers (Shiny apps, dashboards) of DAG outputs. `daggle impact <dag>` for dependency analysis.
 - **Interactive TUI monitor** — Terminal dashboard for live DAG execution using bubbletea or similar.
+- **Migrate to internal/ packages** — Move cli/, executor/, and engine/ to internal/ packages to prevent unintended external imports and clarify the public API surface.
 
 **Phase 9 — Enterprise (if needed):**
 - Distributed workers
