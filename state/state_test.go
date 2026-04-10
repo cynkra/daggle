@@ -188,6 +188,61 @@ func TestLatestRun_NoRuns(t *testing.T) {
 	}
 }
 
+func TestFindRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// Create a run to work with.
+	created, err := CreateRun("test-dag")
+	if err != nil {
+		t.Fatalf("CreateRun: %v", err)
+	}
+
+	t.Run("empty runID returns latest", func(t *testing.T) {
+		run, err := FindRun("test-dag", "")
+		if err != nil {
+			t.Fatalf("FindRun: %v", err)
+		}
+		if run.ID != created.ID {
+			t.Errorf("got ID %q, want %q", run.ID, created.ID)
+		}
+	})
+
+	t.Run("latest keyword returns latest", func(t *testing.T) {
+		run, err := FindRun("test-dag", "latest")
+		if err != nil {
+			t.Fatalf("FindRun: %v", err)
+		}
+		if run.ID != created.ID {
+			t.Errorf("got ID %q, want %q", run.ID, created.ID)
+		}
+	})
+
+	t.Run("find by specific ID", func(t *testing.T) {
+		run, err := FindRun("test-dag", created.ID)
+		if err != nil {
+			t.Fatalf("FindRun: %v", err)
+		}
+		if run.ID != created.ID {
+			t.Errorf("got ID %q, want %q", run.ID, created.ID)
+		}
+	})
+
+	t.Run("not found returns error", func(t *testing.T) {
+		_, err := FindRun("test-dag", "nonexistent")
+		if err == nil {
+			t.Fatal("expected error for nonexistent run ID")
+		}
+	})
+
+	t.Run("no runs for DAG returns error", func(t *testing.T) {
+		_, err := FindRun("no-such-dag", "")
+		if err == nil {
+			t.Fatal("expected error for DAG with no runs")
+		}
+	})
+}
+
 func TestXDGPaths(t *testing.T) {
 	t.Setenv("DAGGLE_CONFIG_DIR", "/custom/config")
 	t.Setenv("DAGGLE_DATA_DIR", "/custom/data")

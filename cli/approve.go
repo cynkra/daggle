@@ -47,7 +47,7 @@ func runReject(_ *cobra.Command, args []string) error {
 func handleApproval(dagName, runID string, approved bool) error {
 	applyOverrides()
 
-	run, err := findRun(dagName, runID)
+	run, err := state.FindRun(dagName, runID)
 	if err != nil {
 		return err
 	}
@@ -89,26 +89,3 @@ func handleApproval(dagName, runID string, approved bool) error {
 	return nil
 }
 
-func findRun(dagName, runID string) (*state.RunInfo, error) {
-	if runID != "" {
-		runs, err := state.ListRuns(dagName)
-		if err != nil {
-			return nil, err
-		}
-		for _, r := range runs {
-			if r.ID == runID {
-				return &r, nil
-			}
-		}
-		return nil, fmt.Errorf("run %q not found for DAG %q", runID, dagName)
-	}
-
-	run, err := state.LatestRun(dagName)
-	if err != nil {
-		return nil, err
-	}
-	if run == nil {
-		return nil, fmt.Errorf("no runs found for DAG %q", dagName)
-	}
-	return run, nil
-}

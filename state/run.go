@@ -109,6 +109,31 @@ func LatestRun(dagName string) (*RunInfo, error) {
 	return &runs[0], nil
 }
 
+// FindRun resolves a run by ID. If runID is "latest" or empty, returns the
+// most recent run. Otherwise searches for a run matching the given ID.
+func FindRun(dagName, runID string) (*RunInfo, error) {
+	if runID == "" || runID == "latest" {
+		run, err := LatestRun(dagName)
+		if err != nil {
+			return nil, fmt.Errorf("list runs for %q: %w", dagName, err)
+		}
+		if run == nil {
+			return nil, fmt.Errorf("no runs found for DAG %q", dagName)
+		}
+		return run, nil
+	}
+	runs, err := ListRuns(dagName)
+	if err != nil {
+		return nil, fmt.Errorf("list runs for %q: %w", dagName, err)
+	}
+	for _, r := range runs {
+		if r.ID == runID {
+			return &r, nil
+		}
+	}
+	return nil, fmt.Errorf("run %q not found for DAG %q", runID, dagName)
+}
+
 // RunStatus determines the final status of a run by reading its events.
 func RunStatus(runDir string) string {
 	events, err := ReadEvents(runDir)

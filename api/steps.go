@@ -14,7 +14,7 @@ func (s *Server) handleListSteps(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	runID := r.PathValue("run_id")
 
-	run, err := s.findRun(name, runID)
+	run, err := state.FindRun(name, runID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -29,7 +29,7 @@ func (s *Server) handleStepLog(w http.ResponseWriter, r *http.Request) {
 	runID := r.PathValue("run_id")
 	stepID := r.PathValue("step_id")
 
-	run, err := s.findRun(name, runID)
+	run, err := state.FindRun(name, runID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -58,7 +58,7 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request, approved
 	runID := r.PathValue("run_id")
 	stepID := r.PathValue("step_id")
 
-	run, err := s.findRun(name, runID)
+	run, err := state.FindRun(name, runID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
