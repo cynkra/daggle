@@ -55,77 +55,27 @@ func showStatus(_ *cobra.Command, args []string) error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(w, "STEP\tSTATUS\tDURATION\tATTEMPTS\tERROR")
 
-	type stepInfo struct {
-		status      string
-		duration    string
-		attempts    int
-		err         string
-		errorDetail string
-	}
-	steps := make(map[string]*stepInfo)
-
-	for _, e := range events {
-		if e.StepID == "" {
-			continue
+	summaries := state.BuildStepSummaries(events)
+	for _, ss := range summaries {
+		errStr := ss.Error
+		if ss.Status == "waiting" && ss.Message != "" {
+			errStr = ss.Message
 		}
-		si, ok := steps[e.StepID]
-		if !ok {
-			si = &stepInfo{}
-			steps[e.StepID] = si
-		}
-		switch e.Type {
-		case state.EventStepStarted:
-			si.status = "running"
-			si.attempts = e.Attempt
-		case state.EventStepCompleted:
-			si.status = "completed"
-			si.duration = e.Duration
-			si.attempts = e.Attempt
-		case state.EventStepFailed:
-			si.status = "failed"
-			si.duration = e.Duration
-			si.err = e.Error
-			si.errorDetail = e.ErrorDetail
-			si.attempts = e.Attempt
-		case state.EventStepRetrying:
-			si.status = "retrying"
-		case state.EventStepWaitApproval:
-			si.status = "waiting"
-			si.err = e.Message
-		case state.EventStepApproved:
-			si.status = "approved"
-		case state.EventStepRejected:
-			si.status = "rejected"
-		case state.EventStepCached:
-			si.status = "cached"
-		}
-	}
-
-	// Print in order of first appearance
-	seen := make(map[string]bool)
-	for _, e := range events {
-		if e.StepID == "" || seen[e.StepID] {
-			continue
-		}
-		seen[e.StepID] = true
-		si := steps[e.StepID]
-		errStr := si.err
 		if len(errStr) > 40 {
 			errStr = errStr[:37] + "..."
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", e.StepID, si.status, si.duration, si.attempts, errStr)
+		dur := ""
+		if ss.Duration > 0 {
+			dur = ss.Duration.String()
+		}
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", ss.StepID, ss.Status, dur, ss.Attempts, errStr)
 	}
 	_ = w.Flush()
 
 	// Show error details for failed steps
-	for _, e := range events {
-		if e.StepID == "" || seen[e.StepID+"_detail"] {
-			continue
-		}
-		si := steps[e.StepID]
-		if si != nil && si.errorDetail != "" {
-			seen[e.StepID+"_detail"] = true
-			fmt.Printf("\nError detail for step %q:\n  %s\n", e.StepID, strings.ReplaceAll(si.errorDetail, "\n", "\n  "))
+	for _, ss := range summaries {
+		if ss.ErrorDetail != "" {
+			fmt.Printf("\nError detail for step %q:\n  %s\n", ss.StepID, strings.ReplaceAll(ss.ErrorDetail, "\n", "\n  "))
 		}
 	}
 
