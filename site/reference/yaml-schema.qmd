@@ -41,6 +41,8 @@ The `trigger` object controls when the scheduler automatically starts a DAG. Mul
 |-------|------|-------------|
 | `schedule` | string | Cron expression (e.g. `"30 6 * * MON-FRI"`, `"@every 5m"`) |
 | `overlap` | enum | `"skip"` (default) or `"cancel"` -- what to do if DAG is already running |
+| `deadline` | string | Time-of-day deadline in `HH:MM` format. Used with `on_deadline` hook |
+| `on_deadline` | hook | Hook executed when the deadline is reached and the DAG is still running |
 | `watch` | object | File watcher trigger |
 | `webhook` | object | HTTP POST trigger |
 | `on_dag` | object | Trigger on another DAG's completion |
@@ -105,6 +107,11 @@ Each step requires an `id` and exactly one step type field.
 | `error_on` | enum | no | `"error"` | `"error"`, `"warning"`, or `"message"` |
 | `matrix` | object | no | (none) | Parameter grid. Keys = names, values = string arrays |
 | `max_parallel` | integer | no | (all) | Max concurrent matrix instances |
+| `artifacts` | array | no | `[]` | Output file declarations. Each entry has `name`, `path`, `format` (optional), `versioned` (optional). See [artifacts config](#artifacts-config) |
+| `cache` | boolean | no | `false` | Enable step-level caching. When `true`, the step is skipped if inputs have not changed since the last successful run |
+| `freshness` | array | no | `[]` | Source freshness checks on input files. Each entry has `path`, `max_age`, `on_stale` (optional). See [freshness config](#freshness-config) |
+| `output_dir` | string | no | (none) | Output directory template for rendered reports (Quarto/Rmd). Supports template variables |
+| `output_name` | string | no | (none) | Output filename template for rendered reports. Supports template variables |
 | `on_success` | hook | no | (none) | Step success hook |
 | `on_failure` | hook | no | (none) | Step failure hook |
 
@@ -182,6 +189,60 @@ Hooks appear in `on_success`, `on_failure`, and `on_exit`. A hook must contain e
 |-------|------|-------------|
 | `r_expr` | string | Inline R expression |
 | `command` | string | Shell command |
+
+## Artifacts config {#artifacts-config}
+
+Each entry in the `artifacts` array declares an output file produced by the step.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | yes | -- | Unique name within the step |
+| `path` | string | yes | -- | Path relative to workdir |
+| `format` | string | no | (none) | File format hint (e.g. `parquet`, `rds`, `csv`, `png`) |
+| `versioned` | boolean | no | `false` | If `true`, append epoch timestamp to filename |
+
+Example:
+
+```yaml
+steps:
+  - id: train
+    script: train.R
+    artifacts:
+      - name: model
+        path: output/model.rds
+        format: rds
+        versioned: true
+      - name: metrics
+        path: output/metrics.csv
+        format: csv
+```
+
+Artifacts are tracked by the engine. After a run, their hashes and sizes are recorded and available via `GET /api/v1/dags/{name}/runs/{run_id}/artifacts`.
+
+## Freshness config {#freshness-config}
+
+Each entry in the `freshness` array declares a freshness expectation on an input file.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `path` | string | yes | -- | Path to the input file |
+| `max_age` | duration | yes | -- | Maximum acceptable age (e.g. `"24h"`, `"1h30m"`) |
+| `on_stale` | enum | no | `"fail"` | `"fail"` (default) or `"warn"` -- action when the file is older than `max_age` |
+
+Example:
+
+```yaml
+steps:
+  - id: transform
+    script: transform.R
+    freshness:
+      - path: data/raw.csv
+        max_age: "24h"
+        on_stale: fail
+      - path: data/lookup.csv
+        max_age: "7d"
+        on_stale: warn
+```
 
 ## Template variables
 

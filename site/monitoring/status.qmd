@@ -28,6 +28,7 @@ daggle status my-dag --run-id 20260401T093012
 | waiting | Step is queued, waiting on dependencies |
 | cancelled | Run was cancelled before the step could start |
 | skipped | Step was skipped due to a `when:` condition |
+| cached | Step was skipped because its inputs have not changed since the last successful run (requires `cache: true`) |
 
 ## Error messages
 
