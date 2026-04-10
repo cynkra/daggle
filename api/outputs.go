@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cynkra/daggle/executor"
 	"github.com/cynkra/daggle/state"
 )
 
@@ -69,18 +70,9 @@ func ParseOutputMarkers(runDir, stepID string) map[string]string {
 
 	outputs := make(map[string]string)
 	for _, line := range strings.Split(string(data), "\n") {
-		if !strings.HasPrefix(line, "::daggle-output name=") {
-			continue
+		if m := executor.OutputMarkerRe.FindStringSubmatch(line); m != nil {
+			outputs[m[1]] = strings.TrimSpace(m[2])
 		}
-		// Format: ::daggle-output name=key::value
-		rest := strings.TrimPrefix(line, "::daggle-output name=")
-		idx := strings.Index(rest, "::")
-		if idx < 0 {
-			continue
-		}
-		key := rest[:idx]
-		value := strings.TrimSpace(rest[idx+2:])
-		outputs[key] = value
 	}
 	return outputs
 }

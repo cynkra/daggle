@@ -17,7 +17,8 @@ import (
 const gracePeriod = 5 * time.Second
 
 var (
-	outputMarkerRe  = regexp.MustCompile(`^::daggle-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
+	// OutputMarkerRe matches ::daggle-output name=<key>::<value> markers in step stdout.
+	OutputMarkerRe  = regexp.MustCompile(`^::daggle-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
 	summaryMarkerRe = regexp.MustCompile(`^::daggle-summary format=([a-zA-Z]+)::(.*)$`)
 	metaMarkerRe       = regexp.MustCompile(`^::daggle-meta type=([a-zA-Z]+) name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
 	validationMarkerRe = regexp.MustCompile(`^::daggle-validation status=(pass|warn|fail) name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
@@ -79,7 +80,7 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		scanner := bufio.NewScanner(stdoutPipe)
 		for scanner.Scan() {
 			line := scanner.Text()
-			if m := outputMarkerRe.FindStringSubmatch(line); m != nil {
+			if m := OutputMarkerRe.FindStringSubmatch(line); m != nil {
 				outputs[m[1]] = strings.TrimSpace(m[2])
 				// Don't write marker lines to terminal, but still log them
 				_, _ = fmt.Fprintln(stdoutFile, line)
