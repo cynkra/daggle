@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/cynkra/daggle/cli"
+	"github.com/cynkra/daggle/internal/cli"
 )
 
 func main() {
