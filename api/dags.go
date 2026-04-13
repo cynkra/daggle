@@ -12,8 +12,8 @@ import (
 
 	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
-	"github.com/cynkra/daggle/engine"
-	"github.com/cynkra/daggle/executor"
+	"github.com/cynkra/daggle/internal/engine"
+	"github.com/cynkra/daggle/internal/executor"
 	"github.com/cynkra/daggle/state"
 )
 
