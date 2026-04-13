@@ -124,18 +124,40 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 ### Planned
 
-**Phase 8 — Workflow Composition & UX:**
+**Phase 8 — Collaboration & Observability:**
+- **Notification channels as first-class config** — Define named channels (Slack webhook, email SMTP, Teams, generic HTTP) in `config.yaml`. Hooks reference by name instead of embedding credentials per-DAG. Go handles the HTTP POST directly — notifications work even when R is broken.
+- **DAG ownership and annotations** — Optional `owner:`, `team:`, `description:`, `tags:` fields at the DAG level. Filterable via `daggle list --tag etl` and `GET /dags?tag=etl`. Minimal effort, high value for teams with 10+ DAGs.
+- **Run annotations** — `daggle annotate <dag> <run-id> "DB was down"` attaches human notes to runs. Stored as `run_annotated` events. Surfaces in status, API, and UI. Replaces "check the Slack thread" for post-mortems.
+- **`daggle why` command** — Focused failure diagnostic: failed step + error message + last 20 lines stderr + upstream status + freshness state + DAG diff since last success. One command instead of three.
+- **R session diagnostics on failure** — Auto-capture `sessionInfo()` when a step fails. Write to `{step}.sessioninfo.json`. Proves which package versions were active — a compliance requirement in pharma/finance.
+- **Step-level resource profiling** — Record peak RSS memory and CPU time via `ProcessState.SysUsage()`. Surface in `daggle stats` as memory/time trends per step. Answers "which step is the memory hog?"
+- **Live event streaming (SSE)** — `GET /api/v1/dags/{name}/runs/{run_id}/stream` tails `events.jsonl` via Server-Sent Events. Enables real-time UI updates and the TUI monitor. No WebSocket complexity.
+- **Interactive TUI monitor** — Terminal dashboard for live DAG execution using bubbletea or similar, powered by the SSE stream.
 - **Cross-DAG output dependencies** — Steps declare inputs from other DAGs' runs. Deferred until the artifact system is proven in practice.
 - **Exposure / impact tracking** — Declare downstream consumers (Shiny apps, dashboards) of DAG outputs. `daggle impact <dag>` for dependency analysis.
-- **Interactive TUI monitor** — Terminal dashboard for live DAG execution using bubbletea or similar.
 
-**Phase 9 — Enterprise (if needed):**
-- Distributed workers
-- Queue system with concurrency limits (including queue overlap policy)
-- RBAC
-- Prometheus metrics
-- SSH remote execution
-- R session pooling (keep warm Rscript processes for fast inline expressions)
+**Phase 9 — Safety & Compliance:**
+- **Immutable run archives** — `daggle archive <dag> <run-id>` bundles the run directory into a tarball with a SHA-256 manifest of every file. `daggle verify <archive>` checks integrity. FDA 21 CFR Part 11 adjacent.
+- **DAG change log** — Record full YAML diff when `dag_hash` changes between runs. Store as `dag_diff.patch` in the run directory. Self-contained "what changed?" without git.
+- **Dry-run validation** — `daggle run --dry-run <dag>` resolves secrets, checks R version, verifies renv, checks freshness, and reports what *would* happen. Goes deeper than `daggle plan` (which only checks cache status).
+- **Bounded parallel execution** — `max_parallel:` at DAG level to cap concurrent step execution. Prevents 10 Rscript processes from exhausting a laptop. Small engine change, high impact.
+
+**Phase 10 — Developer Experience & Ecosystem:**
+- **`daggle watch`** — Monitor DAG YAML and referenced scripts for changes. On save, re-validate and optionally re-run changed steps only (using cache). Like `nodemon` but DAG-aware.
+- **`daggle explain`** — Human-readable prose summary of a DAG: "5 steps, runs weekdays at 6:30am, sends Slack on failure." Useful for onboarding and reviewing unfamiliar DAGs.
+- **`daggle lint` with editor integration** — Semantic diagnostics beyond YAML validation: do referenced scripts exist? Are required R packages installed? Are secret references resolvable? Output in GNU/JSON format for VS Code integration.
+- **`database:` step type** — SQL query as a step. DSN from env vars, query in YAML, output as CSV/RDS artifact. Eliminates the most common R ETL boilerplate (DBI + dbGetQuery + write.csv).
+- **`email:` step type** — Send rendered reports and artifacts via email. Uses Go's `net/smtp` directly (no R needed). References notification channel config. Covers the "render and email" workflow declaratively.
+- **`docker:` step type** — Run a step inside a Docker container. Isolation for different R versions or system library conflicts (geospatial/GDAL, Bioconductor). Docker is just another subprocess to supervise.
+
+**Phase 11 — Scale:**
+- **State compaction** — `daggle compact <dag>` merges old `events.jsonl` files into summary records. Keep full detail for recent N runs, compress historical data. Prevents slowdown on hourly DAGs running for months.
+- **Distributed workers** — Coordinator/worker model for running steps across machines.
+- **Queue system** — Concurrency limits with queue overlap policy.
+- **RBAC** — File-based role-based access control.
+- **Prometheus metrics** — Expose scheduler and run metrics for monitoring.
+- **SSH remote execution** — Run steps on remote machines via SSH.
+- **R session pooling** — Keep warm Rscript processes for fast inline expressions.
 
 ## Open design questions
 
