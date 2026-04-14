@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Use:   "daggle",
 	Short: "A lightweight DAG scheduler for R",
 	Long:  "daggle is a local-first, file-based DAG scheduler designed for R workflows.",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 		applyOverrides()
 		cfg, _ := state.LoadConfig()
 		state.InitTools(cfg)
