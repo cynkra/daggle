@@ -186,7 +186,7 @@ func parseParams(raw []string) map[string]string {
 }
 
 func detectRVersion() string {
-	out, err := exec.Command("Rscript", "--version").CombinedOutput()
+	out, err := exec.Command(state.ToolPath("rscript"), "--version").CombinedOutput()
 	if err != nil {
 		return ""
 	}

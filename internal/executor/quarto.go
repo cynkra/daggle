@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/state"
 )
 
 // QuartoExecutor renders Quarto documents or projects.
@@ -31,6 +32,6 @@ func (e *QuartoExecutor) Run(ctx context.Context, step dag.Step, logDir string, 
 	}
 
 	args = append(args, step.Args...)
-	cmd := exec.CommandContext(ctx, "quarto", args...)
+	cmd := exec.CommandContext(ctx, state.ToolPath("quarto"), args...)
 	return runProcess(ctx, cmd, step.ID, logDir, workdir, env)
 }

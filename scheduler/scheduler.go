@@ -176,6 +176,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	if err != nil {
 		s.logger.Warn("failed to load config, skipping auto-cleanup", "error", err)
 	}
+	state.InitTools(cfg)
 	var cleanupTicker *time.Ticker
 	var cleanupThreshold time.Duration
 	if cfg.Cleanup != nil && cfg.Cleanup.OlderThan != "" {
@@ -584,9 +585,9 @@ func (s *Scheduler) setupConditionTrigger(ctx context.Context, d *dag.DAG, dagPa
 				var cmd *exec.Cmd
 				switch {
 				case c.Command != "":
-					cmd = exec.CommandContext(condCtx, "sh", "-c", c.Command)
+					cmd = exec.CommandContext(condCtx, state.ToolPath("sh"), "-c", c.Command)
 				case c.RExpr != "":
-					cmd = exec.CommandContext(condCtx, "Rscript", "-e", c.RExpr)
+					cmd = exec.CommandContext(condCtx, state.ToolPath("rscript"), "-e", c.RExpr)
 				default:
 					continue
 				}
@@ -640,7 +641,7 @@ func (s *Scheduler) setupGitTrigger(ctx context.Context, d *dag.DAG, dagPath str
 				return
 			case <-ticker.C:
 				// Get current commit hash
-				cmd := exec.CommandContext(gitCtx, "git", "-C", repoDir, "rev-parse", branch)
+				cmd := exec.CommandContext(gitCtx, state.ToolPath("git"), "-C", repoDir, "rev-parse", branch)
 				out, err := cmd.Output()
 				if err != nil {
 					continue
@@ -870,9 +871,9 @@ func (s *Scheduler) fireDeadlineHook(ctx context.Context, dagName string, hook *
 	var cmd *exec.Cmd
 	switch {
 	case hook.RExpr != "":
-		cmd = exec.CommandContext(ctx, "Rscript", "-e", hook.RExpr)
+		cmd = exec.CommandContext(ctx, state.ToolPath("rscript"), "-e", hook.RExpr)
 	case hook.Command != "":
-		cmd = exec.CommandContext(ctx, "sh", "-c", hook.Command)
+		cmd = exec.CommandContext(ctx, state.ToolPath("sh"), "-c", hook.Command)
 	default:
 		return
 	}

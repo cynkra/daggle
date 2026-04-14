@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/cynkra/daggle/state"
 )
 
 // Info holds detected renv configuration.
@@ -44,7 +46,7 @@ func Detect(projectDir, rVersion, rPlatform string) Info {
 
 // DetectRPlatform runs Rscript to get R.version$platform. Returns "" on error.
 func DetectRPlatform() string {
-	out, err := exec.Command("Rscript", "-e", "cat(R.version$platform)").Output()
+	out, err := exec.Command(state.ToolPath("rscript"), "-e", "cat(R.version$platform)").Output()
 	if err != nil {
 		return ""
 	}
