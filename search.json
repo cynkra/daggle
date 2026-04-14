@@ -433,7 +433,7 @@
     "href": "monitoring/doctor.html#what-it-checks",
     "title": "Diagnostics",
     "section": "What it checks",
-    "text": "What it checks\n\n\n\n\n\n\n\nCheck\nWhat it verifies\n\n\n\n\nR version\nR is installed and meets any version constraints\n\n\nR platform\nReports the platform string (e.g. aarch64-apple-darwin23)\n\n\nrenv status\nWhether renv is synchronized, out of date, or absent\n\n\nScheduler status\nWhether the scheduler is running and its PID\n\n\nConfig paths\nDAG directory, data directory, and config file locations are accessible\n\n\nDAG file validity\nAll YAML files in the DAG directory parse without errors\n\n\n\nExample output:\nR version:       4.4.1 .............. ok\nR platform:      aarch64-apple-darwin23\nrenv status:     synchronized ....... ok\nScheduler:       running (PID 4821).. ok\nConfig paths:    all accessible ..... ok\nDAG files:       3 valid, 0 invalid . ok",
+    "text": "What it checks\n\n\n\n\n\n\n\nCheck\nWhat it verifies\n\n\n\n\nTool paths\nResolved paths for Rscript, quarto, git, and sh\n\n\nR version\nR is installed and meets any version constraints\n\n\nR platform\nReports the platform string (e.g. aarch64-apple-darwin23)\n\n\nrenv status\nWhether renv is synchronized, out of date, or absent\n\n\nScheduler status\nWhether the scheduler is running and its PID\n\n\nConfig paths\nDAG directory, data directory, and config file locations are accessible\n\n\nDAG file validity\nAll YAML files in the DAG directory parse without errors\n\n\n\nExample output:\nTools:\n  [OK]   rscript: /usr/local/bin/Rscript\n  [OK]   quarto: /opt/homebrew/bin/quarto\n  [OK]   git: /usr/bin/git\n  [OK]   sh: /bin/sh\n\nR version:       4.4.1 .............. ok\nR platform:      aarch64-apple-darwin23\nrenv status:     synchronized ....... ok\nScheduler:       running (PID 4821).. ok\nConfig paths:    all accessible ..... ok\nDAG files:       3 valid, 0 invalid . ok",
     "crumbs": [
       "Monitoring",
       "Diagnostics"
@@ -1180,7 +1180,7 @@
     "href": "reference/file-layout.html#directory-structure",
     "title": "File Layout",
     "section": "Directory structure",
-    "text": "Directory structure\n~/.config/daggle/\n  dags/                          # Global DAG definitions\n    my-pipeline.yml\n    nightly-etl.yml\n  projects.yaml                  # Registered project directories\n\n~/.local/share/daggle/\n  runs/                          # Run data, organized by DAG and date\n    &lt;dag&gt;/\n      &lt;YYYY-MM-DD&gt;/\n        run_&lt;id&gt;/\n          meta.json              # Run metadata (params, start time, status)\n          events.jsonl           # Append-only event log (see Event Schema)\n          &lt;step&gt;.stdout.log      # Step stdout (includes output markers)\n          &lt;step&gt;.stderr.log      # Step stderr\n          &lt;step&gt;.inline.R        # Rendered inline R code (for r_expr steps)\n  proc/\n    scheduler.pid                # Scheduler daemon PID file\n\n.daggle/                         # Project-local DAG definitions (repo root)\n  my-dag.yml",
+    "text": "Directory structure\n~/.config/daggle/\n  config.yaml                    # Global configuration (tool paths, cleanup, etc.)\n  dags/                          # Global DAG definitions\n    my-pipeline.yml\n    nightly-etl.yml\n  projects.yaml                  # Registered project directories\n\n~/.local/share/daggle/\n  runs/                          # Run data, organized by DAG and date\n    &lt;dag&gt;/\n      &lt;YYYY-MM-DD&gt;/\n        run_&lt;id&gt;/\n          meta.json              # Run metadata (params, start time, status)\n          events.jsonl           # Append-only event log (see Event Schema)\n          &lt;step&gt;.stdout.log      # Step stdout (includes output markers)\n          &lt;step&gt;.stderr.log      # Step stderr\n          &lt;step&gt;.inline.R        # Rendered inline R code (for r_expr steps)\n  proc/\n    scheduler.pid                # Scheduler daemon PID file\n\n.daggle/                         # Project-local DAG definitions (repo root)\n  my-dag.yml",
     "crumbs": [
       "Reference",
       "File Layout"
@@ -1214,6 +1214,17 @@
     "title": "File Layout",
     "section": "Overriding directories",
     "text": "Overriding directories\n\n\n\n\n\n\n\n\n\nMechanism\nConfig dir\nData dir\nDAGs dir\n\n\n\n\nCLI flags\n–\n--data-dir\n--dags-dir\n\n\nEnvironment variables\nDAGGLE_CONFIG_DIR\nDAGGLE_DATA_DIR\nDAGGLE_DAGS_DIR\n\n\nXDG fallback\n$XDG_CONFIG_HOME/daggle\n$XDG_DATA_HOME/daggle\n–\n\n\nDefault\n~/.config/daggle\n~/.local/share/daggle\n(discovery order)\n\n\n\nPriority is top to bottom: CLI flags override environment variables, which override XDG, which override defaults.",
+    "crumbs": [
+      "Reference",
+      "File Layout"
+    ]
+  },
+  {
+    "objectID": "reference/file-layout.html#global-configuration-config.yaml",
+    "href": "reference/file-layout.html#global-configuration-config.yaml",
+    "title": "File Layout",
+    "section": "Global configuration (config.yaml)",
+    "text": "Global configuration (config.yaml)\nThe file ~/.config/daggle/config.yaml holds global settings. All fields are optional.\n# Override tool paths (useful when the scheduler can't find binaries)\ntools:\n  rscript: /usr/local/bin/Rscript\n  quarto: /opt/homebrew/bin/quarto\n  git: /usr/bin/git\n\n# Automatic cleanup of old run data\ncleanup:\n  older_than: \"30d\"\n  interval: \"6h\"\n\nTool path resolution\nAt startup, daggle resolves each tool path using this precedence:\n\ntools: in config.yaml — explicit absolute path (highest priority)\nexec.LookPath — searches the current PATH\nBare binary name — fallback (may fail if not on PATH)\n\nThis is especially important when running the scheduler as a system service, since service managers (launchd, systemd) do not load your shell profile and may not have Rscript or quarto on their PATH.\nRun daggle doctor to see which paths daggle resolved.",
     "crumbs": [
       "Reference",
       "File Layout"
@@ -1797,6 +1808,17 @@
     "title": "Scheduler",
     "section": "Running as a system service",
     "text": "Running as a system service\nThe scheduler doesn’t auto-start on host restart. Use your OS service manager for persistent operation.\n\nmacOS (launchd)\nCreate ~/Library/LaunchAgents/com.cynkra.daggle.plist:\n&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\"\n  \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"&gt;\n&lt;plist version=\"1.0\"&gt;\n&lt;dict&gt;\n  &lt;key&gt;Label&lt;/key&gt;\n  &lt;string&gt;com.cynkra.daggle&lt;/string&gt;\n  &lt;key&gt;ProgramArguments&lt;/key&gt;\n  &lt;array&gt;\n    &lt;string&gt;/usr/local/bin/daggle&lt;/string&gt;\n    &lt;string&gt;serve&lt;/string&gt;\n    &lt;string&gt;--port&lt;/string&gt;\n    &lt;string&gt;8787&lt;/string&gt;\n  &lt;/array&gt;\n  &lt;key&gt;RunAtLoad&lt;/key&gt;\n  &lt;true/&gt;\n  &lt;key&gt;KeepAlive&lt;/key&gt;\n  &lt;true/&gt;\n  &lt;key&gt;StandardOutPath&lt;/key&gt;\n  &lt;string&gt;/tmp/daggle.stdout.log&lt;/string&gt;\n  &lt;key&gt;StandardErrorPath&lt;/key&gt;\n  &lt;string&gt;/tmp/daggle.stderr.log&lt;/string&gt;\n&lt;/dict&gt;\n&lt;/plist&gt;\n# Load (starts immediately and on login)\nlaunchctl load ~/Library/LaunchAgents/com.cynkra.daggle.plist\n\n# Unload\nlaunchctl unload ~/Library/LaunchAgents/com.cynkra.daggle.plist\n\n# Check status\nlaunchctl list | grep daggle\n\n\nLinux (systemd, user-level)\nCreate ~/.config/systemd/user/daggle.service:\n[Unit]\nDescription=daggle scheduler\nAfter=network.target\n\n[Service]\nType=simple\nExecStart=/usr/local/bin/daggle serve --port 8787\nExecStop=/usr/local/bin/daggle stop\nRestart=on-failure\nRestartSec=5s\n\n[Install]\nWantedBy=default.target\n# Enable and start\nsystemctl --user daemon-reload\nsystemctl --user enable daggle\nsystemctl --user start daggle\n\n# Check status\nsystemctl --user status daggle\n\n# View logs\njournalctl --user -u daggle -f\nFor system-level (all users), place the unit file in /etc/systemd/system/daggle.service, add a User= directive, and use systemctl without --user.",
+    "crumbs": [
+      "Running",
+      "Scheduler"
+    ]
+  },
+  {
+    "objectID": "running/scheduler.html#troubleshooting-tool-not-found",
+    "href": "running/scheduler.html#troubleshooting-tool-not-found",
+    "title": "Scheduler",
+    "section": "Troubleshooting: tool not found",
+    "text": "Troubleshooting: tool not found\nWhen running as a system service, the scheduler may not have your shell’s PATH. If runs fail with errors like exec: \"Rscript\": executable file not found in $PATH, set explicit tool paths in ~/.config/daggle/config.yaml:\ntools:\n  rscript: /usr/local/bin/Rscript\n  quarto: /opt/homebrew/bin/quarto\nRun daggle doctor to see which paths the scheduler will use. See File Layout for details.",
     "crumbs": [
       "Running",
       "Scheduler"

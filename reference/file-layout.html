@@ -23,6 +23,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -371,6 +406,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#dag-discovery-order" id="toc-dag-discovery-order" class="nav-link" data-scroll-target="#dag-discovery-order">DAG discovery order</a></li>
   <li><a href="#run-directory-contents" id="toc-run-directory-contents" class="nav-link" data-scroll-target="#run-directory-contents">Run directory contents</a></li>
   <li><a href="#overriding-directories" id="toc-overriding-directories" class="nav-link" data-scroll-target="#overriding-directories">Overriding directories</a></li>
+  <li><a href="#global-configuration-config.yaml" id="toc-global-configuration-config.yaml" class="nav-link" data-scroll-target="#global-configuration-config.yaml">Global configuration (<code>config.yaml</code>)</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -401,6 +437,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="directory-structure" class="level2">
 <h2 class="anchored" data-anchor-id="directory-structure">Directory structure</h2>
 <pre><code>~/.config/daggle/
+  config.yaml                    # Global configuration (tool paths, cleanup, etc.)
   dags/                          # Global DAG definitions
     my-pipeline.yml
     nightly-etl.yml
@@ -512,8 +549,33 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>Priority is top to bottom: CLI flags override environment variables, which override XDG, which override defaults.</p>
+</section>
+<section id="global-configuration-config.yaml" class="level2">
+<h2 class="anchored" data-anchor-id="global-configuration-config.yaml">Global configuration (<code>config.yaml</code>)</h2>
+<p>The file <code>~/.config/daggle/config.yaml</code> holds global settings. All fields are optional.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Override tool paths (useful when the scheduler can't find binaries)</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tools</span><span class="kw">:</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">rscript</span><span class="kw">:</span><span class="at"> /usr/local/bin/Rscript</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">quarto</span><span class="kw">:</span><span class="at"> /opt/homebrew/bin/quarto</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">git</span><span class="kw">:</span><span class="at"> /usr/bin/git</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Automatic cleanup of old run data</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="fu">cleanup</span><span class="kw">:</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">older_than</span><span class="kw">:</span><span class="at"> </span><span class="st">"30d"</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">interval</span><span class="kw">:</span><span class="at"> </span><span class="st">"6h"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="tool-path-resolution" class="level3">
+<h3 class="anchored" data-anchor-id="tool-path-resolution">Tool path resolution</h3>
+<p>At startup, daggle resolves each tool path using this precedence:</p>
+<ol type="1">
+<li><strong><code>tools:</code> in config.yaml</strong> — explicit absolute path (highest priority)</li>
+<li><strong><code>exec.LookPath</code></strong> — searches the current <code>PATH</code></li>
+<li><strong>Bare binary name</strong> — fallback (may fail if not on <code>PATH</code>)</li>
+</ol>
+<p>This is especially important when running the scheduler as a system service, since service managers (launchd, systemd) do not load your shell profile and may not have <code>Rscript</code> or <code>quarto</code> on their <code>PATH</code>.</p>
+<p>Run <code>daggle doctor</code> to see which paths daggle resolved.</p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->

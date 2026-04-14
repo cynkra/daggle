@@ -401,6 +401,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#without-the-scheduler" id="toc-without-the-scheduler" class="nav-link" data-scroll-target="#without-the-scheduler">Without the scheduler</a></li>
   <li><a href="#multi-project-scheduling" id="toc-multi-project-scheduling" class="nav-link" data-scroll-target="#multi-project-scheduling">Multi-project scheduling</a></li>
   <li><a href="#running-as-a-system-service" id="toc-running-as-a-system-service" class="nav-link" data-scroll-target="#running-as-a-system-service">Running as a system service</a></li>
+  <li><a href="#troubleshooting-tool-not-found" id="toc-troubleshooting-tool-not-found" class="nav-link" data-scroll-target="#troubleshooting-tool-not-found">Troubleshooting: tool not found</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -537,9 +538,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># View logs</span></span>
 <span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">--user</span> <span class="at">-u</span> daggle <span class="at">-f</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>For system-level (all users), place the unit file in <code>/etc/systemd/system/daggle.service</code>, add a <code>User=</code> directive, and use <code>systemctl</code> without <code>--user</code>.</p>
-
-
 </section>
+</section>
+<section id="troubleshooting-tool-not-found" class="level2">
+<h2 class="anchored" data-anchor-id="troubleshooting-tool-not-found">Troubleshooting: tool not found</h2>
+<p>When running as a system service, the scheduler may not have your shell’s <code>PATH</code>. If runs fail with errors like <code>exec: "Rscript": executable file not found in $PATH</code>, set explicit tool paths in <code>~/.config/daggle/config.yaml</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tools</span><span class="kw">:</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">rscript</span><span class="kw">:</span><span class="at"> /usr/local/bin/Rscript</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">quarto</span><span class="kw">:</span><span class="at"> /opt/homebrew/bin/quarto</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Run <code>daggle doctor</code> to see which paths the scheduler will use. See <a href="../reference/file-layout.html#tool-path-resolution">File Layout</a> for details.</p>
+
+
 </section>
 
 </main> <!-- /main -->

@@ -445,33 +445,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
+<td>Tool paths</td>
+<td>Resolved paths for Rscript, quarto, git, and sh</td>
+</tr>
+<tr class="even">
 <td>R version</td>
 <td>R is installed and meets any version constraints</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>R platform</td>
 <td>Reports the platform string (e.g.&nbsp;aarch64-apple-darwin23)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>renv status</td>
 <td>Whether renv is synchronized, out of date, or absent</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Scheduler status</td>
 <td>Whether the scheduler is running and its PID</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Config paths</td>
 <td>DAG directory, data directory, and config file locations are accessible</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>DAG file validity</td>
 <td>All YAML files in the DAG directory parse without errors</td>
 </tr>
 </tbody>
 </table>
 <p>Example output:</p>
-<pre><code>R version:       4.4.1 .............. ok
+<pre><code>Tools:
+  [OK]   rscript: /usr/local/bin/Rscript
+  [OK]   quarto: /opt/homebrew/bin/quarto
+  [OK]   git: /usr/bin/git
+  [OK]   sh: /bin/sh
+
+R version:       4.4.1 .............. ok
 R platform:      aarch64-apple-darwin23
 renv status:     synchronized ....... ok
 Scheduler:       running (PID 4821).. ok
