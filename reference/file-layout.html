@@ -571,7 +571,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong><code>exec.LookPath</code></strong> — searches the current <code>PATH</code></li>
 <li><strong>Bare binary name</strong> — fallback (may fail if not on <code>PATH</code>)</li>
 </ol>
-<p>This is especially important when running the scheduler as a system service, since service managers (launchd, systemd) do not load your shell profile and may not have <code>Rscript</code> or <code>quarto</code> on their <code>PATH</code>.</p>
+<p><strong>Auto-detection:</strong> When daggle discovers a tool via <code>PATH</code> lookup (step 2), it automatically saves the resolved absolute path to <code>config.yaml</code>. This means running any daggle command once from an interactive shell (e.g., <code>daggle doctor</code> or <code>daggle run</code>) will persist the tool paths. Future scheduler runs — even as a system service with a minimal <code>PATH</code> — will find the saved paths in config.</p>
 <p>Run <code>daggle doctor</code> to see which paths daggle resolved.</p>
 
 

@@ -542,11 +542,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="troubleshooting-tool-not-found" class="level2">
 <h2 class="anchored" data-anchor-id="troubleshooting-tool-not-found">Troubleshooting: tool not found</h2>
-<p>When running as a system service, the scheduler may not have your shell’s <code>PATH</code>. If runs fail with errors like <code>exec: "Rscript": executable file not found in $PATH</code>, set explicit tool paths in <code>~/.config/daggle/config.yaml</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tools</span><span class="kw">:</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">rscript</span><span class="kw">:</span><span class="at"> /usr/local/bin/Rscript</span></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">quarto</span><span class="kw">:</span><span class="at"> /opt/homebrew/bin/quarto</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Run <code>daggle doctor</code> to see which paths the scheduler will use. See <a href="../reference/file-layout.html#tool-path-resolution">File Layout</a> for details.</p>
+<p>When running as a system service, the scheduler may not have your shell’s <code>PATH</code>. daggle auto-detects tool paths the first time you run any command from an interactive shell and saves them to <code>~/.config/daggle/config.yaml</code>. To prime the config, simply run:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> doctor</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This resolves and persists paths for Rscript, quarto, git, and sh. Future scheduler runs (including as a system service) will use the saved paths.</p>
+<p>If auto-detection picks the wrong binary or you need a custom path, edit <code>~/.config/daggle/config.yaml</code> directly:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tools</span><span class="kw">:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">rscript</span><span class="kw">:</span><span class="at"> /usr/local/bin/Rscript</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">quarto</span><span class="kw">:</span><span class="at"> /opt/homebrew/bin/quarto</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See <a href="../reference/file-layout.html#tool-path-resolution">File Layout</a> for details.</p>
 
 
 </section>
