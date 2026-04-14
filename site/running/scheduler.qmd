@@ -135,7 +135,15 @@ For system-level (all users), place the unit file in `/etc/systemd/system/daggle
 
 ## Troubleshooting: tool not found
 
-When running as a system service, the scheduler may not have your shell's `PATH`. If runs fail with errors like `exec: "Rscript": executable file not found in $PATH`, set explicit tool paths in `~/.config/daggle/config.yaml`:
+When running as a system service, the scheduler may not have your shell's `PATH`. daggle auto-detects tool paths the first time you run any command from an interactive shell and saves them to `~/.config/daggle/config.yaml`. To prime the config, simply run:
+
+```bash
+daggle doctor
+```
+
+This resolves and persists paths for Rscript, quarto, git, and sh. Future scheduler runs (including as a system service) will use the saved paths.
+
+If auto-detection picks the wrong binary or you need a custom path, edit `~/.config/daggle/config.yaml` directly:
 
 ```yaml
 tools:
@@ -143,4 +151,4 @@ tools:
   quarto: /opt/homebrew/bin/quarto
 ```
 
-Run `daggle doctor` to see which paths the scheduler will use. See [File Layout](../reference/file-layout.qmd#tool-path-resolution) for details.
+See [File Layout](../reference/file-layout.qmd#tool-path-resolution) for details.
