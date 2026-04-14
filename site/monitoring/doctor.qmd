@@ -14,6 +14,7 @@ daggle doctor
 
 | Check | What it verifies |
 |------------------|--------------------------------------------------|
+| Tool paths | Resolved paths for Rscript, quarto, git, and sh |
 | R version | R is installed and meets any version constraints |
 | R platform | Reports the platform string (e.g. aarch64-apple-darwin23) |
 | renv status | Whether renv is synchronized, out of date, or absent |
@@ -24,6 +25,12 @@ daggle doctor
 Example output:
 
 ```
+Tools:
+  [OK]   rscript: /usr/local/bin/Rscript
+  [OK]   quarto: /opt/homebrew/bin/quarto
+  [OK]   git: /usr/bin/git
+  [OK]   sh: /bin/sh
+
 R version:       4.4.1 .............. ok
 R platform:      aarch64-apple-darwin23
 renv status:     synchronized ....... ok
