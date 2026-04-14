@@ -90,6 +90,6 @@ At startup, daggle resolves each tool path using this precedence:
 2. **`exec.LookPath`** — searches the current `PATH`
 3. **Bare binary name** — fallback (may fail if not on `PATH`)
 
-This is especially important when running the scheduler as a system service, since service managers (launchd, systemd) do not load your shell profile and may not have `Rscript` or `quarto` on their `PATH`.
+**Auto-detection:** When daggle discovers a tool via `PATH` lookup (step 2), it automatically saves the resolved absolute path to `config.yaml`. This means running any daggle command once from an interactive shell (e.g., `daggle doctor` or `daggle run`) will persist the tool paths. Future scheduler runs — even as a system service with a minimal `PATH` — will find the saved paths in config.
 
 Run `daggle doctor` to see which paths daggle resolved.
