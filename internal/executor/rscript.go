@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/state"
 )
 
 // runRScript writes R code to a temp file and executes it via Rscript.
@@ -18,6 +19,6 @@ func runRScript(ctx context.Context, rCode string, step dag.Step, logDir, workdi
 		return Result{ExitCode: -1, Err: fmt.Errorf("write %s R: %w", suffix, err)}
 	}
 	args := append([]string{"--no-save", "--no-restore", tmpFile}, step.Args...)
-	cmd := exec.CommandContext(ctx, "Rscript", args...)
+	cmd := exec.CommandContext(ctx, state.ToolPath("rscript"), args...)
 	return runProcess(ctx, cmd, step.ID, logDir, workdir, env)
 }

@@ -643,9 +643,9 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 			return
 		}
 		defer func() { _ = os.Remove(tmpFile) }()
-		cmd = exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
+		cmd = exec.CommandContext(ctx, state.ToolPath("rscript"), "--no-save", "--no-restore", tmpFile)
 	case hook.Command != "":
-		cmd = exec.CommandContext(ctx, "sh", "-c", hook.Command)
+		cmd = exec.CommandContext(ctx, state.ToolPath("sh"), "-c", hook.Command)
 	default:
 		return
 	}
@@ -690,9 +690,9 @@ func (e *Engine) evaluateCondition(ctx context.Context, cond *dag.StepCondition,
 			return false, err
 		}
 		defer func() { _ = os.Remove(tmpFile) }()
-		cmd = exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
+		cmd = exec.CommandContext(ctx, state.ToolPath("rscript"), "--no-save", "--no-restore", tmpFile)
 	case cond.Command != "":
-		cmd = exec.CommandContext(ctx, "sh", "-c", cond.Command)
+		cmd = exec.CommandContext(ctx, state.ToolPath("sh"), "-c", cond.Command)
 	default:
 		return false, nil
 	}

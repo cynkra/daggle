@@ -9,7 +9,8 @@ import (
 
 // Config holds global daggle configuration from config.yaml.
 type Config struct {
-	Cleanup *CleanupConfig `yaml:"cleanup,omitempty"`
+	Cleanup *CleanupConfig    `yaml:"cleanup,omitempty"`
+	Tools   map[string]string `yaml:"tools,omitempty"`
 }
 
 // CleanupConfig controls automatic run cleanup in the scheduler.

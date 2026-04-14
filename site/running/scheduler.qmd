@@ -132,3 +132,15 @@ journalctl --user -u daggle -f
 ```
 
 For system-level (all users), place the unit file in `/etc/systemd/system/daggle.service`, add a `User=` directive, and use `systemctl` without `--user`.
+
+## Troubleshooting: tool not found
+
+When running as a system service, the scheduler may not have your shell's `PATH`. If runs fail with errors like `exec: "Rscript": executable file not found in $PATH`, set explicit tool paths in `~/.config/daggle/config.yaml`:
+
+```yaml
+tools:
+  rscript: /usr/local/bin/Rscript
+  quarto: /opt/homebrew/bin/quarto
+```
+
+Run `daggle doctor` to see which paths the scheduler will use. See [File Layout](../reference/file-layout.qmd#tool-path-resolution) for details.

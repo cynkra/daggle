@@ -32,6 +32,18 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	fmt.Println("=============")
 	fmt.Println()
 
+	// Tools
+	tools := state.ResolvedTools()
+	for name, path := range tools {
+		if name == path {
+			printCheck("WARN", "%s: not found (using bare name %q)", name, path)
+		} else {
+			printCheck("OK", "%s: %s", name, path)
+		}
+	}
+
+	fmt.Println()
+
 	// R version
 	rVersion := detectRVersion()
 	if rVersion != "" {

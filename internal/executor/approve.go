@@ -86,7 +86,7 @@ func checkApprovalDecision(runDir, stepID string) string {
 
 func runApprovalNotify(ctx context.Context, hook *dag.Hook, logDir, stepID string) {
 	if hook.Command != "" {
-		cmd := exec.CommandContext(ctx, "sh", "-c", hook.Command)
+		cmd := exec.CommandContext(ctx, state.ToolPath("sh"), "-c", hook.Command)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		_ = cmd.Run()
@@ -96,7 +96,7 @@ func runApprovalNotify(ctx context.Context, hook *dag.Hook, logDir, stepID strin
 		if err := os.WriteFile(tmpFile, []byte(hook.RExpr), 0644); err != nil {
 			return
 		}
-		cmd := exec.CommandContext(ctx, "Rscript", "--no-save", "--no-restore", tmpFile)
+		cmd := exec.CommandContext(ctx, state.ToolPath("rscript"), "--no-save", "--no-restore", tmpFile)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		_ = cmd.Run()
