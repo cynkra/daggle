@@ -26,6 +26,22 @@ func Validate(d *DAG) error {
 		errs = append(errs, "dag must have at least one step")
 	}
 
+	errs = append(errs, validateSteps(d)...)
+	errs = append(errs, validateRVersion(d)...)
+	errs = append(errs, validateTriggers(d)...)
+	errs = append(errs, validateCycles(d, errs)...)
+
+	if len(errs) > 0 {
+		return fmt.Errorf("validation errors:\n  - %s", strings.Join(errs, "\n  - "))
+	}
+	return nil
+}
+
+// validateSteps validates all step definitions including IDs, types, dependencies,
+// timeouts, error_on, artifacts, freshness, cache compatibility, and retry config.
+func validateSteps(d *DAG) []string {
+	var errs []string
+
 	// Build complete ID set for dependency validation
 	allIDs := make(map[string]bool, len(d.Steps))
 	for _, s := range d.Steps {
@@ -45,206 +61,258 @@ func Validate(d *DAG) error {
 		}
 		ids[s.ID] = true
 
-		// Exactly one step type must be set
-		typeCount := 0
-		for _, set := range []bool{
-			s.Script != "", s.RExpr != "", s.Command != "", s.Quarto != "",
-			s.Test != "", s.Check != "", s.Document != "", s.Lint != "", s.Style != "",
-			s.Rmd != "", s.RenvRestore != "", s.Coverage != "", s.Validate != "",
-			s.Approve != nil, s.Call != nil, s.Pin != nil, s.Vetiver != nil,
-			s.Shinytest != "", s.Pkgdown != "", s.Install != "", s.Targets != "",
-			s.Benchmark != "", s.Revdepcheck != "",
-			s.Connect != nil,
-		} {
-			if set {
-				typeCount++
-			}
-		}
-		stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect"
-		if typeCount == 0 {
-			errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
-		}
-		if typeCount > 1 {
-			errs = append(errs, fmt.Sprintf("step %q has multiple types; use exactly one of: %s", s.ID, stepTypes))
-		}
+		errs = append(errs, validateStepType(s)...)
+		errs = append(errs, validateStepConnect(s)...)
+		errs = append(errs, validateStepDependencies(s, allIDs)...)
+		errs = append(errs, validateStepTimeout(s)...)
+		errs = append(errs, validateStepErrorOn(s)...)
+		errs = append(errs, validateStepArtifacts(s)...)
+		errs = append(errs, validateStepFreshness(s)...)
+		errs = append(errs, validateStepCache(s)...)
+		errs = append(errs, validateStepRetry(s)...)
+	}
+	return errs
+}
 
-		// Validate connect step fields
-		if s.Connect != nil {
-			validTypes := map[string]bool{"shiny": true, "quarto": true, "plumber": true}
-			if s.Connect.Type == "" {
-				errs = append(errs, fmt.Sprintf("step %q connect.type is required (shiny, quarto, plumber)", s.ID))
-			} else if !validTypes[s.Connect.Type] {
-				errs = append(errs, fmt.Sprintf("step %q connect.type %q is invalid; must be one of: shiny, quarto, plumber", s.ID, s.Connect.Type))
-			}
-			if s.Connect.Path == "" {
-				errs = append(errs, fmt.Sprintf("step %q connect.path is required", s.ID))
-			}
+func validateStepType(s Step) []string {
+	typeCount := 0
+	for _, set := range []bool{
+		s.Script != "", s.RExpr != "", s.Command != "", s.Quarto != "",
+		s.Test != "", s.Check != "", s.Document != "", s.Lint != "", s.Style != "",
+		s.Rmd != "", s.RenvRestore != "", s.Coverage != "", s.Validate != "",
+		s.Approve != nil, s.Call != nil, s.Pin != nil, s.Vetiver != nil,
+		s.Shinytest != "", s.Pkgdown != "", s.Install != "", s.Targets != "",
+		s.Benchmark != "", s.Revdepcheck != "",
+		s.Connect != nil,
+	} {
+		if set {
+			typeCount++
 		}
+	}
+	stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect"
+	var errs []string
+	if typeCount == 0 {
+		errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
+	}
+	if typeCount > 1 {
+		errs = append(errs, fmt.Sprintf("step %q has multiple types; use exactly one of: %s", s.ID, stepTypes))
+	}
+	return errs
+}
 
-		// Validate depends references
-		for _, dep := range s.Depends {
-			if !allIDs[dep] {
-				errs = append(errs, fmt.Sprintf("step %q depends on unknown step %q", s.ID, dep))
-			}
+func validateStepConnect(s Step) []string {
+	if s.Connect == nil {
+		return nil
+	}
+	var errs []string
+	validTypes := map[string]bool{"shiny": true, "quarto": true, "plumber": true}
+	if s.Connect.Type == "" {
+		errs = append(errs, fmt.Sprintf("step %q connect.type is required (shiny, quarto, plumber)", s.ID))
+	} else if !validTypes[s.Connect.Type] {
+		errs = append(errs, fmt.Sprintf("step %q connect.type %q is invalid; must be one of: shiny, quarto, plumber", s.ID, s.Connect.Type))
+	}
+	if s.Connect.Path == "" {
+		errs = append(errs, fmt.Sprintf("step %q connect.path is required", s.ID))
+	}
+	return errs
+}
+
+func validateStepDependencies(s Step, allIDs map[string]bool) []string {
+	var errs []string
+	for _, dep := range s.Depends {
+		if !allIDs[dep] {
+			errs = append(errs, fmt.Sprintf("step %q depends on unknown step %q", s.ID, dep))
 		}
+	}
+	return errs
+}
 
-		// Validate timeout
-		if s.Timeout != "" {
-			if _, err := s.ParseTimeout(); err != nil {
-				errs = append(errs, fmt.Sprintf("step %q has invalid timeout %q: %v", s.ID, s.Timeout, err))
-			}
+func validateStepTimeout(s Step) []string {
+	if s.Timeout == "" {
+		return nil
+	}
+	if _, err := s.ParseTimeout(); err != nil {
+		return []string{fmt.Sprintf("step %q has invalid timeout %q: %v", s.ID, s.Timeout, err)}
+	}
+	return nil
+}
+
+func validateStepErrorOn(s Step) []string {
+	if s.ErrorOn == "" {
+		return nil
+	}
+	validErrorOn := map[string]bool{"error": true, "warning": true, "message": true}
+	if !validErrorOn[s.ErrorOn] {
+		return []string{fmt.Sprintf("step %q error_on %q is invalid; must be one of: error, warning, message", s.ID, s.ErrorOn)}
+	}
+	return nil
+}
+
+func validateStepArtifacts(s Step) []string {
+	if len(s.Artifacts) == 0 {
+		return nil
+	}
+	var errs []string
+	artNames := make(map[string]bool)
+	for _, art := range s.Artifacts {
+		switch {
+		case art.Name == "":
+			errs = append(errs, fmt.Sprintf("step %q artifact name is required", s.ID))
+		case !artifactNameRe.MatchString(art.Name):
+			errs = append(errs, fmt.Sprintf("step %q artifact name %q must match [a-zA-Z_][a-zA-Z0-9_]*", s.ID, art.Name))
+		case artNames[art.Name]:
+			errs = append(errs, fmt.Sprintf("step %q has duplicate artifact name %q", s.ID, art.Name))
 		}
-
-		// Validate error_on
-		if s.ErrorOn != "" {
-			validErrorOn := map[string]bool{"error": true, "warning": true, "message": true}
-			if !validErrorOn[s.ErrorOn] {
-				errs = append(errs, fmt.Sprintf("step %q error_on %q is invalid; must be one of: error, warning, message", s.ID, s.ErrorOn))
-			}
+		artNames[art.Name] = true
+		if art.Path == "" {
+			errs = append(errs, fmt.Sprintf("step %q artifact %q path is required", s.ID, art.Name))
+		} else if filepath.IsAbs(art.Path) {
+			errs = append(errs, fmt.Sprintf("step %q artifact %q path must be relative, got %q", s.ID, art.Name, art.Path))
 		}
+	}
+	return errs
+}
 
-		// Validate artifacts
-		if len(s.Artifacts) > 0 {
-			artNames := make(map[string]bool)
-			for _, art := range s.Artifacts {
-				switch {
-				case art.Name == "":
-					errs = append(errs, fmt.Sprintf("step %q artifact name is required", s.ID))
-				case !artifactNameRe.MatchString(art.Name):
-					errs = append(errs, fmt.Sprintf("step %q artifact name %q must match [a-zA-Z_][a-zA-Z0-9_]*", s.ID, art.Name))
-				case artNames[art.Name]:
-					errs = append(errs, fmt.Sprintf("step %q has duplicate artifact name %q", s.ID, art.Name))
-				}
-				artNames[art.Name] = true
-				if art.Path == "" {
-					errs = append(errs, fmt.Sprintf("step %q artifact %q path is required", s.ID, art.Name))
-				} else if filepath.IsAbs(art.Path) {
-					errs = append(errs, fmt.Sprintf("step %q artifact %q path must be relative, got %q", s.ID, art.Name, art.Path))
-				}
-			}
+func validateStepFreshness(s Step) []string {
+	var errs []string
+	for i, fc := range s.Freshness {
+		if fc.Path == "" {
+			errs = append(errs, fmt.Sprintf("step %q freshness[%d].path is required", s.ID, i))
 		}
-
-		// Validate freshness entries
-		for i, fc := range s.Freshness {
-			if fc.Path == "" {
-				errs = append(errs, fmt.Sprintf("step %q freshness[%d].path is required", s.ID, i))
-			}
-			if fc.MaxAge == "" {
-				errs = append(errs, fmt.Sprintf("step %q freshness[%d].max_age is required", s.ID, i))
-			} else if _, err := time.ParseDuration(fc.MaxAge); err != nil {
-				errs = append(errs, fmt.Sprintf("step %q freshness[%d].max_age %q is invalid: %v", s.ID, i, fc.MaxAge, err))
-			}
-			switch fc.OnStale {
-			case "", "fail", "warn":
-				// valid
-			default:
-				errs = append(errs, fmt.Sprintf("step %q freshness[%d].on_stale %q is invalid; must be one of: fail, warn", s.ID, i, fc.OnStale))
-			}
+		if fc.MaxAge == "" {
+			errs = append(errs, fmt.Sprintf("step %q freshness[%d].max_age is required", s.ID, i))
+		} else if _, err := time.ParseDuration(fc.MaxAge); err != nil {
+			errs = append(errs, fmt.Sprintf("step %q freshness[%d].max_age %q is invalid: %v", s.ID, i, fc.MaxAge, err))
 		}
-
-		// Validate cache compatibility
-		if s.Cache {
-			if s.Approve != nil {
-				errs = append(errs, fmt.Sprintf("step %q: cache is incompatible with approve steps", s.ID))
-			}
-			if s.Call != nil {
-				errs = append(errs, fmt.Sprintf("step %q: cache is incompatible with call steps", s.ID))
-			}
+		switch fc.OnStale {
+		case "", "fail", "warn":
+			// valid
+		default:
+			errs = append(errs, fmt.Sprintf("step %q freshness[%d].on_stale %q is invalid; must be one of: fail, warn", s.ID, i, fc.OnStale))
 		}
+	}
+	return errs
+}
 
-		// Validate retry
-		if s.Retry != nil {
-			if s.Retry.Limit < 0 {
-				errs = append(errs, fmt.Sprintf("step %q retry limit must be >= 0", s.ID))
-			}
-			if s.Retry.Backoff != "" && s.Retry.Backoff != "linear" && s.Retry.Backoff != "exponential" {
-				errs = append(errs, fmt.Sprintf("step %q retry backoff must be \"linear\" or \"exponential\"", s.ID))
-			}
-			if s.Retry.MaxDelay != "" {
-				if _, err := time.ParseDuration(s.Retry.MaxDelay); err != nil {
-					errs = append(errs, fmt.Sprintf("step %q retry max_delay %q is invalid: %v", s.ID, s.Retry.MaxDelay, err))
-				}
+func validateStepCache(s Step) []string {
+	if !s.Cache {
+		return nil
+	}
+	var errs []string
+	if s.Approve != nil {
+		errs = append(errs, fmt.Sprintf("step %q: cache is incompatible with approve steps", s.ID))
+	}
+	if s.Call != nil {
+		errs = append(errs, fmt.Sprintf("step %q: cache is incompatible with call steps", s.ID))
+	}
+	return errs
+}
+
+func validateStepRetry(s Step) []string {
+	if s.Retry == nil {
+		return nil
+	}
+	var errs []string
+	if s.Retry.Limit < 0 {
+		errs = append(errs, fmt.Sprintf("step %q retry limit must be >= 0", s.ID))
+	}
+	if s.Retry.Backoff != "" && s.Retry.Backoff != "linear" && s.Retry.Backoff != "exponential" {
+		errs = append(errs, fmt.Sprintf("step %q retry backoff must be \"linear\" or \"exponential\"", s.ID))
+	}
+	if s.Retry.MaxDelay != "" {
+		if _, err := time.ParseDuration(s.Retry.MaxDelay); err != nil {
+			errs = append(errs, fmt.Sprintf("step %q retry max_delay %q is invalid: %v", s.ID, s.Retry.MaxDelay, err))
+		}
+	}
+	return errs
+}
+
+// validateRVersion validates the r_version constraint if present.
+func validateRVersion(d *DAG) []string {
+	if d.RVersion == "" {
+		return nil
+	}
+	if err := validateRVersionConstraint(d.RVersion); err != nil {
+		return []string{fmt.Sprintf("r_version %q is invalid: %v", d.RVersion, err)}
+	}
+	return nil
+}
+
+// validateTriggers validates the trigger block if present.
+func validateTriggers(d *DAG) []string {
+	if d.Trigger == nil {
+		return nil
+	}
+	var errs []string
+	t := d.Trigger
+
+	if t.Overlap != "" && t.Overlap != "skip" && t.Overlap != "cancel" {
+		errs = append(errs, fmt.Sprintf("trigger.overlap %q is invalid; must be one of: skip, cancel", t.Overlap))
+	}
+	if t.Watch != nil {
+		if t.Watch.Path == "" {
+			errs = append(errs, "trigger.watch.path is required")
+		}
+		if t.Watch.Debounce != "" {
+			if _, err := time.ParseDuration(t.Watch.Debounce); err != nil {
+				errs = append(errs, fmt.Sprintf("trigger.watch.debounce %q is invalid: %v", t.Watch.Debounce, err))
 			}
 		}
 	}
-
-	// Validate r_version constraint
-	if d.RVersion != "" {
-		if err := validateRVersionConstraint(d.RVersion); err != nil {
-			errs = append(errs, fmt.Sprintf("r_version %q is invalid: %v", d.RVersion, err))
+	if t.OnDAG != nil {
+		if t.OnDAG.Name == "" {
+			errs = append(errs, "trigger.on_dag.name is required")
+		}
+		validStatuses := map[string]bool{"": true, "completed": true, "failed": true, "any": true}
+		if !validStatuses[t.OnDAG.Status] {
+			errs = append(errs, fmt.Sprintf("trigger.on_dag.status %q is invalid; must be one of: completed, failed, any", t.OnDAG.Status))
 		}
 	}
-
-	// Validate trigger block
-	if d.Trigger != nil {
-		if d.Trigger.Overlap != "" && d.Trigger.Overlap != "skip" && d.Trigger.Overlap != "cancel" {
-			errs = append(errs, fmt.Sprintf("trigger.overlap %q is invalid; must be one of: skip, cancel", d.Trigger.Overlap))
+	if t.Condition != nil {
+		if t.Condition.RExpr == "" && t.Condition.Command == "" {
+			errs = append(errs, "trigger.condition requires r_expr or command")
 		}
-		if d.Trigger.Watch != nil {
-			if d.Trigger.Watch.Path == "" {
-				errs = append(errs, "trigger.watch.path is required")
+		if t.Condition.PollInterval != "" {
+			if _, err := time.ParseDuration(t.Condition.PollInterval); err != nil {
+				errs = append(errs, fmt.Sprintf("trigger.condition.poll_interval %q is invalid: %v", t.Condition.PollInterval, err))
 			}
-			if d.Trigger.Watch.Debounce != "" {
-				if _, err := time.ParseDuration(d.Trigger.Watch.Debounce); err != nil {
-					errs = append(errs, fmt.Sprintf("trigger.watch.debounce %q is invalid: %v", d.Trigger.Watch.Debounce, err))
-				}
-			}
-		}
-		if d.Trigger.OnDAG != nil {
-			if d.Trigger.OnDAG.Name == "" {
-				errs = append(errs, "trigger.on_dag.name is required")
-			}
-			validStatuses := map[string]bool{"": true, "completed": true, "failed": true, "any": true}
-			if !validStatuses[d.Trigger.OnDAG.Status] {
-				errs = append(errs, fmt.Sprintf("trigger.on_dag.status %q is invalid; must be one of: completed, failed, any", d.Trigger.OnDAG.Status))
-			}
-		}
-		if d.Trigger.Condition != nil {
-			if d.Trigger.Condition.RExpr == "" && d.Trigger.Condition.Command == "" {
-				errs = append(errs, "trigger.condition requires r_expr or command")
-			}
-			if d.Trigger.Condition.PollInterval != "" {
-				if _, err := time.ParseDuration(d.Trigger.Condition.PollInterval); err != nil {
-					errs = append(errs, fmt.Sprintf("trigger.condition.poll_interval %q is invalid: %v", d.Trigger.Condition.PollInterval, err))
-				}
-			}
-		}
-		if d.Trigger.Git != nil {
-			if d.Trigger.Git.PollInterval != "" {
-				if _, err := time.ParseDuration(d.Trigger.Git.PollInterval); err != nil {
-					errs = append(errs, fmt.Sprintf("trigger.git.poll_interval %q is invalid: %v", d.Trigger.Git.PollInterval, err))
-				}
-			}
-			validEvents := map[string]bool{"push": true, "tag": true}
-			for _, ev := range d.Trigger.Git.Events {
-				if !validEvents[ev] {
-					errs = append(errs, fmt.Sprintf("trigger.git.events contains invalid event %q; must be one of: push, tag", ev))
-				}
-			}
-		}
-		if d.Trigger.Deadline != "" {
-			if !deadlineRe.MatchString(d.Trigger.Deadline) {
-				errs = append(errs, fmt.Sprintf("trigger.deadline %q is invalid; must be HH:MM format", d.Trigger.Deadline))
-			} else {
-				if err := validateDeadlineTime(d.Trigger.Deadline); err != nil {
-					errs = append(errs, fmt.Sprintf("trigger.deadline %q is invalid: %v", d.Trigger.Deadline, err))
-				}
-			}
-		}
-		if d.Trigger.OnDeadline != nil && d.Trigger.Deadline == "" {
-			errs = append(errs, "trigger.on_deadline requires trigger.deadline to be set")
 		}
 	}
-
-	// Cycle detection via TopoSort
-	if len(errs) == 0 {
-		if _, err := TopoSort(d.Steps); err != nil {
-			errs = append(errs, err.Error())
+	if t.Git != nil {
+		if t.Git.PollInterval != "" {
+			if _, err := time.ParseDuration(t.Git.PollInterval); err != nil {
+				errs = append(errs, fmt.Sprintf("trigger.git.poll_interval %q is invalid: %v", t.Git.PollInterval, err))
+			}
+		}
+		validEvents := map[string]bool{"push": true, "tag": true}
+		for _, ev := range t.Git.Events {
+			if !validEvents[ev] {
+				errs = append(errs, fmt.Sprintf("trigger.git.events contains invalid event %q; must be one of: push, tag", ev))
+			}
 		}
 	}
+	if t.Deadline != "" {
+		if !deadlineRe.MatchString(t.Deadline) {
+			errs = append(errs, fmt.Sprintf("trigger.deadline %q is invalid; must be HH:MM format", t.Deadline))
+		} else {
+			if err := validateDeadlineTime(t.Deadline); err != nil {
+				errs = append(errs, fmt.Sprintf("trigger.deadline %q is invalid: %v", t.Deadline, err))
+			}
+		}
+	}
+	if t.OnDeadline != nil && t.Deadline == "" {
+		errs = append(errs, "trigger.on_deadline requires trigger.deadline to be set")
+	}
+	return errs
+}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("validation errors:\n  - %s", strings.Join(errs, "\n  - "))
+// validateCycles runs cycle detection only when no prior errors exist.
+func validateCycles(d *DAG, priorErrs []string) []string {
+	if len(priorErrs) > 0 {
+		return nil
+	}
+	if _, err := TopoSort(d.Steps); err != nil {
+		return []string{err.Error()}
 	}
 	return nil
 }
