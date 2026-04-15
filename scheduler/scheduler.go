@@ -81,21 +81,46 @@ type Scheduler struct {
 	webhookAddr    string                             // address the webhook server is listening on
 	ctx            context.Context                    // scheduler lifecycle context
 	deadlineFired  map[string]string                  // dagName -> date string (YYYY-MM-DD) of last fired deadline
+	pollInterval   time.Duration
+	watchDebounce  time.Duration
 }
 
 // New creates a new Scheduler that watches the given DAG sources.
 func New(sources []state.DAGSource) *Scheduler {
+	return NewWithConfig(sources, state.SchedulerConfig{})
+}
+
+// NewWithConfig creates a new Scheduler with explicit configuration.
+func NewWithConfig(sources []state.DAGSource, cfg state.SchedulerConfig) *Scheduler {
+	maxConc := cfg.MaxConcurrent
+	if maxConc <= 0 {
+		maxConc = defaultMaxConcurrent
+	}
+	pollInt := defaultPollInterval
+	if cfg.PollInterval != "" {
+		if d, err := time.ParseDuration(cfg.PollInterval); err == nil {
+			pollInt = d
+		}
+	}
+	debounce := defaultDebounce
+	if cfg.WatchDebounce != "" {
+		if d, err := time.ParseDuration(cfg.WatchDebounce); err == nil {
+			debounce = d
+		}
+	}
 	return &Scheduler{
 		cron:           cron.New(),
 		sources:        sources,
 		logger:         slog.Default(),
 		registered:     make(map[string]*dagEntry),
 		running:        make(map[string]*runEntry),
-		maxConcurrent:  defaultMaxConcurrent,
+		maxConcurrent:  maxConc,
 		onDAGListeners: make(map[string][]onDAGListener),
 		completions:    make(chan dagCompletionEvent, 256),
 		webhooks:       make(map[string]webhookEntry),
 		deadlineFired:  make(map[string]string),
+		pollInterval:   pollInt,
+		watchDebounce:  debounce,
 	}
 }
 
@@ -199,7 +224,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	}
 
 	// Poll for DAG file changes
-	ticker := time.NewTicker(defaultPollInterval)
+	ticker := time.NewTicker(s.pollInterval)
 	defer ticker.Stop()
 
 	for {
@@ -481,8 +506,8 @@ func (s *Scheduler) setupWatchTrigger(ctx context.Context, d *dag.DAG, dagPath s
 		watchPath = filepath.Join(d.SourceDir, watchPath)
 	}
 
-	// Parse debounce duration
-	debounce := defaultDebounce
+	// Parse debounce duration (per-DAG override, then global config, then default)
+	debounce := s.watchDebounce
 	if w.Debounce != "" {
 		if parsed, err := time.ParseDuration(w.Debounce); err == nil {
 			debounce = parsed

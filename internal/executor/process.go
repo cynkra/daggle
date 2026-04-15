@@ -16,10 +16,18 @@ import (
 )
 
 const (
-	gracePeriod        = 5 * time.Second
-	errorContextLines  = 50
-	errorDetailMaxLen  = 500
+	defaultGracePeriod       = 5 * time.Second
+	defaultErrorContextLines = 50
+	errorDetailMaxLen        = 500
 )
+
+// GracePeriod is the time allowed for a process to exit after signal.
+// Set via config; falls back to defaultGracePeriod.
+var GracePeriod = defaultGracePeriod
+
+// ErrorContextLines is the number of stderr lines to include in error details.
+// Set via config; falls back to defaultErrorContextLines.
+var ErrorContextLines = defaultErrorContextLines
 
 var (
 	// OutputMarkerRe matches ::daggle-output name=<key>::<value> markers in step stdout.
@@ -159,7 +167,7 @@ func killProcessGroup(cmd *exec.Cmd) {
 	_ = syscall.Kill(pgid, syscall.SIGTERM)
 
 	// Poll for process exit instead of blocking the full grace period
-	deadline := time.After(gracePeriod)
+	deadline := time.After(GracePeriod)
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	for {
@@ -235,7 +243,7 @@ func extractErrorDetail(stderrPath string) string {
 // and returns the error line plus following context.
 func extractPatternError(lines []string, pattern *regexp.Regexp, skipLine string) string {
 	errorStart := -1
-	for i := len(lines) - 1; i >= 0 && i >= len(lines)-errorContextLines; i-- {
+	for i := len(lines) - 1; i >= 0 && i >= len(lines)-ErrorContextLines; i-- {
 		line := strings.TrimSpace(lines[i])
 		if pattern.MatchString(line) {
 			errorStart = i
