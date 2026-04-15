@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -159,7 +160,7 @@ func (e *Engine) Run(ctx context.Context) error {
 
 func (e *Engine) runTier(ctx context.Context, steps []dag.Step, env []string) error {
 	var mu sync.Mutex
-	var firstErr error
+	var errs []error
 	var wg sync.WaitGroup
 
 	for _, step := range steps {
@@ -168,16 +169,14 @@ func (e *Engine) runTier(ctx context.Context, steps []dag.Step, env []string) er
 			defer wg.Done()
 			if err := e.runStep(ctx, s, env); err != nil {
 				mu.Lock()
-				if firstErr == nil {
-					firstErr = fmt.Errorf("step %q failed: %w", s.ID, err)
-				}
+				errs = append(errs, fmt.Errorf("step %q failed: %w", s.ID, err))
 				mu.Unlock()
 			}
 		}(step)
 	}
 
 	wg.Wait()
-	return firstErr
+	return errors.Join(errs...)
 }
 
 // EventStepSkipped is emitted when a step is skipped due to a `when` condition.
