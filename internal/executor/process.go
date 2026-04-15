@@ -3,6 +3,7 @@ package executor
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -183,7 +184,8 @@ func buildResult(err error, start time.Time, stdoutPath, stderrPath string) Resu
 	}
 	if err != nil {
 		r.Err = err
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			r.ExitCode = exitErr.ExitCode()
 		} else {
 			r.ExitCode = -1
