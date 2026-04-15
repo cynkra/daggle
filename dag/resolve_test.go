@@ -63,7 +63,7 @@ func TestResolveEnv_EnvRefMissing(t *testing.T) {
 func TestResolveEnv_FileRef(t *testing.T) {
 	dir := t.TempDir()
 	secretFile := filepath.Join(dir, "secret.txt")
-	if err := os.WriteFile(secretFile, []byte("  file_secret_value  \n"), 0644); err != nil {
+	if err := os.WriteFile(secretFile, []byte("  file_secret_value  \n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

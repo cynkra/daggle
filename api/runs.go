@@ -75,7 +75,7 @@ func (s *Server) handleCancelRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cancelFile := filepath.Join(run.Dir, "cancel.requested")
-	if err := os.WriteFile(cancelFile, []byte("cancel"), 0644); err != nil {
+	if err := os.WriteFile(cancelFile, []byte("cancel"), 0o644); err != nil {
 		writeError(w, http.StatusInternalServerError, "write cancel request: "+err.Error())
 		return
 	}

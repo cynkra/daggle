@@ -31,7 +31,7 @@ steps:
     command: echo validating
     depends: [extract]
 `
-	if err := os.WriteFile(filepath.Join(dagDir, "test-dag.yaml"), []byte(dagYAML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dagDir, "test-dag.yaml"), []byte(dagYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -252,8 +252,8 @@ func TestStepLog(t *testing.T) {
 	srv, _ := setupTestServer(t)
 
 	run, _ := state.CreateRun("test-dag")
-	_ = os.WriteFile(filepath.Join(run.Dir, "extract.stdout.log"), []byte("Loading data...\n"), 0644)
-	_ = os.WriteFile(filepath.Join(run.Dir, "extract.stderr.log"), []byte(""), 0644)
+	_ = os.WriteFile(filepath.Join(run.Dir, "extract.stdout.log"), []byte("Loading data...\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(run.Dir, "extract.stderr.log"), []byte(""), 0o644)
 
 	writer := state.NewEventWriter(run.Dir)
 	_ = writer.Write(state.Event{Type: state.EventRunStarted})
@@ -280,7 +280,7 @@ func TestOutputs(t *testing.T) {
 	run, _ := state.CreateRun("test-dag")
 	// Write stdout with output markers
 	_ = os.WriteFile(filepath.Join(run.Dir, "extract.stdout.log"),
-		[]byte("some output\n::daggle-output name=row_count::42\nnormal line\n::daggle-output name=file_path::/tmp/data.csv\n"), 0644)
+		[]byte("some output\n::daggle-output name=row_count::42\nnormal line\n::daggle-output name=file_path::/tmp/data.csv\n"), 0o644)
 
 	writer := state.NewEventWriter(run.Dir)
 	_ = writer.Write(state.Event{Type: state.EventStepStarted, StepID: "extract"})
@@ -378,10 +378,10 @@ func TestRegisterProject(t *testing.T) {
 	// Create a project directory with a .daggle/ dir containing a DAG
 	projDir := t.TempDir()
 	dagDir := filepath.Join(projDir, ".daggle")
-	if err := os.MkdirAll(dagDir, 0755); err != nil {
+	if err := os.MkdirAll(dagDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dagDir, "my-dag.yaml"), []byte("name: my-dag\nsteps:\n  - id: a\n    command: echo hi\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dagDir, "my-dag.yaml"), []byte("name: my-dag\nsteps:\n  - id: a\n    command: echo hi\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -430,7 +430,7 @@ func TestRegisterProject_Duplicate(t *testing.T) {
 	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
 
 	projDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(projDir, ".daggle"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(projDir, ".daggle"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -444,7 +444,7 @@ func TestRegisterProject_Duplicate(t *testing.T) {
 
 	// Register same name again with different path
 	projDir2 := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(projDir2, ".daggle"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(projDir2, ".daggle"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	body = bytes.NewBufferString(`{"name": "dup", "path": "` + projDir2 + `"}`)
@@ -475,7 +475,7 @@ func TestUnregisterProject(t *testing.T) {
 	t.Setenv("DAGGLE_CONFIG_DIR", configDir)
 
 	projDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(projDir, ".daggle"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(projDir, ".daggle"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 

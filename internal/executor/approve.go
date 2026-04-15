@@ -93,7 +93,7 @@ func runApprovalNotify(ctx context.Context, hook *dag.Hook, logDir, stepID strin
 	}
 	if hook.RExpr != "" {
 		tmpFile := filepath.Join(logDir, stepID+".notify.R")
-		if err := os.WriteFile(tmpFile, []byte(hook.RExpr), 0644); err != nil {
+		if err := os.WriteFile(tmpFile, []byte(hook.RExpr), 0o644); err != nil {
 			return
 		}
 		cmd := exec.CommandContext(ctx, state.ToolPath("rscript"), "--no-save", "--no-restore", tmpFile)

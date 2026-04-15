@@ -35,10 +35,10 @@ func TestCleanupRuns(t *testing.T) {
 
 	// Create an old run
 	oldRunDir := filepath.Join(RunsDir(), "test-dag", "2024-01-01", "run_abc123")
-	if err := os.MkdirAll(oldRunDir, 0755); err != nil {
+	if err := os.MkdirAll(oldRunDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_ = os.WriteFile(filepath.Join(oldRunDir, "events.jsonl"), []byte("test"), 0644)
+	_ = os.WriteFile(filepath.Join(oldRunDir, "events.jsonl"), []byte("test"), 0o644)
 
 	// Set the mod time to 60 days ago
 	oldTime := time.Now().Add(-60 * 24 * time.Hour)
@@ -46,10 +46,10 @@ func TestCleanupRuns(t *testing.T) {
 
 	// Create a recent run
 	recentRunDir := filepath.Join(RunsDir(), "test-dag", "2024-06-01", "run_def456")
-	if err := os.MkdirAll(recentRunDir, 0755); err != nil {
+	if err := os.MkdirAll(recentRunDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_ = os.WriteFile(filepath.Join(recentRunDir, "events.jsonl"), []byte("test"), 0644)
+	_ = os.WriteFile(filepath.Join(recentRunDir, "events.jsonl"), []byte("test"), 0o644)
 
 	// Cleanup runs older than 30 days
 	result, err := CleanupRuns(30 * 24 * time.Hour)
@@ -89,7 +89,7 @@ func TestLoadConfig_WithCleanup(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("DAGGLE_CONFIG_DIR", tmpDir)
 
-	_ = os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte("cleanup:\n  older_than: 30d\n  interval: 6h\n"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte("cleanup:\n  older_than: 30d\n  interval: 6h\n"), 0o644)
 
 	cfg, err := LoadConfig()
 	if err != nil {

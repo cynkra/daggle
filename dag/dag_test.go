@@ -383,12 +383,12 @@ func TestParseFile_SourceDir_DaggleDir(t *testing.T) {
 	// DAG file inside .daggle/ → SourceDir should be the parent (project root)
 	dir := t.TempDir()
 	daggleDir := filepath.Join(dir, ".daggle")
-	if err := os.MkdirAll(daggleDir, 0755); err != nil {
+	if err := os.MkdirAll(daggleDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	content := []byte("name: test\nsteps:\n  - id: a\n    command: echo\n")
 	dagPath := filepath.Join(daggleDir, "pipeline.yaml")
-	if err := os.WriteFile(dagPath, content, 0644); err != nil {
+	if err := os.WriteFile(dagPath, content, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -406,7 +406,7 @@ func TestParseFile_SourceDir_RegularDir(t *testing.T) {
 	dir := t.TempDir()
 	content := []byte("name: test\nsteps:\n  - id: a\n    command: echo\n")
 	dagPath := filepath.Join(dir, "pipeline.yaml")
-	if err := os.WriteFile(dagPath, content, 0644); err != nil {
+	if err := os.WriteFile(dagPath, content, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -424,7 +424,7 @@ func TestHashFile(t *testing.T) {
 	path := filepath.Join(dir, "test.yaml")
 
 	content := []byte("name: test\nsteps:\n  - id: a\n    command: echo\n")
-	if err := os.WriteFile(path, content, 0644); err != nil {
+	if err := os.WriteFile(path, content, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -446,7 +446,7 @@ func TestHashFile(t *testing.T) {
 	}
 
 	// Modified content = different hash
-	if err := os.WriteFile(path, []byte("name: changed\n"), 0644); err != nil {
+	if err := os.WriteFile(path, []byte("name: changed\n"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	h3, err := HashFile(path)
@@ -612,7 +612,7 @@ func TestLoadBaseDefaults(t *testing.T) {
   SHARED: base
 timeout: "5m"
 `
-	if err := os.WriteFile(filepath.Join(dir, "base.yaml"), []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "base.yaml"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

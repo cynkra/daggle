@@ -91,7 +91,7 @@ func (w *EventWriter) Write(e Event) error {
 		return fmt.Errorf("marshal event: %w", err)
 	}
 
-	f, err := os.OpenFile(w.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(w.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("open events file: %w", err)
 	}

@@ -31,7 +31,7 @@ func CreateRun(dagName string) (*RunInfo, error) {
 		"run_"+id,
 	)
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create run directory: %w", err)
 	}
 

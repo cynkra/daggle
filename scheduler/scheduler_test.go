@@ -58,7 +58,7 @@ func TestPIDFile(t *testing.T) {
 func TestScheduler_ScanDAGs(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Create a DAG with a schedule
@@ -96,7 +96,7 @@ steps:
 func TestScheduler_HotReload(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
@@ -146,7 +146,7 @@ steps:
 func TestScheduler_SkipOverlap(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Create a DAG that sleeps
@@ -199,7 +199,7 @@ steps:
 func TestScheduler_CancelOverlap(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// DAG with overlap: cancel policy
@@ -254,7 +254,7 @@ steps:
 func TestScheduler_MaxConcurrent(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
@@ -302,7 +302,7 @@ steps:
 func TestScheduler_StartStop(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
@@ -334,8 +334,8 @@ func TestScheduler_WatchTrigger(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
 	watchDir := filepath.Join(tmpDir, "data")
-	_ = os.MkdirAll(dagDir, 0755)
-	_ = os.MkdirAll(watchDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
+	_ = os.MkdirAll(watchDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Create a DAG with a watch trigger (slow so we can catch it running)
@@ -365,7 +365,7 @@ steps:
 	}
 
 	// Write a matching file — should trigger a run after debounce
-	if err := os.WriteFile(filepath.Join(watchDir, "data.csv"), []byte("a,b\n1,2\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(watchDir, "data.csv"), []byte("a,b\n1,2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -393,8 +393,8 @@ func TestScheduler_WatchTriggerPatternFilter(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
 	watchDir := filepath.Join(tmpDir, "data")
-	_ = os.MkdirAll(dagDir, 0755)
-	_ = os.MkdirAll(watchDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
+	_ = os.MkdirAll(watchDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	writeDAG(t, dagDir, "watcher.yaml", `
@@ -416,7 +416,7 @@ steps:
 	_ = sched.syncDAGs(ctx)
 
 	// Write a non-matching file — should NOT trigger
-	if err := os.WriteFile(filepath.Join(watchDir, "data.txt"), []byte("hello"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(watchDir, "data.txt"), []byte("hello"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -434,7 +434,7 @@ steps:
 func TestScheduler_OnDAGTrigger(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Upstream DAG: fast, cron-triggered
@@ -503,7 +503,7 @@ steps:
 func TestScheduler_OnDAGTriggerStatusFilter(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Upstream DAG: succeeds
@@ -555,7 +555,7 @@ func TestScheduler_ConditionTrigger(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
 	flagFile := filepath.Join(tmpDir, "ready.flag")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// DAG with condition trigger: fires when flag file exists
@@ -586,7 +586,7 @@ steps:
 	}
 
 	// Create flag file — should trigger on next poll
-	_ = os.WriteFile(flagFile, []byte("ready"), 0644)
+	_ = os.WriteFile(flagFile, []byte("ready"), 0o644)
 	time.Sleep(500 * time.Millisecond)
 
 	sched.mu.Lock()
@@ -608,7 +608,7 @@ steps:
 func TestScheduler_GitTrigger(t *testing.T) {
 	tmpDir := t.TempDir()
 	repoDir := filepath.Join(tmpDir, "repo")
-	_ = os.MkdirAll(repoDir, 0755)
+	_ = os.MkdirAll(repoDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	// Init a git repo with an initial commit
@@ -621,7 +621,7 @@ func TestScheduler_GitTrigger(t *testing.T) {
 			t.Fatalf("%s: %v\n%s", cmd, err, out)
 		}
 	}
-	_ = os.WriteFile(filepath.Join(repoDir, "file.txt"), []byte("v1"), 0644)
+	_ = os.WriteFile(filepath.Join(repoDir, "file.txt"), []byte("v1"), 0o644)
 	for _, cmd := range []string{
 		"git -C " + repoDir + " add .",
 		"git -C " + repoDir + " commit -m initial",
@@ -659,7 +659,7 @@ steps:
 	}
 
 	// Make a new commit
-	_ = os.WriteFile(filepath.Join(repoDir, "file.txt"), []byte("v2"), 0644)
+	_ = os.WriteFile(filepath.Join(repoDir, "file.txt"), []byte("v2"), 0o644)
 	for _, cmd := range []string{
 		"git -C " + repoDir + " add .",
 		"git -C " + repoDir + " commit -m second",
@@ -691,7 +691,7 @@ steps:
 func TestScheduler_WebhookTrigger(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	writeDAG(t, dagDir, "webhook.yaml", `
@@ -756,7 +756,7 @@ steps:
 func TestScheduler_WebhookHMACValidation(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")
-	_ = os.MkdirAll(dagDir, 0755)
+	_ = os.MkdirAll(dagDir, 0o755)
 	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
 
 	writeDAG(t, dagDir, "secure.yaml", `
@@ -831,7 +831,7 @@ steps:
 
 func writeDAG(t *testing.T, dir, name, content string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 		t.Fatalf("write DAG %s: %v", name, err)
 	}
 }

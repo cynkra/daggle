@@ -638,7 +638,7 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	case hook.RExpr != "":
 		// Write to temp file and run via Rscript
 		tmpFile := filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".R")
-		if err := os.WriteFile(tmpFile, []byte(hook.RExpr), 0644); err != nil {
+		if err := os.WriteFile(tmpFile, []byte(hook.RExpr), 0o644); err != nil {
 			e.logger.Error("hook write failed", "hook", name, "error", err)
 			return
 		}
@@ -686,7 +686,7 @@ func (e *Engine) evaluateCondition(ctx context.Context, cond *dag.StepCondition,
 	switch {
 	case cond.RExpr != "":
 		tmpFile := filepath.Join(e.runInfo.Dir, "condition_"+sanitize(cond.RExpr[:min(len(cond.RExpr), 20)])+".R")
-		if err := os.WriteFile(tmpFile, []byte(fmt.Sprintf("if (!(%s)) quit(status = 1, save = 'no')\n", cond.RExpr)), 0644); err != nil {
+		if err := os.WriteFile(tmpFile, []byte(fmt.Sprintf("if (!(%s)) quit(status = 1, save = 'no')\n", cond.RExpr)), 0o644); err != nil {
 			return false, err
 		}
 		defer func() { _ = os.Remove(tmpFile) }()
@@ -780,7 +780,7 @@ func (e *Engine) writeSummaryFile(stepID string, summaries []executor.Summary) {
 		parts = append(parts, s.Content)
 	}
 	path := filepath.Join(e.runInfo.Dir, stepID+".summary.md")
-	if err := os.WriteFile(path, []byte(strings.Join(parts, "\n")), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(strings.Join(parts, "\n")), 0o644); err != nil {
 		e.logger.Warn("failed to write summary file", "step", stepID, "error", err)
 	}
 }
@@ -805,7 +805,7 @@ func (e *Engine) writeMetadataFile(stepID string, metadata []executor.MetaEntry)
 		return
 	}
 	path := filepath.Join(e.runInfo.Dir, stepID+".meta.json")
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		e.logger.Warn("failed to write metadata file", "step", stepID, "error", err)
 	}
 }
@@ -830,7 +830,7 @@ func (e *Engine) writeValidationFile(stepID string, validations []executor.Valid
 		return
 	}
 	path := filepath.Join(e.runInfo.Dir, stepID+".validations.json")
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		e.logger.Warn("failed to write validations file", "step", stepID, "error", err)
 	}
 }

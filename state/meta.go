@@ -34,7 +34,7 @@ func WriteMeta(dir string, meta *RunMeta) error {
 	if err != nil {
 		return fmt.Errorf("marshal meta: %w", err)
 	}
-	return os.WriteFile(filepath.Join(dir, "meta.json"), data, 0644)
+	return os.WriteFile(filepath.Join(dir, "meta.json"), data, 0o644)
 }
 
 // ReadMeta reads run metadata from meta.json in the given directory.
