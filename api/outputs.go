@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cynkra/daggle/internal/executor"
@@ -63,7 +64,7 @@ func (s *Server) handleGetOutputs(w http.ResponseWriter, r *http.Request) {
 
 // ParseOutputMarkers reads a step's stdout log and extracts ::daggle-output:: markers.
 func ParseOutputMarkers(runDir, stepID string) map[string]string {
-	data, err := os.ReadFile(runDir + "/" + stepID + ".stdout.log")
+	data, err := os.ReadFile(filepath.Join(runDir, stepID+".stdout.log"))
 	if err != nil {
 		return nil
 	}
