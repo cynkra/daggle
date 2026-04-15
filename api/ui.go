@@ -249,6 +249,11 @@ func (s *Server) uiStepLog(w http.ResponseWriter, r *http.Request) {
 	runID := r.PathValue("run_id")
 	stepID := r.PathValue("step_id")
 
+	if !isValidStepID(stepID) {
+		http.Error(w, "invalid step_id", http.StatusBadRequest)
+		return
+	}
+
 	run, err := state.FindRun(name, runID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
