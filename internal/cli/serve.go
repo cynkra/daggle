@@ -60,7 +60,7 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
 
-	sched := scheduler.New(sources)
+	sched := scheduler.NewWithConfig(sources, globalCfg.Scheduler)
 
 	go func() {
 		for {
