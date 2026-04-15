@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,6 +35,7 @@ func (s *Server) handleGetValidations(w http.ResponseWriter, r *http.Request) {
 		stepID := strings.TrimSuffix(entry.Name(), ".validations.json")
 		data, err := os.ReadFile(filepath.Join(run.Dir, entry.Name()))
 		if err != nil {
+			slog.Warn("failed to read validation file", "file", entry.Name(), "error", err)
 			continue
 		}
 

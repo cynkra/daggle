@@ -1,6 +1,7 @@
 package state
 
 import (
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,7 +53,9 @@ func InitTools(cfg Config) {
 		}
 		// Persist newly discovered paths to config.yaml
 		if len(discovered) > 0 {
-			_ = saveToolPaths(cfg, discovered)
+			if err := saveToolPaths(cfg, discovered); err != nil {
+				slog.Warn("failed to persist tool paths", "error", err)
+			}
 		}
 	})
 }
