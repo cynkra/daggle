@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
@@ -161,7 +159,7 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 
 	// Execute async
 	go func() {
-		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		ctx, cancel := context.WithCancel(s.ctx)
 		defer cancel()
 
 		eng := engine.New(expanded, run, executor.New)

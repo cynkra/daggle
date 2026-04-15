@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"log/slog"
@@ -40,18 +41,23 @@ type Server struct {
 	version         string
 	started         time.Time
 	logger          *slog.Logger
+	ctx             context.Context
+	cancel          context.CancelFunc
 }
 
 // New creates a new API server. The sourceFunc is called on each request
 // to get the current DAG sources, so newly registered projects appear
 // without a restart.
 func New(sourceFunc SourceFunc, version string, opts ...ServerOption) *Server {
+	ctx, cancel := context.WithCancel(context.Background())
 	s := &Server{
 		mux:        http.NewServeMux(),
 		sourceFunc: sourceFunc,
 		version:    version,
 		started:    time.Now(),
 		logger:     slog.Default(),
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -78,6 +84,11 @@ func (s *Server) sources() []state.DAGSource {
 // Handler returns the HTTP handler for the API server.
 func (s *Server) Handler() http.Handler {
 	return s.mux
+}
+
+// Shutdown cancels the server context, signalling all async runs to stop.
+func (s *Server) Shutdown() {
+	s.cancel()
 }
 
 func (s *Server) registerRoutes() {
