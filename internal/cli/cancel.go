@@ -62,7 +62,7 @@ func runCancel(_ *cobra.Command, args []string) error {
 
 	// Write a cancel request file that the engine checks between tiers
 	cancelFile := filepath.Join(run.Dir, "cancel.requested")
-	if err := os.WriteFile(cancelFile, []byte("cancel"), 0644); err != nil {
+	if err := os.WriteFile(cancelFile, []byte("cancel"), 0o644); err != nil {
 		return fmt.Errorf("write cancel request: %w", err)
 	}
 

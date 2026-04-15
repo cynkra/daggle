@@ -56,10 +56,10 @@ func SaveProjects(projects []Project) error {
 	}
 
 	dir := filepath.Dir(ProjectsPath())
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(ProjectsPath(), data, 0644)
+	return os.WriteFile(ProjectsPath(), data, 0o644)
 }
 
 // RegisterProject adds a project to the registry.

@@ -36,13 +36,13 @@ func TestDetect_LockfileWithLibrary(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create renv.lock
-	if err := os.WriteFile(filepath.Join(dir, "renv.lock"), []byte("{}"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "renv.lock"), []byte("{}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	// Create library directory
 	libDir := filepath.Join(dir, "renv", "library", "R-4.4", "aarch64-apple-darwin20")
-	if err := os.MkdirAll(libDir, 0755); err != nil {
+	if err := os.MkdirAll(libDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,7 +65,7 @@ func TestDetect_LockfileWithoutLibrary(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create renv.lock but no library directory
-	if err := os.WriteFile(filepath.Join(dir, "renv.lock"), []byte("{}"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "renv.lock"), []byte("{}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

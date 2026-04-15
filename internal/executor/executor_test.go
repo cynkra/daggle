@@ -162,7 +162,7 @@ func TestExtractErrorDetail_RError(t *testing.T) {
 
 	// Test with R error pattern
 	stderrPath := filepath.Join(tmpDir, "test.stderr.log")
-	_ = os.WriteFile(stderrPath, []byte("some output\nWarning message:\nError in foo(): bar is not defined\nExecution halted\n"), 0644)
+	_ = os.WriteFile(stderrPath, []byte("some output\nWarning message:\nError in foo(): bar is not defined\nExecution halted\n"), 0o644)
 
 	detail := extractErrorDetail(stderrPath)
 	if detail == "" {
@@ -180,7 +180,7 @@ func TestExtractErrorDetail_QuartoError(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	stderrPath := filepath.Join(tmpDir, "quarto.stderr.log")
-	_ = os.WriteFile(stderrPath, []byte("Rendering document.qmd\nERROR: YAMLError: bad indentation of a mapping entry at line 15\n"), 0644)
+	_ = os.WriteFile(stderrPath, []byte("Rendering document.qmd\nERROR: YAMLError: bad indentation of a mapping entry at line 15\n"), 0o644)
 
 	detail := extractErrorDetail(stderrPath)
 	if !strings.Contains(detail, "ERROR: YAMLError") {
@@ -192,7 +192,7 @@ func TestExtractErrorDetail_ShellFallback(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	stderrPath := filepath.Join(tmpDir, "shell.stderr.log")
-	_ = os.WriteFile(stderrPath, []byte("ls: cannot access '/no/such/path': No such file or directory\n"), 0644)
+	_ = os.WriteFile(stderrPath, []byte("ls: cannot access '/no/such/path': No such file or directory\n"), 0o644)
 
 	detail := extractErrorDetail(stderrPath)
 	if !strings.Contains(detail, "No such file or directory") {
@@ -205,7 +205,7 @@ func TestExtractErrorDetail_EmptyStderr(t *testing.T) {
 
 	// Empty file
 	emptyPath := filepath.Join(tmpDir, "empty.stderr.log")
-	_ = os.WriteFile(emptyPath, []byte(""), 0644)
+	_ = os.WriteFile(emptyPath, []byte(""), 0o644)
 	if detail := extractErrorDetail(emptyPath); detail != "" {
 		t.Errorf("expected empty detail for empty stderr, got %q", detail)
 	}

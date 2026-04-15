@@ -15,7 +15,7 @@ import (
 // The suffix is used to name the temp file (e.g. "inline", "rpkg", "rmd").
 func runRScript(ctx context.Context, rCode string, step dag.Step, logDir, workdir string, env []string, suffix string) Result {
 	tmpFile := filepath.Join(logDir, step.ID+"."+suffix+".R")
-	if err := os.WriteFile(tmpFile, []byte(rCode), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte(rCode), 0o644); err != nil {
 		return Result{ExitCode: -1, Err: fmt.Errorf("write %s R: %w", suffix, err)}
 	}
 	args := append([]string{"--no-save", "--no-restore", tmpFile}, step.Args...)

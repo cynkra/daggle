@@ -594,7 +594,7 @@ func TestEngine_CancelBetweenTiers(t *testing.T) {
 		executed = append(executed, step.ID)
 		// After step "a" runs, write cancel file
 		if step.ID == "a" {
-			_ = os.WriteFile(filepath.Join(run.Dir, "cancel.requested"), []byte("cancel"), 0644)
+			_ = os.WriteFile(filepath.Join(run.Dir, "cancel.requested"), []byte("cancel"), 0o644)
 		}
 		return executor.Result{ExitCode: 0}
 	}}

@@ -55,14 +55,14 @@ func (s *Store) Save(dagName, stepID, cacheKey string, entry Entry) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	p := s.entryPath(dagName, stepID, cacheKey)
-	if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return fmt.Errorf("create cache dir: %w", err)
 	}
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return fmt.Errorf("marshal cache entry: %w", err)
 	}
-	return os.WriteFile(p, data, 0644)
+	return os.WriteFile(p, data, 0o644)
 }
 
 // Clear removes all cached entries for a specific DAG.

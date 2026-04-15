@@ -19,10 +19,10 @@ func PIDPath() string {
 // WritePID writes the current process PID to the PID file.
 func WritePID() error {
 	path := PIDPath()
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create proc dir: %w", err)
 	}
-	return os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0644)
+	return os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o644)
 }
 
 // ReadPID reads the PID from the PID file.

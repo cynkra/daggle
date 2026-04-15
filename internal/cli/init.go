@@ -30,7 +30,7 @@ func runInit(_ *cobra.Command, args []string) error {
 
 	// Write to .daggle/ in current directory
 	dagDir := ".daggle"
-	if err := os.MkdirAll(dagDir, 0755); err != nil {
+	if err := os.MkdirAll(dagDir, 0o755); err != nil {
 		return fmt.Errorf("create .daggle directory: %w", err)
 	}
 
@@ -39,7 +39,7 @@ func runInit(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("file already exists: %s", outPath)
 	}
 
-	if err := os.WriteFile(outPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("write template: %w", err)
 	}
 
