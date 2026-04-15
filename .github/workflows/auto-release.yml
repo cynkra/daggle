@@ -1,9 +1,10 @@
 name: Auto Release
 
 on:
-  pull_request:
-    types: [closed]
-    branches: [main]
+  workflow_dispatch:
+  # pull_request:
+  #   types: [closed]
+  #   branches: [main]
 
 permissions:
   contents: write
