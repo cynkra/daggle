@@ -700,7 +700,8 @@ func (e *Engine) evaluateCondition(ctx context.Context, cond *dag.StepCondition,
 	cmd.Dir = e.dag.ResolveWorkdir(dag.Step{})
 
 	if err := cmd.Run(); err != nil {
-		if _, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			return true, nil // condition not met, skip
 		}
 		return false, err // actual error

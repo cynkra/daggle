@@ -5,6 +5,8 @@ linters:
     - gocritic
     - revive
     - misspell
+    - staticcheck
+    - errorlint
   settings:
     revive:
       rules:
