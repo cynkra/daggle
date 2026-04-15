@@ -4,11 +4,18 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/cynkra/daggle/internal/executor"
 	"github.com/cynkra/daggle/state"
 )
+
+var validStepID = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_.-]*$`)
+
+func isValidStepID(id string) bool {
+	return validStepID.MatchString(id)
+}
 
 func (s *Server) handleListSteps(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
@@ -28,6 +35,11 @@ func (s *Server) handleStepLog(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	runID := r.PathValue("run_id")
 	stepID := r.PathValue("step_id")
+
+	if !isValidStepID(stepID) {
+		writeError(w, http.StatusBadRequest, "invalid step_id")
+		return
+	}
 
 	run, err := state.FindRun(name, runID)
 	if err != nil {
@@ -57,6 +69,11 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request, approved
 	name := r.PathValue("name")
 	runID := r.PathValue("run_id")
 	stepID := r.PathValue("step_id")
+
+	if !isValidStepID(stepID) {
+		writeError(w, http.StatusBadRequest, "invalid step_id")
+		return
+	}
 
 	run, err := state.FindRun(name, runID)
 	if err != nil {
