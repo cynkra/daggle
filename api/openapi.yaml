@@ -30,6 +30,19 @@ paths:
       summary: List all DAGs
       operationId: listDags
       tags: [dags]
+      parameters:
+        - in: query
+          name: tag
+          schema: { type: string }
+          description: Only return DAGs whose tags include this value.
+        - in: query
+          name: team
+          schema: { type: string }
+          description: Only return DAGs whose team matches this value.
+        - in: query
+          name: owner
+          schema: { type: string }
+          description: Only return DAGs whose owner matches this value.
       responses:
         "200":
           description: Array of DAG summaries.
@@ -575,6 +588,16 @@ components:
         last_run:
           type: string
           format: date-time
+        owner:
+          type: string
+        team:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
 
     DAGDetail:
       type: object
@@ -601,6 +624,16 @@ components:
         last_run:
           type: string
           format: date-time
+        owner:
+          type: string
+        team:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
 
     TriggerRequest:
       type: object
