@@ -380,6 +380,35 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/runs/{run_id}/stream:
+    get:
+      summary: Stream run events via Server-Sent Events
+      operationId: streamRun
+      tags: [runs]
+      description: |
+        Tails events.jsonl and pushes each new event as an SSE `data:` frame.
+        Sends `event: end` when run_completed or run_failed is observed, or
+        `event: timeout` after 30 minutes of idle.
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+        - in: query
+          name: from
+          schema:
+            type: string
+            enum: [start, end]
+            default: start
+          description: "`start` replays all existing events before tailing; `end` skips them."
+      responses:
+        "200":
+          description: Server-Sent Events stream.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/dags/{name}/runs/{run_id}/annotations:
     get:
       summary: List annotations for a run
