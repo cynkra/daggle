@@ -29,10 +29,11 @@ No authentication by default (localhost-only). Authentication can be added in a 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/dags` | List all DAGs |
-| GET | `/api/v1/dags/{name}` | Get DAG definition and latest run status |
+| GET | `/api/v1/dags` | List all DAGs. Supports `?tag=`, `?team=`, `?owner=` filters (combined with AND) |
+| GET | `/api/v1/dags/{name}` | Get DAG definition and latest run status (includes `owner`, `team`, `description`, `tags`, `exposures`) |
 | POST | `/api/v1/dags/{name}/run` | Trigger a DAG run (async) |
 | GET | `/api/v1/dags/{name}/plan` | Show execution plan with cache status |
+| GET | `/api/v1/dags/{name}/impact` | List downstream DAGs + declared exposures |
 
 ### Runs
 
@@ -42,6 +43,9 @@ No authentication by default (localhost-only). Authentication can be added in a 
 | GET | `/api/v1/dags/{name}/runs/compare?run1=X&run2=Y` | Compare two runs |
 | GET | `/api/v1/dags/{name}/runs/{run_id}` | Get run detail (`run_id` can be "latest") |
 | POST | `/api/v1/dags/{name}/runs/{run_id}/cancel` | Cancel an in-flight run |
+| GET | `/api/v1/dags/{name}/runs/{run_id}/stream` | Server-Sent Events stream of run events. `?from=start` (default) replays existing then tails; `?from=end` skips existing |
+| GET | `/api/v1/dags/{name}/runs/{run_id}/annotations` | List free-form annotations attached to a run |
+| POST | `/api/v1/dags/{name}/runs/{run_id}/annotations` | Attach an annotation. Body: `{note, author?}` |
 
 ### Steps & Approval
 
@@ -90,7 +94,7 @@ All list responses return flat arrays of objects for easy conversion to data fra
 ### DAG List
 
 ```json
-GET /api/v1/dags
+GET /api/v1/dags?tag=etl&team=data
 
 [
   {
@@ -98,10 +102,16 @@ GET /api/v1/dags
     "steps": 5,
     "schedule": "30 6 * * *",
     "last_status": "completed",
-    "last_run": "2026-04-01T06:30:00Z"
+    "last_run": "2026-04-01T06:30:00Z",
+    "owner": "alice",
+    "team": "data",
+    "description": "Nightly ETL for the analytics warehouse",
+    "tags": ["etl", "daily", "critical"]
   }
 ]
 ```
+
+The `owner`, `team`, `description`, and `tags` fields are present only when declared on the DAG. The `?tag=`, `?team=`, `?owner=` query params filter the list with AND semantics.
 
 ### Execution Plan
 
@@ -137,11 +147,16 @@ GET /api/v1/dags/daily-etl/runs/abc123
       "step_id": "extract",
       "status": "completed",
       "duration_seconds": 10.1,
-      "attempts": 1
+      "attempts": 1,
+      "peak_rss_kb": 128345,
+      "user_cpu_sec": 0.92,
+      "sys_cpu_sec": 0.08
     }
   ]
 }
 ```
+
+Step summaries include `peak_rss_kb`, `user_cpu_sec`, and `sys_cpu_sec` sourced from `syscall.Rusage` (macOS `Maxrss` is normalized to KB for cross-platform comparability).
 
 ### Run Comparison
 
@@ -278,6 +293,64 @@ GET /api/v1/dags/daily-etl/runs/abc123/metadata
   { "step_id": "model",   "name": "model_desc", "type": "text", "value": "Linear regression" }
 ]
 ```
+
+### Annotations
+
+```json
+GET /api/v1/dags/daily-etl/runs/abc123/annotations
+
+[
+  { "timestamp": "2026-04-17T08:45:12Z", "author": "alice", "note": "DB was down — manual restart at 08:30" }
+]
+```
+
+```json
+POST /api/v1/dags/daily-etl/runs/abc123/annotations
+Body: { "note": "re-ran after fix", "author": "bob" }
+
+Response: { "status": "ok" }
+```
+
+`author` is optional; the server falls back to the configured CLI user when omitted.
+
+### Impact
+
+```json
+GET /api/v1/dags/daily-etl/impact
+
+{
+  "dag": "daily-etl",
+  "downstream_dags": [
+    { "name": "weekly-rollup", "project": "analytics", "trigger_on_status": "completed" }
+  ],
+  "exposures": [
+    { "name": "ops-dashboard", "type": "dashboard", "url": "https://dash.example.com/ops", "description": "Main operations dashboard" }
+  ]
+}
+```
+
+### Live Event Stream (SSE)
+
+```
+GET /api/v1/dags/daily-etl/runs/abc123/stream
+
+event: message
+data: {"type":"step_started","step_id":"extract",...}
+
+event: message
+data: {"type":"step_completed","step_id":"extract","peak_rss_kb":128345,...}
+
+event: end
+data: {}
+```
+
+- `?from=start` (default) replays all existing events then tails for new ones
+- `?from=end` skips existing events and only streams new ones
+- Terminal events (`run_completed`, `run_failed`) trigger `event: end`
+- A 30-minute idle timeout sends `event: timeout`
+- The file is polled every 250ms — no websockets, no long-lived state
+
+See [`api/openapi.yaml`](https://github.com/cynkra/daggle/blob/main/api/openapi.yaml) for exhaustive request/response schemas.
 
 ### Error Responses
 

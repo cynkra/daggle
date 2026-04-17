@@ -54,3 +54,19 @@ Outputs:
   model_path: /data/models/rf_20260401.rds
   accuracy: 0.94
 ```
+
+## Annotations
+
+Any notes attached to a run with `daggle annotate` surface in the status output:
+
+```
+Annotations:
+  [2026-04-17 08:45:12] alice: DB was down — manual restart at 08:30
+```
+
+See `daggle annotate` in the [CLI reference](../reference/cli.qmd#daggle-annotate) for how to write them.
+
+## Related diagnostics
+
+- [`daggle why`](../reference/cli.qmd#daggle-why) — focused failure diagnostic that combines status, stderr tail, and DAG-hash drift on one screen.
+- [`daggle monitor`](../reference/cli.qmd#daggle-monitor) — interactive TUI that streams events live while the run is in progress.

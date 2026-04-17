@@ -162,9 +162,10 @@ All state is file-based, following XDG conventions:
     scheduler.pid              Scheduler process ID file
 ```
 
-- **events.jsonl** — append-only, one JSON object per line, thread-safe via mutex
+- **events.jsonl** — append-only, one JSON object per line, thread-safe via mutex. 13 event types including `run_annotated` (free-form notes attached via `daggle annotate`). `step_completed` carries `peak_rss_kb`, `user_cpu_sec`, and `sys_cpu_sec` sourced from `syscall.Rusage` in platform-tagged adapters (`internal/executor/rusage_{linux,darwin,other}.go`) — macOS `Maxrss` is normalized from bytes to KB for cross-platform comparability
 - **meta.json** — written at run start (DAG hash, R version, renv detection), updated at run end (status, end time)
 - **Run IDs** — xid-based, globally unique, time-sortable
+- **`<step>.sessioninfo.json`** — written only when an R step fails. The R `tryCatch` wrapper in `internal/executor/rscript.go` captures `sessionInfo()`, R version, platform, error message, and timestamp before re-raising the error. Required for compliance workflows that need to prove which package versions were active at the moment of failure
 
 ## Executor architecture
 
@@ -182,6 +183,15 @@ Every executor delegates to `runProcess()` which handles process groups, log cap
 2. Update `StepType()` and validation
 3. Create executor implementing the interface
 4. Add case to `executor.New()` factory
+
+## Notification dispatch
+
+Phase 8 added a first-class notification path independent of R. The `internal/notify/` package dispatches messages directly from Go over `net/http` (Slack, ClickUp, generic webhooks) or `net/smtp` (email), so notifications work even when R is unavailable or the DAG has no R steps.
+
+- Channels are defined under the top-level `notifications:` section in `~/.config/daggle/config.yaml` as named entries with a `type` (`slack`, `clickup`, `http`, `smtp`) and type-specific fields
+- Hooks reference a channel by name via `notify: <channel-name>` (alongside the existing `r_expr`/`command` forms; exactly one must be set)
+- `engine.dispatchNotify` fans out the hook to `internal/notify.Send` with the default message (DAG name + status) or a hook-supplied `message:` override
+- Unknown channel names are rejected at DAG parse time by `dag.validateHooks`, so typos fail fast
 
 ## Scheduler & Trigger System
 

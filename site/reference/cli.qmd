@@ -47,10 +47,16 @@ Displays step-by-step status, durations, and any error messages.
 List all available DAGs with their last run status.
 
 ```
-daggle list
+daggle list [--tag <tag>] [--team <team>] [--owner <owner>]
 ```
 
-No additional flags. Scans the DAGs directory and displays each DAG name, trigger schedule (if any), and last run outcome.
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tag` | string | (none) | Only show DAGs with this tag |
+| `--team` | string | (none) | Only show DAGs owned by this team |
+| `--owner` | string | (none) | Only show DAGs owned by this user |
+
+Scans the DAGs directory and displays each DAG name, trigger schedule (if any), and last run outcome. Also shows `OWNER`, `TEAM`, and `TAGS` columns when any DAG declares those fields. Filters combine with AND semantics.
 
 ## daggle serve
 
@@ -169,6 +175,57 @@ daggle reject <dag> [--run-id <id>]
 | `--run-id` | string | (latest) | Specific run ID to reject |
 
 Marks the waiting step as rejected and fails the DAG.
+
+## daggle why
+
+Diagnose why a run failed.
+
+```
+daggle why <dag> [run-id]
+```
+
+Collapses status, stderr tail, step states, and DAG-hash drift into a single screen. Defaults to the most recent failed run; pass an explicit run ID to inspect a specific one. Compares the run's `dag_hash` against the last successful run so you can tell whether the YAML changed between runs.
+
+Output sections: failed step and error detail, last 20 lines of stderr, per-step status table, and DAG-hash comparison.
+
+## daggle annotate
+
+Attach a free-form note to a run.
+
+```
+daggle annotate <dag> <run-id> <note> [--author <name>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--author` | string | `$USER` | Override the recorded author |
+
+Writes a `run_annotated` event to the run's `events.jsonl`. Annotations surface in `daggle status`, the REST API, and the web UI. Use them for post-mortem notes, manual-restart explanations, or any context you want future-you to see next to the run.
+
+## daggle monitor
+
+Interactive TUI that streams a run's events live.
+
+```
+daggle monitor <dag> [--run-id <id>] [--url <url>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--run-id` | string | `latest` | Specific run ID to follow |
+| `--url` | string | auto-detect | Base URL of a daggle server |
+
+Subscribes to the SSE stream endpoint and renders per-step status, duration, peak RSS, and annotation count. If no server is listening on `http://localhost:8080`, `daggle monitor` spawns an embedded read-only API on a random port for the session. Press `q` or `esc` to quit.
+
+## daggle impact
+
+Show a DAG's downstream dependents and declared exposures.
+
+```
+daggle impact <dag>
+```
+
+Lists other DAGs that trigger off this one (via `trigger.on_dag.name`) plus any `exposures:` declared on the DAG itself (Shiny apps, Quarto reports, dashboards, etc.). Purely informational — daggle does not deploy or monitor the exposures.
 
 ## daggle init
 
