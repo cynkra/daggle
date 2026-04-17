@@ -19,6 +19,7 @@ import (
 	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/internal/executor"
+	"github.com/cynkra/daggle/internal/notify"
 	"github.com/cynkra/daggle/state"
 )
 
@@ -45,6 +46,9 @@ type Engine struct {
 
 	// hookEnvExtras holds additional env vars injected into hooks at run end.
 	hookEnvExtras []string
+
+	// notifications are named channels available for notify: hooks.
+	notifications map[string]state.NotificationChannel
 
 	// outputs collects ::daggle-output:: values from completed steps.
 	// Keys are namespaced: DAGGLE_OUTPUT_<STEP_ID>_<KEY>
@@ -82,6 +86,11 @@ func (e *Engine) SetCacheStore(s *cache.Store) {
 // SetRenvLibPath configures the renv library path to inject as R_LIBS_USER.
 func (e *Engine) SetRenvLibPath(p string) {
 	e.renvLibPath = p
+}
+
+// SetNotifications registers named notification channels for notify: hooks.
+func (e *Engine) SetNotifications(channels map[string]state.NotificationChannel) {
+	e.notifications = channels
 }
 
 // Run executes the DAG by walking tiers in topological order.
@@ -632,6 +641,12 @@ func (e *Engine) runHooks(ctx context.Context, runErr error) {
 func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	e.logger.Info("running hook", "hook", name)
 
+	// Notification-only hook: dispatch via configured channel, no subprocess.
+	if hook.Notify != "" {
+		e.dispatchNotify(hook, name)
+		return
+	}
+
 	var cmd *exec.Cmd
 	switch {
 	case hook.RExpr != "":
@@ -676,6 +691,30 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	if err := cmd.Run(); err != nil {
 		e.logger.Error("hook failed", "hook", name, "error", err)
 	}
+}
+
+// dispatchNotify sends a notification through a configured channel.
+// Channel existence failures are logged (not fatal) to match other hook semantics.
+func (e *Engine) dispatchNotify(hook *dag.Hook, hookName string) {
+	ch, ok := e.notifications[hook.Notify]
+	if !ok {
+		e.logger.Error("notify hook references unknown channel", "hook", hookName, "channel", hook.Notify)
+		return
+	}
+	msg := hook.Message
+	if msg == "" {
+		status := "completed"
+		if strings.Contains(hookName, "failure") {
+			status = "failed"
+		}
+		msg = fmt.Sprintf("DAG %q %s (run %s)", e.dag.Name, status, e.runInfo.ID)
+	}
+	cfg := state.Config{Notifications: map[string]state.NotificationChannel{hook.Notify: ch}}
+	if err := notify.Send(cfg, hook.Notify, msg); err != nil {
+		e.logger.Error("notify hook failed", "hook", hookName, "channel", hook.Notify, "error", err)
+		return
+	}
+	e.logger.Info("notify hook sent", "hook", hookName, "channel", hook.Notify)
 }
 
 // evaluateCondition runs a when/precondition check.

@@ -168,6 +168,10 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 		redactor := dag.NewRedactor(expanded.Env)
 		eng.SetRedactor(redactor)
 
+		if cfg, err := state.LoadConfig(); err == nil && cfg.Notifications != nil {
+			eng.SetNotifications(cfg.Notifications)
+		}
+
 		_ = eng.Run(ctx)
 	}()
 

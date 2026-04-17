@@ -790,6 +790,9 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 		}
 
 		eng := engine.New(expanded, run, executor.New)
+		if cfg, err := state.LoadConfig(); err == nil && cfg.Notifications != nil {
+			eng.SetNotifications(cfg.Notifications)
+		}
 
 		status := "completed"
 		if err := eng.Run(ctx); err != nil {
