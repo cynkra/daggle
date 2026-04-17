@@ -133,6 +133,9 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}/annotations", s.handleListAnnotations)
 	s.mux.HandleFunc("POST /api/v1/dags/{name}/runs/{run_id}/annotations", s.handleAddAnnotation)
 
+	// Live event streaming (SSE)
+	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}/stream", s.handleStream)
+
 	// Projects
 	s.mux.HandleFunc("GET /api/v1/projects", s.handleListProjects)
 	s.mux.HandleFunc("POST /api/v1/projects", s.handleRegisterProject)
