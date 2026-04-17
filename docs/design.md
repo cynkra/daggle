@@ -125,7 +125,7 @@ R-specific steps check for their required packages at runtime and fail with a cl
 ### Planned
 
 **Phase 8 — Collaboration & Observability:**
-- **Notification channels as first-class config** — Define named channels (Slack webhook, email SMTP, Teams, generic HTTP) in `config.yaml`. Hooks reference by name instead of embedding credentials per-DAG. Go handles the HTTP POST directly — notifications work even when R is broken.
+- **Notification channels as first-class config** — Define named channels (Slack webhook, email SMTP, clickup, generic HTTP) in `config.yaml`. Hooks reference by name instead of embedding credentials per-DAG. Go handles the HTTP POST directly — notifications work even when R is broken.
 - **DAG ownership and annotations** — Optional `owner:`, `team:`, `description:`, `tags:` fields at the DAG level. Filterable via `daggle list --tag etl` and `GET /dags?tag=etl`. Minimal effort, high value for teams with 10+ DAGs.
 - **Run annotations** — `daggle annotate <dag> <run-id> "DB was down"` attaches human notes to runs. Stored as `run_annotated` events. Surfaces in status, API, and UI. Replaces "check the Slack thread" for post-mortems.
 - **`daggle why` command** — Focused failure diagnostic: failed step + error message + last 20 lines stderr + upstream status + freshness state + DAG diff since last success. One command instead of three.

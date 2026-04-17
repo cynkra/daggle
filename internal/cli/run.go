@@ -142,6 +142,9 @@ func runDAG(_ *cobra.Command, args []string) error {
 	if renvInfo.Detected && renvInfo.LibraryReady {
 		eng.SetRenvLibPath(renvInfo.LibraryPath)
 	}
+	if globalCfg.Notifications != nil {
+		eng.SetNotifications(globalCfg.Notifications)
+	}
 
 	// Initialize step-level cache
 	cacheDir := filepath.Join(state.DataDir(), "cache")

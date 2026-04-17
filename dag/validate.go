@@ -29,6 +29,7 @@ func Validate(d *DAG) error {
 	errs = append(errs, validateSteps(d)...)
 	errs = append(errs, validateRVersion(d)...)
 	errs = append(errs, validateTriggers(d)...)
+	errs = append(errs, validateHooks(d)...)
 	errs = append(errs, validateCycles(d, errs)...)
 
 	if len(errs) > 0 {
@@ -302,6 +303,39 @@ func validateTriggers(d *DAG) []string {
 	}
 	if t.OnDeadline != nil && t.Deadline == "" {
 		errs = append(errs, "trigger.on_deadline requires trigger.deadline to be set")
+	}
+	return errs
+}
+
+// validateHooks checks that DAG-level hooks use exactly one of r_expr, command, or notify.
+func validateHooks(d *DAG) []string {
+	var errs []string
+	check := func(h *Hook, where string) {
+		if h == nil {
+			return
+		}
+		count := 0
+		if h.RExpr != "" {
+			count++
+		}
+		if h.Command != "" {
+			count++
+		}
+		if h.Notify != "" {
+			count++
+		}
+		if count == 0 {
+			errs = append(errs, fmt.Sprintf("%s: must set one of r_expr, command, or notify", where))
+		}
+		if count > 1 {
+			errs = append(errs, fmt.Sprintf("%s: must set exactly one of r_expr, command, or notify", where))
+		}
+	}
+	check(d.OnSuccess, "on_success")
+	check(d.OnFailure, "on_failure")
+	check(d.OnExit, "on_exit")
+	if d.Trigger != nil {
+		check(d.Trigger.OnDeadline, "trigger.on_deadline")
 	}
 	return errs
 }

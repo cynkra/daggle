@@ -101,6 +101,10 @@ func (d *DAG) HasTrigger() bool {
 type Hook struct {
 	RExpr   string `yaml:"r_expr,omitempty"`
 	Command string `yaml:"command,omitempty"`
+	// Notify dispatches a notification through a named channel defined in config.yaml.
+	// Optional Message overrides the default "DAG <name> <status>" message.
+	Notify  string `yaml:"notify,omitempty"`
+	Message string `yaml:"message,omitempty"`
 }
 
 // Param defines a named parameter with an optional default value.
