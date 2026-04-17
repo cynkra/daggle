@@ -113,6 +113,23 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/impact:
+    get:
+      summary: Get downstream consumers of a DAG
+      operationId: getImpact
+      tags: [dags]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+      responses:
+        "200":
+          description: Downstream DAGs (via trigger.on_dag) and declared exposures.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImpactResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/dags/{name}/runs:
     get:
       summary: List runs for a DAG
@@ -707,6 +724,10 @@ components:
           type: array
           items:
             type: string
+        exposures:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExposureEntry"
 
     TriggerRequest:
       type: object
@@ -919,6 +940,47 @@ components:
         format:
           type: string
           description: File format hint (e.g. parquet, rds, csv, png).
+
+    ExposureEntry:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [shiny, quarto, dashboard, report, other]
+        url:
+          type: string
+        description:
+          type: string
+
+    DownstreamDAGInfo:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        project:
+          type: string
+        trigger_on_status:
+          type: string
+          enum: [completed, failed, any]
+
+    ImpactResponse:
+      type: object
+      required: [name, downstream, exposures]
+      properties:
+        name:
+          type: string
+        downstream:
+          type: array
+          items:
+            $ref: "#/components/schemas/DownstreamDAGInfo"
+        exposures:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExposureEntry"
 
     AnnotationEntry:
       type: object
