@@ -24,6 +24,7 @@ daggle uses a fixed directory structure for configuration, DAG definitions, and 
           <step>.stdout.log      # Step stdout (includes output markers)
           <step>.stderr.log      # Step stderr
           <step>.inline.R        # Rendered inline R code (for r_expr steps)
+          <step>.sessioninfo.json # R sessionInfo() — written only on R step failure
   proc/
     scheduler.pid                # Scheduler daemon PID file
 
@@ -53,6 +54,7 @@ Each run gets its own directory under `runs/<dag>/<date>/run_<id>/`.
 | `<step>.stdout.log` | Captured stdout for each step. Includes raw output markers. |
 | `<step>.stderr.log` | Captured stderr for each step. |
 | `<step>.inline.R` | Rendered R source for `r_expr` steps (useful for debugging). |
+| `<step>.sessioninfo.json` | `sessionInfo()` snapshot written only when an R step fails. Contains `r_version`, `platform`, `error_message`, `session_info` (full text), and `timestamp`. Useful for compliance and post-mortem debugging — proves which package versions were active at the moment of failure without re-running R. |
 
 ## Overriding directories
 
@@ -80,6 +82,21 @@ tools:
 cleanup:
   older_than: "30d"
   interval: "6h"
+
+# Named notification channels, referenced from hooks by name.
+# See the Hooks page for usage.
+notifications:
+  team-slack:
+    type: slack
+    webhook_url: https://hooks.slack.com/services/...
+  ops-email:
+    type: smtp
+    smtp_host: mail.example.com
+    smtp_port: 587
+    smtp_from: daggle@example.com
+    smtp_to: [ops@example.com]
+    smtp_user: daggle
+    smtp_password: ${SMTP_PASSWORD}
 ```
 
 ### Tool path resolution

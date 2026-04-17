@@ -17,9 +17,35 @@ Complete field-by-field reference for daggle DAG definitions. A [JSON Schema](ht
 | `params` | array | no | Parameters with optional defaults |
 | `r_version` | string | no | R version constraint (e.g. `">=4.1.0"`) |
 | `r_version_strict` | boolean | no | Fail if R version doesn't match (default: warn) |
+| `owner` | string | no | DAG owner (e.g. `"alice"`). Filterable via `daggle list --owner` |
+| `team` | string | no | Owning team (e.g. `"data"`). Filterable via `daggle list --team` |
+| `description` | string | no | Free-form one-line description |
+| `tags` | string[] | no | Tags for filtering (e.g. `[etl, daily, critical]`). Filterable via `daggle list --tag` |
+| `exposures` | array | no | Downstream consumers of this DAG (see below) |
 | `on_success` | hook | no | Hook to run when DAG completes |
 | `on_failure` | hook | no | Hook to run when DAG fails |
 | `on_exit` | hook | no | Hook to run on DAG exit (success or failure) |
+
+### Exposures
+
+`exposures:` lists downstream consumers (dashboards, reports, apps) so `daggle impact` and the API can report who is affected when the DAG changes. Purely informational — daggle does not deploy or monitor them.
+
+```yaml
+exposures:
+  - name: ops-dashboard
+    type: dashboard
+    url: https://dash.example.com/ops
+    description: Main operations dashboard
+  - name: weekly-email
+    type: report
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Unique exposure identifier within the DAG |
+| `type` | enum | yes | One of `shiny`, `quarto`, `dashboard`, `report`, `other` |
+| `url` | string | no | Link to the exposure |
+| `description` | string | no | Free-form description |
 
 ## Step fields
 

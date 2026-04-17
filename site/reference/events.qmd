@@ -46,6 +46,11 @@ Emitted when a step finishes successfully.
 | `ended` | string | ISO 8601 timestamp |
 | `duration_seconds` | number | Wall-clock duration |
 | `outputs` | object | Key-value pairs emitted via output markers |
+| `peak_rss_kb` | integer | Peak resident set size, in KB (normalized across platforms) |
+| `user_cpu_sec` | number | User-mode CPU time, in seconds |
+| `sys_cpu_sec` | number | Kernel-mode CPU time, in seconds |
+
+Resource fields come from `syscall.Rusage` after `cmd.Wait`. Linux reports `Maxrss` in KB natively; macOS reports it in bytes and daggle normalizes to KB so downstream consumers can compare cross-platform.
 
 ### step_failed
 
@@ -124,6 +129,19 @@ Emitted when a waiting step is rejected.
 | `step_id` | string | Step identifier |
 | `rejected_by` | string | Who rejected (user or API) |
 | `timestamp` | string | ISO 8601 timestamp |
+
+### run_annotated
+
+Emitted when a user attaches a note to a run via `daggle annotate` or the annotations API.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | `"run_annotated"` |
+| `v` | integer | Schema version |
+| `run_id` | string | Run identifier |
+| `timestamp` | string | ISO 8601 timestamp |
+| `author` | string | Who wrote the note (defaults to `$USER`) |
+| `note` | string | Free-form note text |
 
 ### dag_completed
 

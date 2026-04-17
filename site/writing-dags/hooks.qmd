@@ -37,14 +37,46 @@ Step-level hooks have `on_success` and `on_failure` only (no `on_exit`).
 
 ## Hook types
 
-Each hook is an R expression **or** a shell command (not both):
+Each hook is an R expression, a shell command, **or** a reference to a named notification channel — exactly one:
 
 ```yaml
 on_failure:
   r_expr: 'slackr::slackr_msg("Step failed")'
   # OR
   command: echo "Step failed" | mail -s "Alert" admin@example.com
+  # OR
+  notify: team-slack
 ```
+
+## Notification hooks
+
+The `notify:` form dispatches through a named channel configured globally in `~/.config/daggle/config.yaml`. Channels are sent directly from Go — no R required — so they work even when R is unavailable or the DAG has no R steps.
+
+```yaml
+# ~/.config/daggle/config.yaml
+notifications:
+  team-slack:
+    type: slack
+    webhook_url: https://hooks.slack.com/services/...
+  ops-email:
+    type: smtp
+    smtp_host: mail.example.com
+    smtp_port: 587
+    smtp_from: daggle@example.com
+    smtp_to: [ops@example.com]
+    smtp_user: daggle
+    smtp_password: ${SMTP_PASSWORD}
+```
+
+Reference the channel by name from a hook:
+
+```yaml
+on_failure:
+  notify: team-slack
+  message: "ETL failed — see ${DAGGLE_RUN_DIR}"   # optional; default uses DAG name + status
+```
+
+Supported channel types: `slack`, `clickup`, `http` (generic webhook), `smtp`. Unknown channel names are rejected at DAG parse time, so typos fail fast rather than silently dropping notifications.
 
 ## Available environment
 

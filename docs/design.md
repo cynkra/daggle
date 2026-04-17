@@ -122,19 +122,9 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 7 — Analyst Workflow Features:** 11 features targeting daily data analysis needs. Artifact declaration with SHA-256 hashing. Step-level caching (input hashing, `daggle plan` dry-run). Rich metadata protocols (`::daggle-summary::`, `::daggle-meta::`, `::daggle-validation::`). Source freshness checks with `on_stale: fail | warn`. Deadline alerting for scheduled DAGs. Parameterized report rendering (`output_dir`/`output_name` templates). Run comparison (`daggle diff`). Richer hook context env vars. Direct log access (`daggle logs`). 6 new API endpoints, 3 new CLI commands, 7 new YAML fields.
 
-### Planned
+**Phase 8 — Collaboration & Observability:** 9 features for team workflows and production observability. Named notification channels in `config.yaml` (slack, clickup, smtp, generic http) referenced from hooks via `notify: <name>`. DAG-level `owner:`, `team:`, `description:`, `tags:` with filtering in `daggle list` and `GET /dags`. Run annotations (`daggle annotate`, new `run_annotated` event). Focused failure diagnostic (`daggle why`). R `sessionInfo()` auto-capture on step failure (`{step}.sessioninfo.json`). Step-level peak RSS and CPU via `syscall.Rusage`, surfaced in `daggle stats` and the API. Live SSE stream endpoint. Interactive bubbletea TUI (`daggle monitor`). Exposure/impact tracking with `exposures:` field and `daggle impact`. Cross-DAG output dependencies deferred to a later phase.
 
-**Phase 8 — Collaboration & Observability:**
-- **Notification channels as first-class config** — Define named channels (Slack webhook, email SMTP, clickup, generic HTTP) in `config.yaml`. Hooks reference by name instead of embedding credentials per-DAG. Go handles the HTTP POST directly — notifications work even when R is broken.
-- **DAG ownership and annotations** — Optional `owner:`, `team:`, `description:`, `tags:` fields at the DAG level. Filterable via `daggle list --tag etl` and `GET /dags?tag=etl`. Minimal effort, high value for teams with 10+ DAGs.
-- **Run annotations** — `daggle annotate <dag> <run-id> "DB was down"` attaches human notes to runs. Stored as `run_annotated` events. Surfaces in status, API, and UI. Replaces "check the Slack thread" for post-mortems.
-- **`daggle why` command** — Focused failure diagnostic: failed step + error message + last 20 lines stderr + upstream status + freshness state + DAG diff since last success. One command instead of three.
-- **R session diagnostics on failure** — Auto-capture `sessionInfo()` when a step fails. Write to `{step}.sessioninfo.json`. Proves which package versions were active — a compliance requirement in pharma/finance.
-- **Step-level resource profiling** — Record peak RSS memory and CPU time via `ProcessState.SysUsage()`. Surface in `daggle stats` as memory/time trends per step. Answers "which step is the memory hog?"
-- **Live event streaming (SSE)** — `GET /api/v1/dags/{name}/runs/{run_id}/stream` tails `events.jsonl` via Server-Sent Events. Enables real-time UI updates and the TUI monitor. No WebSocket complexity.
-- **Interactive TUI monitor** — Terminal dashboard for live DAG execution using bubbletea or similar, powered by the SSE stream.
-- **Cross-DAG output dependencies** — Steps declare inputs from other DAGs' runs. Deferred until the artifact system is proven in practice.
-- **Exposure / impact tracking** — Declare downstream consumers (Shiny apps, dashboards) of DAG outputs. `daggle impact <dag>` for dependency analysis.
+### Planned
 
 **Phase 9 — Safety & Compliance:**
 - **Immutable run archives** — `daggle archive <dag> <run-id>` bundles the run directory into a tarball with a SHA-256 manifest of every file. `daggle verify <archive>` checks integrity. FDA 21 CFR Part 11 adjacent.
