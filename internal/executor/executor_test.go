@@ -228,8 +228,10 @@ func TestInlineRExecutor_WritesFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("inline R file not created: %v", err)
 	}
-	if string(content) != "cat('hello from R\\n')" {
-		t.Errorf("inline R content = %q", string(content))
+	// Content is wrapped with sessionInfo-on-failure handler; the user code
+	// must still appear somewhere in the file.
+	if !strings.Contains(string(content), "cat('hello from R\\n')") {
+		t.Errorf("inline R content missing user code: %q", string(content))
 	}
 }
 
