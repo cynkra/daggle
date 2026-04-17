@@ -109,6 +109,26 @@ func LatestRun(dagName string) (*RunInfo, error) {
 	return &runs[0], nil
 }
 
+// LatestRunWithStatus returns the most recent run for a DAG whose final status
+// matches any of the given statuses (e.g. "failed", "completed"). Returns
+// nil if no matching run exists.
+func LatestRunWithStatus(dagName string, statuses ...string) (*RunInfo, error) {
+	runs, err := ListRuns(dagName)
+	if err != nil {
+		return nil, err
+	}
+	want := make(map[string]bool, len(statuses))
+	for _, s := range statuses {
+		want[s] = true
+	}
+	for i := range runs {
+		if want[RunStatus(runs[i].Dir)] {
+			return &runs[i], nil
+		}
+	}
+	return nil, nil
+}
+
 // FindRun resolves a run by ID. If runID is "latest" or empty, returns the
 // most recent run. Otherwise searches for a run matching the given ID.
 func FindRun(dagName, runID string) (*RunInfo, error) {
