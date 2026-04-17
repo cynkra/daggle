@@ -546,3 +546,60 @@ func TestCancelRun_NotRunning(t *testing.T) {
 		t.Errorf("status = %d, want %d (already completed)", w.Code, http.StatusConflict)
 	}
 }
+
+func TestAddAndListAnnotations(t *testing.T) {
+	srv, _ := setupTestServer(t)
+
+	run, _ := state.CreateRun("test-dag")
+	writer := state.NewEventWriter(run.Dir)
+	_ = writer.Write(state.Event{Type: state.EventRunStarted})
+	_ = writer.Write(state.Event{Type: state.EventRunCompleted})
+
+	// POST an annotation
+	body := bytes.NewBufferString(`{"note":"db was down","author":"alice"}`)
+	req := httptest.NewRequest("POST", "/api/v1/dags/test-dag/runs/"+run.ID+"/annotations", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST status = %d, body = %s", w.Code, w.Body.String())
+	}
+
+	// GET annotations
+	req = httptest.NewRequest("GET", "/api/v1/dags/test-dag/runs/"+run.ID+"/annotations", nil)
+	w = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET status = %d, body = %s", w.Code, w.Body.String())
+	}
+	var entries []AnnotationEntry
+	if err := json.Unmarshal(w.Body.Bytes(), &entries); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("got %d annotations, want 1", len(entries))
+	}
+	if entries[0].Note != "db was down" {
+		t.Errorf("note = %q, want %q", entries[0].Note, "db was down")
+	}
+	if entries[0].Author != "alice" {
+		t.Errorf("author = %q, want alice", entries[0].Author)
+	}
+}
+
+func TestAddAnnotation_EmptyNote(t *testing.T) {
+	srv, _ := setupTestServer(t)
+
+	run, _ := state.CreateRun("test-dag")
+	writer := state.NewEventWriter(run.Dir)
+	_ = writer.Write(state.Event{Type: state.EventRunStarted})
+
+	body := bytes.NewBufferString(`{"note":""}`)
+	req := httptest.NewRequest("POST", "/api/v1/dags/test-dag/runs/"+run.ID+"/annotations", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}

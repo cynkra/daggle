@@ -25,6 +25,7 @@ const (
 	EventStepRejected       = "step_rejected"
 	EventStepArtifact       = "step_artifact"
 	EventStepCached         = "step_cached"
+	EventRunAnnotated       = "run_annotated"
 )
 
 // ArtifactInfo groups artifact-related fields for step_artifact events.
@@ -56,6 +57,10 @@ type Event struct {
 	Attempt     int       `json:"attempt,omitempty"`
 	Message     string    `json:"message,omitempty"`    // approval message
 	Approver    string    `json:"approver,omitempty"`   // system user who approved/rejected
+
+	// Annotation fields (used by EventRunAnnotated).
+	Note   string `json:"note,omitempty"`
+	Author string `json:"author,omitempty"`
 
 	*ArtifactInfo `json:",omitempty"`
 	*CacheInfo    `json:",omitempty"`

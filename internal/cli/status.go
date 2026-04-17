@@ -79,5 +79,23 @@ func showStatus(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	// Show annotations if any were recorded.
+	var annotations []state.Event
+	for _, e := range events {
+		if e.Type == state.EventRunAnnotated {
+			annotations = append(annotations, e)
+		}
+	}
+	if len(annotations) > 0 {
+		fmt.Println("\nAnnotations:")
+		for _, a := range annotations {
+			author := a.Author
+			if author == "" {
+				author = "-"
+			}
+			fmt.Printf("  [%s] %s: %s\n", a.Timestamp.Format("2006-01-02 15:04:05"), author, a.Note)
+		}
+	}
+
 	return nil
 }

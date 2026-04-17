@@ -380,6 +380,50 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/runs/{run_id}/annotations:
+    get:
+      summary: List annotations for a run
+      operationId: listAnnotations
+      tags: [annotations]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Array of annotations in write order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnnotationEntry"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      summary: Add an annotation to a run
+      operationId: addAnnotation
+      tags: [annotations]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnotationRequest"
+      responses:
+        "201":
+          description: Annotation recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnotationEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/projects:
     get:
       summary: List registered projects
@@ -834,6 +878,27 @@ components:
         format:
           type: string
           description: File format hint (e.g. parquet, rds, csv, png).
+
+    AnnotationEntry:
+      type: object
+      required: [note, timestamp]
+      properties:
+        note:
+          type: string
+        author:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    AnnotationRequest:
+      type: object
+      required: [note]
+      properties:
+        note:
+          type: string
+        author:
+          type: string
 
     ProjectSummary:
       type: object
