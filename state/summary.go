@@ -13,6 +13,9 @@ type StepState struct {
 	Message     string
 	Cached      bool
 	CacheKey    string
+	PeakRSSKB   int64
+	UserCPUSec  float64
+	SysCPUSec   float64
 }
 
 // BuildStepSummaries walks events and accumulates per-step state, preserving
@@ -41,6 +44,9 @@ func BuildStepSummaries(events []Event) []StepState {
 				ss.Duration = d
 			}
 			ss.Attempts = e.Attempt
+			ss.PeakRSSKB = e.PeakRSSKB
+			ss.UserCPUSec = e.UserCPUSec
+			ss.SysCPUSec = e.SysCPUSec
 		case EventStepFailed:
 			ss.Status = "failed"
 			if d, err := time.ParseDuration(e.Duration); err == nil {

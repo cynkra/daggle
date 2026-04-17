@@ -45,6 +45,8 @@ func showStats(_ *cobra.Command, args []string) error {
 
 	var completed, failed int
 	stepDurations := make(map[string][]time.Duration)
+	stepPeakRSS := make(map[string][]int64)
+	stepCPU := make(map[string][]float64)
 
 	for _, run := range runs {
 		status := state.RunStatus(run.Dir)
@@ -60,10 +62,19 @@ func showStats(_ *cobra.Command, args []string) error {
 			continue
 		}
 		for _, e := range events {
-			if e.StepID != "" && e.Duration != "" && e.Type == state.EventStepCompleted {
+			if e.StepID == "" || e.Type != state.EventStepCompleted {
+				continue
+			}
+			if e.Duration != "" {
 				if d, err := time.ParseDuration(e.Duration); err == nil {
 					stepDurations[e.StepID] = append(stepDurations[e.StepID], d)
 				}
+			}
+			if e.PeakRSSKB > 0 {
+				stepPeakRSS[e.StepID] = append(stepPeakRSS[e.StepID], e.PeakRSSKB)
+			}
+			if total := e.UserCPUSec + e.SysCPUSec; total > 0 {
+				stepCPU[e.StepID] = append(stepCPU[e.StepID], total)
 			}
 		}
 	}
@@ -91,7 +102,7 @@ func showStats(_ *cobra.Command, args []string) error {
 	sort.Strings(stepNames)
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "STEP\tRUNS\tAVG\tP50\tP95")
+	_, _ = fmt.Fprintln(w, "STEP\tRUNS\tAVG\tP50\tP95\tAVG RSS\tP95 RSS\tAVG CPU")
 	for _, name := range stepNames {
 		durations := stepDurations[name]
 		sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
@@ -100,11 +111,78 @@ func showStats(_ *cobra.Command, args []string) error {
 		p50 := percentile(durations, 50)
 		p95 := percentile(durations, 95)
 
-		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\n", name, len(durations),
-			formatDuration(avg), formatDuration(p50), formatDuration(p95))
+		rss := stepPeakRSS[name]
+		sort.Slice(rss, func(i, j int) bool { return rss[i] < rss[j] })
+		cpu := stepCPU[name]
+
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n", name, len(durations),
+			formatDuration(avg), formatDuration(p50), formatDuration(p95),
+			formatKB(averageInt64(rss)),
+			formatKB(percentileInt64(rss, 95)),
+			formatCPUSec(averageFloat64(cpu)),
+		)
 	}
 	_ = w.Flush()
 	return nil
+}
+
+func averageInt64(xs []int64) int64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	var sum int64
+	for _, x := range xs {
+		sum += x
+	}
+	return sum / int64(len(xs))
+}
+
+func percentileInt64(xs []int64, p int) int64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	idx := (p * len(xs)) / 100
+	if idx >= len(xs) {
+		idx = len(xs) - 1
+	}
+	return xs[idx]
+}
+
+func averageFloat64(xs []float64) float64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	var sum float64
+	for _, x := range xs {
+		sum += x
+	}
+	return sum / float64(len(xs))
+}
+
+// formatKB renders a kilobyte count as KB, MB, or GB with one decimal.
+func formatKB(kb int64) string {
+	if kb <= 0 {
+		return "-"
+	}
+	switch {
+	case kb < 1024:
+		return fmt.Sprintf("%dKB", kb)
+	case kb < 1024*1024:
+		return fmt.Sprintf("%.1fMB", float64(kb)/1024)
+	default:
+		return fmt.Sprintf("%.1fGB", float64(kb)/(1024*1024))
+	}
+}
+
+// formatCPUSec renders a CPU-seconds value.
+func formatCPUSec(sec float64) string {
+	if sec <= 0 {
+		return "-"
+	}
+	if sec < 60 {
+		return fmt.Sprintf("%.1fs", sec)
+	}
+	return fmt.Sprintf("%.1fm", sec/60)
 }
 
 func averageDuration(ds []time.Duration) time.Duration {

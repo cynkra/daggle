@@ -138,6 +138,7 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		r.Summaries = summaries
 		r.Metadata = metadata
 		r.Validations = validations
+		r.PeakRSSKB, r.UserCPUSec, r.SysCPUSec = extractRusage(cmd)
 		return r
 	case <-ctx.Done():
 		killProcessGroup(cmd)
