@@ -30,6 +30,7 @@ func Validate(d *DAG) error {
 	errs = append(errs, validateRVersion(d)...)
 	errs = append(errs, validateTriggers(d)...)
 	errs = append(errs, validateHooks(d)...)
+	errs = append(errs, validateExposures(d)...)
 	errs = append(errs, validateCycles(d, errs)...)
 
 	if len(errs) > 0 {
@@ -336,6 +337,39 @@ func validateHooks(d *DAG) []string {
 	check(d.OnExit, "on_exit")
 	if d.Trigger != nil {
 		check(d.Trigger.OnDeadline, "trigger.on_deadline")
+	}
+	return errs
+}
+
+// validateExposures checks exposures[].name is unique and non-empty,
+// and type is one of the accepted values.
+func validateExposures(d *DAG) []string {
+	if len(d.Exposures) == 0 {
+		return nil
+	}
+	var errs []string
+	validTypes := map[string]bool{
+		"shiny":     true,
+		"quarto":    true,
+		"dashboard": true,
+		"report":    true,
+		"other":     true,
+	}
+	seen := make(map[string]bool, len(d.Exposures))
+	for i, ex := range d.Exposures {
+		if ex.Name == "" {
+			errs = append(errs, fmt.Sprintf("exposures[%d].name is required", i))
+			continue
+		}
+		if seen[ex.Name] {
+			errs = append(errs, fmt.Sprintf("exposures[%d]: duplicate name %q", i, ex.Name))
+		}
+		seen[ex.Name] = true
+		if ex.Type == "" {
+			errs = append(errs, fmt.Sprintf("exposures[%d] (%s): type is required", i, ex.Name))
+		} else if !validTypes[ex.Type] {
+			errs = append(errs, fmt.Sprintf("exposures[%d] (%s): type %q is invalid; must be one of: shiny, quarto, dashboard, report, other", i, ex.Name, ex.Type))
+		}
 	}
 	return errs
 }

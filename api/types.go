@@ -37,19 +37,42 @@ type DAGSummary struct {
 
 // DAGDetail is returned by GET /api/v1/dags/{name}.
 type DAGDetail struct {
-	Name        string   `json:"name"`
-	Steps       int      `json:"steps"`
-	StepIDs     []string `json:"step_ids"`
-	Schedule    string   `json:"schedule,omitempty"`
-	Workdir     string   `json:"workdir,omitempty"`
-	RVersion    string   `json:"r_version,omitempty"`
-	LastStatus  string   `json:"last_status,omitempty"`
-	LastRunID   string   `json:"last_run_id,omitempty"`
-	LastRun     string   `json:"last_run,omitempty"`
-	Owner       string   `json:"owner,omitempty"`
-	Team        string   `json:"team,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
+	Name        string          `json:"name"`
+	Steps       int             `json:"steps"`
+	StepIDs     []string        `json:"step_ids"`
+	Schedule    string          `json:"schedule,omitempty"`
+	Workdir     string          `json:"workdir,omitempty"`
+	RVersion    string          `json:"r_version,omitempty"`
+	LastStatus  string          `json:"last_status,omitempty"`
+	LastRunID   string          `json:"last_run_id,omitempty"`
+	LastRun     string          `json:"last_run,omitempty"`
+	Owner       string          `json:"owner,omitempty"`
+	Team        string          `json:"team,omitempty"`
+	Description string          `json:"description,omitempty"`
+	Tags        []string        `json:"tags,omitempty"`
+	Exposures   []ExposureEntry `json:"exposures,omitempty"`
+}
+
+// ExposureEntry is a declared downstream consumer of a DAG.
+type ExposureEntry struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	URL         string `json:"url,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// ImpactResponse is returned by GET /api/v1/dags/{name}/impact.
+type ImpactResponse struct {
+	Name       string              `json:"name"`
+	Downstream []DownstreamDAGInfo `json:"downstream"`
+	Exposures  []ExposureEntry     `json:"exposures"`
+}
+
+// DownstreamDAGInfo is a DAG that depends on another via trigger.on_dag.
+type DownstreamDAGInfo struct {
+	Name         string `json:"name"`
+	Project      string `json:"project,omitempty"`
+	TriggerOn    string `json:"trigger_on_status,omitempty"` // "completed" | "failed" | "any"
 }
 
 // RunSummary is returned in the run list.

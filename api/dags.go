@@ -135,6 +135,7 @@ func (s *Server) handleGetDAG(w http.ResponseWriter, r *http.Request) {
 		Team:        d.Team,
 		Description: d.Description,
 		Tags:        d.Tags,
+		Exposures:   exposuresFromDAG(d),
 	}
 	if d.RVersion != "" {
 		detail.RVersion = d.RVersion
@@ -150,6 +151,82 @@ func (s *Server) handleGetDAG(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, detail)
+}
+
+// exposuresFromDAG copies dag.Exposure values into the API shape.
+func exposuresFromDAG(d *dag.DAG) []ExposureEntry {
+	if len(d.Exposures) == 0 {
+		return nil
+	}
+	out := make([]ExposureEntry, len(d.Exposures))
+	for i, e := range d.Exposures {
+		out[i] = ExposureEntry{
+			Name:        e.Name,
+			Type:        e.Type,
+			URL:         e.URL,
+			Description: e.Description,
+		}
+	}
+	return out
+}
+
+// handleGetImpact returns downstream DAGs and declared exposures for the DAG.
+func (s *Server) handleGetImpact(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	path := s.dagPath(name)
+	if path == "" {
+		writeError(w, http.StatusNotFound, "DAG "+name+" not found")
+		return
+	}
+
+	target, err := dag.ParseFile(path)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "parse DAG: "+err.Error())
+		return
+	}
+
+	resp := ImpactResponse{
+		Name:       name,
+		Downstream: []DownstreamDAGInfo{},
+		Exposures:  exposuresFromDAG(target),
+	}
+
+	// Scan every DAG in every source for trigger.on_dag.name == target.
+	for _, src := range s.sources() {
+		entries, err := os.ReadDir(src.Dir)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			fname := entry.Name()
+			if !strings.HasSuffix(fname, ".yaml") && !strings.HasSuffix(fname, ".yml") {
+				continue
+			}
+			if fname == "base.yaml" || fname == "base.yml" {
+				continue
+			}
+			d, err := dag.ParseFile(filepath.Join(src.Dir, fname))
+			if err != nil {
+				continue
+			}
+			if d.Trigger != nil && d.Trigger.OnDAG != nil && d.Trigger.OnDAG.Name == name {
+				status := d.Trigger.OnDAG.Status
+				if status == "" {
+					status = "any"
+				}
+				resp.Downstream = append(resp.Downstream, DownstreamDAGInfo{
+					Name:      d.Name,
+					Project:   src.Name,
+					TriggerOn: status,
+				})
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {

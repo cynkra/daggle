@@ -23,6 +23,11 @@ type DAG struct {
 	Description string   `yaml:"description,omitempty"`
 	Tags        []string `yaml:"tags,omitempty"`
 
+	// Exposures declare downstream consumers (Shiny apps, Quarto reports,
+	// dashboards, etc.) of this DAG's outputs. Purely declarative; used by
+	// `daggle impact` and the API to answer "what depends on this DAG?"
+	Exposures []Exposure `yaml:"exposures,omitempty"`
+
 	// R version constraint, e.g. ">=4.1.0"
 	RVersion       string `yaml:"r_version,omitempty"`
 	RVersionStrict bool   `yaml:"r_version_strict,omitempty"`
@@ -111,6 +116,15 @@ type Hook struct {
 	// Optional Message overrides the default "DAG <name> <status>" message.
 	Notify  string `yaml:"notify,omitempty"`
 	Message string `yaml:"message,omitempty"`
+}
+
+// Exposure declares a downstream consumer of a DAG's outputs.
+// Used for impact analysis; daggle does not deploy or track these directly.
+type Exposure struct {
+	Name        string `yaml:"name"`
+	Type        string `yaml:"type"` // shiny | quarto | dashboard | report | other
+	URL         string `yaml:"url,omitempty"`
+	Description string `yaml:"description,omitempty"`
 }
 
 // Param defines a named parameter with an optional default value.

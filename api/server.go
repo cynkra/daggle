@@ -103,6 +103,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/dags/{name}", s.handleGetDAG)
 	s.mux.HandleFunc("POST /api/v1/dags/{name}/run", s.handleTriggerRun)
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/plan", s.handleGetPlan)
+	s.mux.HandleFunc("GET /api/v1/dags/{name}/impact", s.handleGetImpact)
 
 	// Runs
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/compare", s.handleCompareRuns)
