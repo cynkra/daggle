@@ -380,6 +380,10 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#daggle-clean" id="toc-daggle-clean" class="nav-link" data-scroll-target="#daggle-clean">daggle clean</a></li>
   <li><a href="#daggle-approve" id="toc-daggle-approve" class="nav-link" data-scroll-target="#daggle-approve">daggle approve</a></li>
   <li><a href="#daggle-reject" id="toc-daggle-reject" class="nav-link" data-scroll-target="#daggle-reject">daggle reject</a></li>
+  <li><a href="#daggle-why" id="toc-daggle-why" class="nav-link" data-scroll-target="#daggle-why">daggle why</a></li>
+  <li><a href="#daggle-annotate" id="toc-daggle-annotate" class="nav-link" data-scroll-target="#daggle-annotate">daggle annotate</a></li>
+  <li><a href="#daggle-monitor" id="toc-daggle-monitor" class="nav-link" data-scroll-target="#daggle-monitor">daggle monitor</a></li>
+  <li><a href="#daggle-impact" id="toc-daggle-impact" class="nav-link" data-scroll-target="#daggle-impact">daggle impact</a></li>
   <li><a href="#daggle-init" id="toc-daggle-init" class="nav-link" data-scroll-target="#daggle-init">daggle init</a></li>
   <li><a href="#daggle-register" id="toc-daggle-register" class="nav-link" data-scroll-target="#daggle-register">daggle register</a></li>
   <li><a href="#daggle-unregister" id="toc-daggle-unregister" class="nav-link" data-scroll-target="#daggle-unregister">daggle unregister</a></li>
@@ -476,8 +480,38 @@ ul.task-list li input[type="checkbox"] {
 <section id="daggle-list" class="level2">
 <h2 class="anchored" data-anchor-id="daggle-list">daggle list</h2>
 <p>List all available DAGs with their last run status.</p>
-<pre><code>daggle list</code></pre>
-<p>No additional flags. Scans the DAGs directory and displays each DAG name, trigger schedule (if any), and last run outcome.</p>
+<pre><code>daggle list [--tag &lt;tag&gt;] [--team &lt;team&gt;] [--owner &lt;owner&gt;]</code></pre>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--tag</code></td>
+<td>string</td>
+<td>(none)</td>
+<td>Only show DAGs with this tag</td>
+</tr>
+<tr class="even">
+<td><code>--team</code></td>
+<td>string</td>
+<td>(none)</td>
+<td>Only show DAGs owned by this team</td>
+</tr>
+<tr class="odd">
+<td><code>--owner</code></td>
+<td>string</td>
+<td>(none)</td>
+<td>Only show DAGs owned by this user</td>
+</tr>
+</tbody>
+</table>
+<p>Scans the DAGs directory and displays each DAG name, trigger schedule (if any), and last run outcome. Also shows <code>OWNER</code>, <code>TEAM</code>, and <code>TAGS</code> columns when any DAG declares those fields. Filters combine with AND semantics.</p>
 </section>
 <section id="daggle-serve" class="level2">
 <h2 class="anchored" data-anchor-id="daggle-serve">daggle serve</h2>
@@ -664,6 +698,73 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>Marks the waiting step as rejected and fails the DAG.</p>
+</section>
+<section id="daggle-why" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-why">daggle why</h2>
+<p>Diagnose why a run failed.</p>
+<pre><code>daggle why &lt;dag&gt; [run-id]</code></pre>
+<p>Collapses status, stderr tail, step states, and DAG-hash drift into a single screen. Defaults to the most recent failed run; pass an explicit run ID to inspect a specific one. Compares the run’s <code>dag_hash</code> against the last successful run so you can tell whether the YAML changed between runs.</p>
+<p>Output sections: failed step and error detail, last 20 lines of stderr, per-step status table, and DAG-hash comparison.</p>
+</section>
+<section id="daggle-annotate" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-annotate">daggle annotate</h2>
+<p>Attach a free-form note to a run.</p>
+<pre><code>daggle annotate &lt;dag&gt; &lt;run-id&gt; &lt;note&gt; [--author &lt;name&gt;]</code></pre>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--author</code></td>
+<td>string</td>
+<td><code>$USER</code></td>
+<td>Override the recorded author</td>
+</tr>
+</tbody>
+</table>
+<p>Writes a <code>run_annotated</code> event to the run’s <code>events.jsonl</code>. Annotations surface in <code>daggle status</code>, the REST API, and the web UI. Use them for post-mortem notes, manual-restart explanations, or any context you want future-you to see next to the run.</p>
+</section>
+<section id="daggle-monitor" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-monitor">daggle monitor</h2>
+<p>Interactive TUI that streams a run’s events live.</p>
+<pre><code>daggle monitor &lt;dag&gt; [--run-id &lt;id&gt;] [--url &lt;url&gt;]</code></pre>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--run-id</code></td>
+<td>string</td>
+<td><code>latest</code></td>
+<td>Specific run ID to follow</td>
+</tr>
+<tr class="even">
+<td><code>--url</code></td>
+<td>string</td>
+<td>auto-detect</td>
+<td>Base URL of a daggle server</td>
+</tr>
+</tbody>
+</table>
+<p>Subscribes to the SSE stream endpoint and renders per-step status, duration, peak RSS, and annotation count. If no server is listening on <code>http://localhost:8080</code>, <code>daggle monitor</code> spawns an embedded read-only API on a random port for the session. Press <code>q</code> or <code>esc</code> to quit.</p>
+</section>
+<section id="daggle-impact" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-impact">daggle impact</h2>
+<p>Show a DAG’s downstream dependents and declared exposures.</p>
+<pre><code>daggle impact &lt;dag&gt;</code></pre>
+<p>Lists other DAGs that trigger off this one (via <code>trigger.on_dag.name</code>) plus any <code>exposures:</code> declared on the DAG itself (Shiny apps, Quarto reports, dashboards, etc.). Purely informational — daggle does not deploy or monitor the exposures.</p>
 </section>
 <section id="daggle-init" class="level2">
 <h2 class="anchored" data-anchor-id="daggle-init">daggle init</h2>

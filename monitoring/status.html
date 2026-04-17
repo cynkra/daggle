@@ -401,6 +401,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#status-values" id="toc-status-values" class="nav-link" data-scroll-target="#status-values">Status values</a></li>
   <li><a href="#error-messages" id="toc-error-messages" class="nav-link" data-scroll-target="#error-messages">Error messages</a></li>
   <li><a href="#step-outputs" id="toc-step-outputs" class="nav-link" data-scroll-target="#step-outputs">Step outputs</a></li>
+  <li><a href="#annotations" id="toc-annotations" class="nav-link" data-scroll-target="#annotations">Annotations</a></li>
+  <li><a href="#related-diagnostics" id="toc-related-diagnostics" class="nav-link" data-scroll-target="#related-diagnostics">Related diagnostics</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -499,6 +501,20 @@ Status: completed
 Outputs:
   model_path: /data/models/rf_20260401.rds
   accuracy: 0.94</code></pre>
+</section>
+<section id="annotations" class="level2">
+<h2 class="anchored" data-anchor-id="annotations">Annotations</h2>
+<p>Any notes attached to a run with <code>daggle annotate</code> surface in the status output:</p>
+<pre><code>Annotations:
+  [2026-04-17 08:45:12] alice: DB was down — manual restart at 08:30</code></pre>
+<p>See <code>daggle annotate</code> in the <a href="../reference/cli.html#daggle-annotate">CLI reference</a> for how to write them.</p>
+</section>
+<section id="related-diagnostics" class="level2">
+<h2 class="anchored" data-anchor-id="related-diagnostics">Related diagnostics</h2>
+<ul>
+<li><a href="../reference/cli.html#daggle-why"><code>daggle why</code></a> — focused failure diagnostic that combines status, stderr tail, and DAG-hash drift on one screen.</li>
+<li><a href="../reference/cli.html#daggle-monitor"><code>daggle monitor</code></a> — interactive TUI that streams events live while the run is in progress.</li>
+</ul>
 
 
 </section>

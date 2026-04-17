@@ -429,6 +429,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#dag-level-hooks" id="toc-dag-level-hooks" class="nav-link active" data-scroll-target="#dag-level-hooks">DAG-level hooks</a></li>
   <li><a href="#step-level-hooks" id="toc-step-level-hooks" class="nav-link" data-scroll-target="#step-level-hooks">Step-level hooks</a></li>
   <li><a href="#hook-types" id="toc-hook-types" class="nav-link" data-scroll-target="#hook-types">Hook types</a></li>
+  <li><a href="#notification-hooks" id="toc-notification-hooks" class="nav-link" data-scroll-target="#notification-hooks">Notification hooks</a></li>
   <li><a href="#available-environment" id="toc-available-environment" class="nav-link" data-scroll-target="#available-environment">Available environment</a></li>
   <li><a href="#common-patterns" id="toc-common-patterns" class="nav-link" data-scroll-target="#common-patterns">Common patterns</a></li>
   </ul>
@@ -502,11 +503,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="hook-types" class="level2">
 <h2 class="anchored" data-anchor-id="hook-types">Hook types</h2>
-<p>Each hook is an R expression <strong>or</strong> a shell command (not both):</p>
+<p>Each hook is an R expression, a shell command, <strong>or</strong> a reference to a named notification channel — exactly one:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">on_failure</span><span class="kw">:</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">r_expr</span><span class="kw">:</span><span class="at"> </span><span class="st">'slackr::slackr_msg("Step failed")'</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">  # OR</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">command</span><span class="kw">:</span><span class="at"> echo "Step failed" | mail -s "Alert" admin@example.com</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">command</span><span class="kw">:</span><span class="at"> echo "Step failed" | mail -s "Alert" admin@example.com</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">  # OR</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">notify</span><span class="kw">:</span><span class="at"> team-slack</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="notification-hooks" class="level2">
+<h2 class="anchored" data-anchor-id="notification-hooks">Notification hooks</h2>
+<p>The <code>notify:</code> form dispatches through a named channel configured globally in <code>~/.config/daggle/config.yaml</code>. Channels are sent directly from Go — no R required — so they work even when R is unavailable or the DAG has no R steps.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ~/.config/daggle/config.yaml</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">notifications</span><span class="kw">:</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">team-slack</span><span class="kw">:</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> slack</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">webhook_url</span><span class="kw">:</span><span class="at"> https://hooks.slack.com/services/...</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">ops-email</span><span class="kw">:</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> smtp</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_host</span><span class="kw">:</span><span class="at"> mail.example.com</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_port</span><span class="kw">:</span><span class="at"> </span><span class="dv">587</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_from</span><span class="kw">:</span><span class="at"> daggle@example.com</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_to</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">ops@example.com</span><span class="kw">]</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_user</span><span class="kw">:</span><span class="at"> daggle</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_password</span><span class="kw">:</span><span class="at"> ${SMTP_PASSWORD}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Reference the channel by name from a hook:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">on_failure</span><span class="kw">:</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">notify</span><span class="kw">:</span><span class="at"> team-slack</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">message</span><span class="kw">:</span><span class="at"> </span><span class="st">"ETL failed — see ${DAGGLE_RUN_DIR}"</span><span class="co">   # optional; default uses DAG name + status</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Supported channel types: <code>slack</code>, <code>clickup</code>, <code>http</code> (generic webhook), <code>smtp</code>. Unknown channel names are rejected at DAG parse time, so typos fail fast rather than silently dropping notifications.</p>
 </section>
 <section id="available-environment" class="level2">
 <h2 class="anchored" data-anchor-id="available-environment">Available environment</h2>
@@ -521,19 +546,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="common-patterns" class="level2">
 <h2 class="anchored" data-anchor-id="common-patterns">Common patterns</h2>
 <p><strong>Slack notification:</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">on_failure</span><span class="kw">:</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">  r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    slackr::slackr_msg(</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>      sprintf("DAG %s failed (run %s)",</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>              Sys.getenv("DAGGLE_DAG_NAME"),</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>              Sys.getenv("DAGGLE_RUN_ID"))</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">on_failure</span><span class="kw">:</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">  r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    slackr::slackr_msg(</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>      sprintf("DAG %s failed (run %s)",</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>              Sys.getenv("DAGGLE_DAG_NAME"),</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>              Sys.getenv("DAGGLE_RUN_ID"))</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Email alert:</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">on_failure</span><span class="kw">:</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">command</span><span class="kw">:</span><span class="at"> echo "Pipeline failed at $(date)" | mail -s "daggle alert" team@example.com</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">on_failure</span><span class="kw">:</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">command</span><span class="kw">:</span><span class="at"> echo "Pipeline failed at $(date)" | mail -s "daggle alert" team@example.com</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p><strong>Logging:</strong></p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">on_exit</span><span class="kw">:</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">r_expr</span><span class="kw">:</span><span class="at"> </span><span class="st">'logger::log_info("DAG finished")'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">on_exit</span><span class="kw">:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">r_expr</span><span class="kw">:</span><span class="at"> </span><span class="st">'logger::log_info("DAG finished")'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>

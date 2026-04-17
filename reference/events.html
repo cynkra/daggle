@@ -532,6 +532,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="step_completed">step_completed</h3>
 <p>Emitted when a step finishes successfully.</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>Field</th>
@@ -575,8 +580,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>object</td>
 <td>Key-value pairs emitted via output markers</td>
 </tr>
+<tr class="even">
+<td><code>peak_rss_kb</code></td>
+<td>integer</td>
+<td>Peak resident set size, in KB (normalized across platforms)</td>
+</tr>
+<tr class="odd">
+<td><code>user_cpu_sec</code></td>
+<td>number</td>
+<td>User-mode CPU time, in seconds</td>
+</tr>
+<tr class="even">
+<td><code>sys_cpu_sec</code></td>
+<td>number</td>
+<td>Kernel-mode CPU time, in seconds</td>
+</tr>
 </tbody>
 </table>
+<p>Resource fields come from <code>syscall.Rusage</code> after <code>cmd.Wait</code>. Linux reports <code>Maxrss</code> in KB natively; macOS reports it in bytes and daggle normalizes to KB so downstream consumers can compare cross-platform.</p>
 </section>
 <section id="step_failed" class="level3">
 <h3 class="anchored" data-anchor-id="step_failed">step_failed</h3>
@@ -844,6 +865,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>timestamp</code></td>
 <td>string</td>
 <td>ISO 8601 timestamp</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="run_annotated" class="level3">
+<h3 class="anchored" data-anchor-id="run_annotated">run_annotated</h3>
+<p>Emitted when a user attaches a note to a run via <code>daggle annotate</code> or the annotations API.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>type</code></td>
+<td>string</td>
+<td><code>"run_annotated"</code></td>
+</tr>
+<tr class="even">
+<td><code>v</code></td>
+<td>integer</td>
+<td>Schema version</td>
+</tr>
+<tr class="odd">
+<td><code>run_id</code></td>
+<td>string</td>
+<td>Run identifier</td>
+</tr>
+<tr class="even">
+<td><code>timestamp</code></td>
+<td>string</td>
+<td>ISO 8601 timestamp</td>
+</tr>
+<tr class="odd">
+<td><code>author</code></td>
+<td>string</td>
+<td>Who wrote the note (defaults to <code>$USER</code>)</td>
+</tr>
+<tr class="even">
+<td><code>note</code></td>
+<td>string</td>
+<td>Free-form note text</td>
 </tr>
 </tbody>
 </table>

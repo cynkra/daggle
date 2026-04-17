@@ -530,18 +530,48 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Fail if R version doesn’t match (default: warn)</td>
 </tr>
 <tr class="even">
+<td><code>owner</code></td>
+<td>string</td>
+<td>no</td>
+<td>DAG owner (e.g.&nbsp;<code>"alice"</code>). Filterable via <code>daggle list --owner</code></td>
+</tr>
+<tr class="odd">
+<td><code>team</code></td>
+<td>string</td>
+<td>no</td>
+<td>Owning team (e.g.&nbsp;<code>"data"</code>). Filterable via <code>daggle list --team</code></td>
+</tr>
+<tr class="even">
+<td><code>description</code></td>
+<td>string</td>
+<td>no</td>
+<td>Free-form one-line description</td>
+</tr>
+<tr class="odd">
+<td><code>tags</code></td>
+<td>string[]</td>
+<td>no</td>
+<td>Tags for filtering (e.g.&nbsp;<code>[etl, daily, critical]</code>). Filterable via <code>daggle list --tag</code></td>
+</tr>
+<tr class="even">
+<td><code>exposures</code></td>
+<td>array</td>
+<td>no</td>
+<td>Downstream consumers of this DAG (see below)</td>
+</tr>
+<tr class="odd">
 <td><code>on_success</code></td>
 <td>hook</td>
 <td>no</td>
 <td>Hook to run when DAG completes</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>on_failure</code></td>
 <td>hook</td>
 <td>no</td>
 <td>Hook to run when DAG fails</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>on_exit</code></td>
 <td>hook</td>
 <td>no</td>
@@ -549,6 +579,59 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
+<section id="exposures" class="level3">
+<h3 class="anchored" data-anchor-id="exposures">Exposures</h3>
+<p><code>exposures:</code> lists downstream consumers (dashboards, reports, apps) so <code>daggle impact</code> and the API can report who is affected when the DAG changes. Purely informational — daggle does not deploy or monitor them.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">exposures</span><span class="kw">:</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> ops-dashboard</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> dashboard</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">url</span><span class="kw">:</span><span class="at"> https://dash.example.com/ops</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">description</span><span class="kw">:</span><span class="at"> Main operations dashboard</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> weekly-email</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> report</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 16%">
+<col style="width: 27%">
+<col style="width: 36%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>name</code></td>
+<td>string</td>
+<td>yes</td>
+<td>Unique exposure identifier within the DAG</td>
+</tr>
+<tr class="even">
+<td><code>type</code></td>
+<td>enum</td>
+<td>yes</td>
+<td>One of <code>shiny</code>, <code>quarto</code>, <code>dashboard</code>, <code>report</code>, <code>other</code></td>
+</tr>
+<tr class="odd">
+<td><code>url</code></td>
+<td>string</td>
+<td>no</td>
+<td>Link to the exposure</td>
+</tr>
+<tr class="even">
+<td><code>description</code></td>
+<td>string</td>
+<td>no</td>
+<td>Free-form description</td>
+</tr>
+</tbody>
+</table>
+</section>
 </section>
 <section id="step-fields" class="level2">
 <h2 class="anchored" data-anchor-id="step-fields">Step fields</h2>
@@ -657,56 +740,56 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="full-example" class="level2">
 <h2 class="anchored" data-anchor-id="full-example">Full example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> my-pipeline</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="st">"1"</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">r_version</span><span class="kw">:</span><span class="at"> </span><span class="st">"&gt;=4.1.0"</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">trigger</span><span class="kw">:</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span><span class="at"> </span><span class="st">"30 6 * * MON-FRI"</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">workdir</span><span class="kw">:</span><span class="at"> /opt/projects/etl</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">env</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">DB_HOST</span><span class="kw">:</span><span class="at"> </span><span class="st">"localhost"</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">REPORT_DATE</span><span class="kw">:</span><span class="at"> </span><span class="st">"{{ .Today }}"</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">params</span><span class="kw">:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> department</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">default</span><span class="kw">:</span><span class="at"> </span><span class="st">"sales"</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">on_success</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">r_expr</span><span class="kw">:</span><span class="at"> </span><span class="st">'logger::log_info("Pipeline complete")'</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">on_failure</span><span class="kw">:</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">command</span><span class="kw">:</span><span class="at"> echo "Pipeline failed!" | mail -s "Alert" team@example.com</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="fu">steps</span><span class="kw">:</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> extract</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">script</span><span class="kw">:</span><span class="at"> etl/extract.R</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">args</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"--dept"</span><span class="kw">,</span><span class="at"> </span><span class="st">"{{ .Params.department }}"</span><span class="kw">]</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">timeout</span><span class="kw">:</span><span class="at"> 10m</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">retry</span><span class="kw">:</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">limit</span><span class="kw">:</span><span class="at"> </span><span class="dv">3</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">backoff</span><span class="kw">:</span><span class="at"> exponential</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">max_delay</span><span class="kw">:</span><span class="at"> 60s</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">env</span><span class="kw">:</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">BATCH_SIZE</span><span class="kw">:</span><span class="at"> </span><span class="st">"1000"</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> validate</span></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="fu">    r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>      data &lt;- readRDS("data/raw.rds")</span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>      stopifnot(nrow(data) &gt; 0)</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=row_count::", nrow(data), "\n")</span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">extract</span><span class="kw">]</span></span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">error_on</span><span class="kw">:</span><span class="at"> warning</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> report</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">script</span><span class="kw">:</span><span class="at"> etl/report.R</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">args</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"--rows"</span><span class="kw">,</span><span class="at"> </span><span class="st">"$DAGGLE_OUTPUT_VALIDATE_ROW_COUNT"</span><span class="kw">]</span></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">validate</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> my-pipeline</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="st">"1"</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">r_version</span><span class="kw">:</span><span class="at"> </span><span class="st">"&gt;=4.1.0"</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">trigger</span><span class="kw">:</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span><span class="at"> </span><span class="st">"30 6 * * MON-FRI"</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="fu">workdir</span><span class="kw">:</span><span class="at"> /opt/projects/etl</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="fu">env</span><span class="kw">:</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">DB_HOST</span><span class="kw">:</span><span class="at"> </span><span class="st">"localhost"</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">REPORT_DATE</span><span class="kw">:</span><span class="at"> </span><span class="st">"{{ .Today }}"</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="fu">params</span><span class="kw">:</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> department</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">default</span><span class="kw">:</span><span class="at"> </span><span class="st">"sales"</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="fu">on_success</span><span class="kw">:</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">r_expr</span><span class="kw">:</span><span class="at"> </span><span class="st">'logger::log_info("Pipeline complete")'</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="fu">on_failure</span><span class="kw">:</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">command</span><span class="kw">:</span><span class="at"> echo "Pipeline failed!" | mail -s "Alert" team@example.com</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="fu">steps</span><span class="kw">:</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> extract</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">script</span><span class="kw">:</span><span class="at"> etl/extract.R</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">args</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"--dept"</span><span class="kw">,</span><span class="at"> </span><span class="st">"{{ .Params.department }}"</span><span class="kw">]</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">timeout</span><span class="kw">:</span><span class="at"> 10m</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">retry</span><span class="kw">:</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">limit</span><span class="kw">:</span><span class="at"> </span><span class="dv">3</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">backoff</span><span class="kw">:</span><span class="at"> exponential</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">max_delay</span><span class="kw">:</span><span class="at"> 60s</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">env</span><span class="kw">:</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">BATCH_SIZE</span><span class="kw">:</span><span class="at"> </span><span class="st">"1000"</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> validate</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a><span class="fu">    r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>      data &lt;- readRDS("data/raw.rds")</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>      stopifnot(nrow(data) &gt; 0)</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=row_count::", nrow(data), "\n")</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">extract</span><span class="kw">]</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">error_on</span><span class="kw">:</span><span class="at"> warning</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> report</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">script</span><span class="kw">:</span><span class="at"> etl/report.R</span></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">args</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"--rows"</span><span class="kw">,</span><span class="at"> </span><span class="st">"$DAGGLE_OUTPUT_VALIDATE_ROW_COUNT"</span><span class="kw">]</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">validate</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="editor-support" class="level2">
 <h2 class="anchored" data-anchor-id="editor-support">Editor support</h2>
 <p>Add this comment to the top of your YAML files for VS Code autocomplete (requires the YAML extension):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># yaml-language-server: $schema=https://github.com/cynkra/daggle/raw/main/docs/daggle-schema.json</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># yaml-language-server: $schema=https://github.com/cynkra/daggle/raw/main/docs/daggle-schema.json</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>

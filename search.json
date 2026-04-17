@@ -407,6 +407,28 @@
     ]
   },
   {
+    "objectID": "monitoring/status.html#annotations",
+    "href": "monitoring/status.html#annotations",
+    "title": "Checking Status",
+    "section": "Annotations",
+    "text": "Annotations\nAny notes attached to a run with daggle annotate surface in the status output:\nAnnotations:\n  [2026-04-17 08:45:12] alice: DB was down — manual restart at 08:30\nSee daggle annotate in the CLI reference for how to write them.",
+    "crumbs": [
+      "Monitoring",
+      "Status"
+    ]
+  },
+  {
+    "objectID": "monitoring/status.html#related-diagnostics",
+    "href": "monitoring/status.html#related-diagnostics",
+    "title": "Checking Status",
+    "section": "Related diagnostics",
+    "text": "Related diagnostics\n\ndaggle why — focused failure diagnostic that combines status, stderr tail, and DAG-hash drift on one screen.\ndaggle monitor — interactive TUI that streams events live while the run is in progress.",
+    "crumbs": [
+      "Monitoring",
+      "Status"
+    ]
+  },
+  {
     "objectID": "monitoring/doctor.html",
     "href": "monitoring/doctor.html",
     "title": "Diagnostics",
@@ -877,7 +899,7 @@
     "href": "writing-dags/yaml-reference.html#dag-level-fields",
     "title": "YAML Reference",
     "section": "DAG-level fields",
-    "text": "DAG-level fields\n\n\n\n\n\n\n\n\n\nField\nType\nRequired\nDescription\n\n\n\n\nname\nstring\nyes\nUnique DAG identifier\n\n\nversion\nstring\nno\nSchema version (default: \"1\")\n\n\nsteps\narray\nyes\nList of execution steps\n\n\ntrigger\nobject\nno\nAutomated execution triggers\n\n\nworkdir\nstring\nno\nWorking directory for all steps\n\n\nenv\nobject\nno\nEnvironment variables for all steps\n\n\nparams\narray\nno\nParameters with optional defaults\n\n\nr_version\nstring\nno\nR version constraint (e.g. \"&gt;=4.1.0\")\n\n\nr_version_strict\nboolean\nno\nFail if R version doesn’t match (default: warn)\n\n\non_success\nhook\nno\nHook to run when DAG completes\n\n\non_failure\nhook\nno\nHook to run when DAG fails\n\n\non_exit\nhook\nno\nHook to run on DAG exit (success or failure)",
+    "text": "DAG-level fields\n\n\n\n\n\n\n\n\n\nField\nType\nRequired\nDescription\n\n\n\n\nname\nstring\nyes\nUnique DAG identifier\n\n\nversion\nstring\nno\nSchema version (default: \"1\")\n\n\nsteps\narray\nyes\nList of execution steps\n\n\ntrigger\nobject\nno\nAutomated execution triggers\n\n\nworkdir\nstring\nno\nWorking directory for all steps\n\n\nenv\nobject\nno\nEnvironment variables for all steps\n\n\nparams\narray\nno\nParameters with optional defaults\n\n\nr_version\nstring\nno\nR version constraint (e.g. \"&gt;=4.1.0\")\n\n\nr_version_strict\nboolean\nno\nFail if R version doesn’t match (default: warn)\n\n\nowner\nstring\nno\nDAG owner (e.g. \"alice\"). Filterable via daggle list --owner\n\n\nteam\nstring\nno\nOwning team (e.g. \"data\"). Filterable via daggle list --team\n\n\ndescription\nstring\nno\nFree-form one-line description\n\n\ntags\nstring[]\nno\nTags for filtering (e.g. [etl, daily, critical]). Filterable via daggle list --tag\n\n\nexposures\narray\nno\nDownstream consumers of this DAG (see below)\n\n\non_success\nhook\nno\nHook to run when DAG completes\n\n\non_failure\nhook\nno\nHook to run when DAG fails\n\n\non_exit\nhook\nno\nHook to run on DAG exit (success or failure)\n\n\n\n\nExposures\nexposures: lists downstream consumers (dashboards, reports, apps) so daggle impact and the API can report who is affected when the DAG changes. Purely informational — daggle does not deploy or monitor them.\nexposures:\n  - name: ops-dashboard\n    type: dashboard\n    url: https://dash.example.com/ops\n    description: Main operations dashboard\n  - name: weekly-email\n    type: report\n\n\n\n\n\n\n\n\n\nField\nType\nRequired\nDescription\n\n\n\n\nname\nstring\nyes\nUnique exposure identifier within the DAG\n\n\ntype\nenum\nyes\nOne of shiny, quarto, dashboard, report, other\n\n\nurl\nstring\nno\nLink to the exposure\n\n\ndescription\nstring\nno\nFree-form description",
     "crumbs": [
       "Writing DAGs",
       "YAML Reference"
@@ -1180,7 +1202,7 @@
     "href": "reference/file-layout.html#directory-structure",
     "title": "File Layout",
     "section": "Directory structure",
-    "text": "Directory structure\n~/.config/daggle/\n  config.yaml                    # Global configuration (tool paths, cleanup, etc.)\n  dags/                          # Global DAG definitions\n    my-pipeline.yml\n    nightly-etl.yml\n  projects.yaml                  # Registered project directories\n\n~/.local/share/daggle/\n  runs/                          # Run data, organized by DAG and date\n    &lt;dag&gt;/\n      &lt;YYYY-MM-DD&gt;/\n        run_&lt;id&gt;/\n          meta.json              # Run metadata (params, start time, status)\n          events.jsonl           # Append-only event log (see Event Schema)\n          &lt;step&gt;.stdout.log      # Step stdout (includes output markers)\n          &lt;step&gt;.stderr.log      # Step stderr\n          &lt;step&gt;.inline.R        # Rendered inline R code (for r_expr steps)\n  proc/\n    scheduler.pid                # Scheduler daemon PID file\n\n.daggle/                         # Project-local DAG definitions (repo root)\n  my-dag.yml",
+    "text": "Directory structure\n~/.config/daggle/\n  config.yaml                    # Global configuration (tool paths, cleanup, etc.)\n  dags/                          # Global DAG definitions\n    my-pipeline.yml\n    nightly-etl.yml\n  projects.yaml                  # Registered project directories\n\n~/.local/share/daggle/\n  runs/                          # Run data, organized by DAG and date\n    &lt;dag&gt;/\n      &lt;YYYY-MM-DD&gt;/\n        run_&lt;id&gt;/\n          meta.json              # Run metadata (params, start time, status)\n          events.jsonl           # Append-only event log (see Event Schema)\n          &lt;step&gt;.stdout.log      # Step stdout (includes output markers)\n          &lt;step&gt;.stderr.log      # Step stderr\n          &lt;step&gt;.inline.R        # Rendered inline R code (for r_expr steps)\n          &lt;step&gt;.sessioninfo.json # R sessionInfo() — written only on R step failure\n  proc/\n    scheduler.pid                # Scheduler daemon PID file\n\n.daggle/                         # Project-local DAG definitions (repo root)\n  my-dag.yml",
     "crumbs": [
       "Reference",
       "File Layout"
@@ -1202,7 +1224,7 @@
     "href": "reference/file-layout.html#run-directory-contents",
     "title": "File Layout",
     "section": "Run directory contents",
-    "text": "Run directory contents\nEach run gets its own directory under runs/&lt;dag&gt;/&lt;date&gt;/run_&lt;id&gt;/.\n\n\n\nFile\nDescription\n\n\n\n\nmeta.json\nRun metadata: DAG name, parameters, start/end timestamps, final status.\n\n\nevents.jsonl\nAppend-only event log. See Event Schema.\n\n\n&lt;step&gt;.stdout.log\nCaptured stdout for each step. Includes raw output markers.\n\n\n&lt;step&gt;.stderr.log\nCaptured stderr for each step.\n\n\n&lt;step&gt;.inline.R\nRendered R source for r_expr steps (useful for debugging).",
+    "text": "Run directory contents\nEach run gets its own directory under runs/&lt;dag&gt;/&lt;date&gt;/run_&lt;id&gt;/.\n\n\n\nFile\nDescription\n\n\n\n\nmeta.json\nRun metadata: DAG name, parameters, start/end timestamps, final status.\n\n\nevents.jsonl\nAppend-only event log. See Event Schema.\n\n\n&lt;step&gt;.stdout.log\nCaptured stdout for each step. Includes raw output markers.\n\n\n&lt;step&gt;.stderr.log\nCaptured stderr for each step.\n\n\n&lt;step&gt;.inline.R\nRendered R source for r_expr steps (useful for debugging).\n\n\n&lt;step&gt;.sessioninfo.json\nsessionInfo() snapshot written only when an R step fails. Contains r_version, platform, error_message, session_info (full text), and timestamp. Useful for compliance and post-mortem debugging — proves which package versions were active at the moment of failure without re-running R.",
     "crumbs": [
       "Reference",
       "File Layout"
@@ -1224,7 +1246,7 @@
     "href": "reference/file-layout.html#global-configuration-config.yaml",
     "title": "File Layout",
     "section": "Global configuration (config.yaml)",
-    "text": "Global configuration (config.yaml)\nThe file ~/.config/daggle/config.yaml holds global settings. All fields are optional.\n# Override tool paths (useful when the scheduler can't find binaries)\ntools:\n  rscript: /usr/local/bin/Rscript\n  quarto: /opt/homebrew/bin/quarto\n  git: /usr/bin/git\n\n# Automatic cleanup of old run data\ncleanup:\n  older_than: \"30d\"\n  interval: \"6h\"\n\nTool path resolution\nAt startup, daggle resolves each tool path using this precedence:\n\ntools: in config.yaml — explicit absolute path (highest priority)\nexec.LookPath — searches the current PATH\nBare binary name — fallback (may fail if not on PATH)\n\nAuto-detection: When daggle discovers a tool via PATH lookup (step 2), it automatically saves the resolved absolute path to config.yaml. This means running any daggle command once from an interactive shell (e.g., daggle doctor or daggle run) will persist the tool paths. Future scheduler runs — even as a system service with a minimal PATH — will find the saved paths in config.\nRun daggle doctor to see which paths daggle resolved.",
+    "text": "Global configuration (config.yaml)\nThe file ~/.config/daggle/config.yaml holds global settings. All fields are optional.\n# Override tool paths (useful when the scheduler can't find binaries)\ntools:\n  rscript: /usr/local/bin/Rscript\n  quarto: /opt/homebrew/bin/quarto\n  git: /usr/bin/git\n\n# Automatic cleanup of old run data\ncleanup:\n  older_than: \"30d\"\n  interval: \"6h\"\n\n# Named notification channels, referenced from hooks by name.\n# See the Hooks page for usage.\nnotifications:\n  team-slack:\n    type: slack\n    webhook_url: https://hooks.slack.com/services/...\n  ops-email:\n    type: smtp\n    smtp_host: mail.example.com\n    smtp_port: 587\n    smtp_from: daggle@example.com\n    smtp_to: [ops@example.com]\n    smtp_user: daggle\n    smtp_password: ${SMTP_PASSWORD}\n\nTool path resolution\nAt startup, daggle resolves each tool path using this precedence:\n\ntools: in config.yaml — explicit absolute path (highest priority)\nexec.LookPath — searches the current PATH\nBare binary name — fallback (may fail if not on PATH)\n\nAuto-detection: When daggle discovers a tool via PATH lookup (step 2), it automatically saves the resolved absolute path to config.yaml. This means running any daggle command once from an interactive shell (e.g., daggle doctor or daggle run) will persist the tool paths. Future scheduler runs — even as a system service with a minimal PATH — will find the saved paths in config.\nRun daggle doctor to see which paths daggle resolved.",
     "crumbs": [
       "Reference",
       "File Layout"
@@ -1345,7 +1367,7 @@
     "href": "reference/events.html#event-types",
     "title": "Event Schema",
     "section": "Event types",
-    "text": "Event types\n\ndag_started\nEmitted when a DAG run begins.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"dag_started\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nUnique run identifier\n\n\ndag_name\nstring\nDAG name\n\n\nstarted\nstring\nISO 8601 timestamp\n\n\nparams\nobject\nParameters passed to the run\n\n\ndag_hash\nstring\nSHA-256 of the DAG definition at run time\n\n\n\n\n\nstep_started\nEmitted when a step begins execution.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_started\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nstarted\nstring\nISO 8601 timestamp\n\n\nattempt\ninteger\nAttempt number (1 for first try)\n\n\n\n\n\nstep_completed\nEmitted when a step finishes successfully.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_completed\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nended\nstring\nISO 8601 timestamp\n\n\nduration_seconds\nnumber\nWall-clock duration\n\n\noutputs\nobject\nKey-value pairs emitted via output markers\n\n\n\n\n\nstep_failed\nEmitted when a step fails.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_failed\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nended\nstring\nISO 8601 timestamp\n\n\nerror\nstring\nError message\n\n\nattempt\ninteger\nAttempt number\n\n\n\n\n\nstep_retried\nEmitted when a failed step is scheduled for retry.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_retried\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nattempt\ninteger\nAttempt that failed\n\n\nnext_attempt\ninteger\nNext attempt number\n\n\ndelay\nstring\nDelay before retry (e.g. \"5s\")\n\n\n\n\n\nstep_skipped\nEmitted when a step is skipped due to a when condition.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_skipped\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nreason\nstring\nWhy the step was skipped\n\n\n\n\n\nstep_waiting_approval\nEmitted when a step pauses for manual approval.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_waiting_approval\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nmessage\nstring\nApproval prompt message\n\n\n\n\n\nstep_approved\nEmitted when a waiting step is approved.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_approved\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\napproved_by\nstring\nWho approved (user or API)\n\n\ntimestamp\nstring\nISO 8601 timestamp\n\n\n\n\n\nstep_rejected\nEmitted when a waiting step is rejected.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_rejected\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nrejected_by\nstring\nWho rejected (user or API)\n\n\ntimestamp\nstring\nISO 8601 timestamp\n\n\n\n\n\ndag_completed\nEmitted when all steps succeed and the DAG finishes.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"dag_completed\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nended\nstring\nISO 8601 timestamp\n\n\nduration_seconds\nnumber\nTotal DAG wall-clock duration\n\n\n\n\n\ndag_failed\nEmitted when the DAG fails.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"dag_failed\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nended\nstring\nISO 8601 timestamp\n\n\nerror\nstring\nError message",
+    "text": "Event types\n\ndag_started\nEmitted when a DAG run begins.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"dag_started\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nUnique run identifier\n\n\ndag_name\nstring\nDAG name\n\n\nstarted\nstring\nISO 8601 timestamp\n\n\nparams\nobject\nParameters passed to the run\n\n\ndag_hash\nstring\nSHA-256 of the DAG definition at run time\n\n\n\n\n\nstep_started\nEmitted when a step begins execution.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_started\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nstarted\nstring\nISO 8601 timestamp\n\n\nattempt\ninteger\nAttempt number (1 for first try)\n\n\n\n\n\nstep_completed\nEmitted when a step finishes successfully.\n\n\n\n\n\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_completed\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nended\nstring\nISO 8601 timestamp\n\n\nduration_seconds\nnumber\nWall-clock duration\n\n\noutputs\nobject\nKey-value pairs emitted via output markers\n\n\npeak_rss_kb\ninteger\nPeak resident set size, in KB (normalized across platforms)\n\n\nuser_cpu_sec\nnumber\nUser-mode CPU time, in seconds\n\n\nsys_cpu_sec\nnumber\nKernel-mode CPU time, in seconds\n\n\n\nResource fields come from syscall.Rusage after cmd.Wait. Linux reports Maxrss in KB natively; macOS reports it in bytes and daggle normalizes to KB so downstream consumers can compare cross-platform.\n\n\nstep_failed\nEmitted when a step fails.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_failed\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nended\nstring\nISO 8601 timestamp\n\n\nerror\nstring\nError message\n\n\nattempt\ninteger\nAttempt number\n\n\n\n\n\nstep_retried\nEmitted when a failed step is scheduled for retry.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_retried\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nattempt\ninteger\nAttempt that failed\n\n\nnext_attempt\ninteger\nNext attempt number\n\n\ndelay\nstring\nDelay before retry (e.g. \"5s\")\n\n\n\n\n\nstep_skipped\nEmitted when a step is skipped due to a when condition.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_skipped\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nreason\nstring\nWhy the step was skipped\n\n\n\n\n\nstep_waiting_approval\nEmitted when a step pauses for manual approval.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_waiting_approval\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nmessage\nstring\nApproval prompt message\n\n\n\n\n\nstep_approved\nEmitted when a waiting step is approved.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_approved\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\napproved_by\nstring\nWho approved (user or API)\n\n\ntimestamp\nstring\nISO 8601 timestamp\n\n\n\n\n\nstep_rejected\nEmitted when a waiting step is rejected.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"step_rejected\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nstep_id\nstring\nStep identifier\n\n\nrejected_by\nstring\nWho rejected (user or API)\n\n\ntimestamp\nstring\nISO 8601 timestamp\n\n\n\n\n\nrun_annotated\nEmitted when a user attaches a note to a run via daggle annotate or the annotations API.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"run_annotated\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\ntimestamp\nstring\nISO 8601 timestamp\n\n\nauthor\nstring\nWho wrote the note (defaults to $USER)\n\n\nnote\nstring\nFree-form note text\n\n\n\n\n\ndag_completed\nEmitted when all steps succeed and the DAG finishes.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"dag_completed\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nended\nstring\nISO 8601 timestamp\n\n\nduration_seconds\nnumber\nTotal DAG wall-clock duration\n\n\n\n\n\ndag_failed\nEmitted when the DAG fails.\n\n\n\nField\nType\nDescription\n\n\n\n\ntype\nstring\n\"dag_failed\"\n\n\nv\ninteger\nSchema version\n\n\nrun_id\nstring\nRun identifier\n\n\nended\nstring\nISO 8601 timestamp\n\n\nerror\nstring\nError message",
     "crumbs": [
       "Reference",
       "Event Schema"
@@ -1521,7 +1543,7 @@
     "href": "reference/cli.html#daggle-list",
     "title": "CLI Reference",
     "section": "daggle list",
-    "text": "daggle list\nList all available DAGs with their last run status.\ndaggle list\nNo additional flags. Scans the DAGs directory and displays each DAG name, trigger schedule (if any), and last run outcome.",
+    "text": "daggle list\nList all available DAGs with their last run status.\ndaggle list [--tag &lt;tag&gt;] [--team &lt;team&gt;] [--owner &lt;owner&gt;]\n\n\n\nFlag\nType\nDefault\nDescription\n\n\n\n\n--tag\nstring\n(none)\nOnly show DAGs with this tag\n\n\n--team\nstring\n(none)\nOnly show DAGs owned by this team\n\n\n--owner\nstring\n(none)\nOnly show DAGs owned by this user\n\n\n\nScans the DAGs directory and displays each DAG name, trigger schedule (if any), and last run outcome. Also shows OWNER, TEAM, and TAGS columns when any DAG declares those fields. Filters combine with AND semantics.",
     "crumbs": [
       "Reference",
       "CLI"
@@ -1621,6 +1643,50 @@
     "title": "CLI Reference",
     "section": "daggle reject",
     "text": "daggle reject\nReject a run waiting at an approval gate.\ndaggle reject &lt;dag&gt; [--run-id &lt;id&gt;]\n\n\n\nFlag\nType\nDefault\nDescription\n\n\n\n\n--run-id\nstring\n(latest)\nSpecific run ID to reject\n\n\n\nMarks the waiting step as rejected and fails the DAG.",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "reference/cli.html#daggle-why",
+    "href": "reference/cli.html#daggle-why",
+    "title": "CLI Reference",
+    "section": "daggle why",
+    "text": "daggle why\nDiagnose why a run failed.\ndaggle why &lt;dag&gt; [run-id]\nCollapses status, stderr tail, step states, and DAG-hash drift into a single screen. Defaults to the most recent failed run; pass an explicit run ID to inspect a specific one. Compares the run’s dag_hash against the last successful run so you can tell whether the YAML changed between runs.\nOutput sections: failed step and error detail, last 20 lines of stderr, per-step status table, and DAG-hash comparison.",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "reference/cli.html#daggle-annotate",
+    "href": "reference/cli.html#daggle-annotate",
+    "title": "CLI Reference",
+    "section": "daggle annotate",
+    "text": "daggle annotate\nAttach a free-form note to a run.\ndaggle annotate &lt;dag&gt; &lt;run-id&gt; &lt;note&gt; [--author &lt;name&gt;]\n\n\n\nFlag\nType\nDefault\nDescription\n\n\n\n\n--author\nstring\n$USER\nOverride the recorded author\n\n\n\nWrites a run_annotated event to the run’s events.jsonl. Annotations surface in daggle status, the REST API, and the web UI. Use them for post-mortem notes, manual-restart explanations, or any context you want future-you to see next to the run.",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "reference/cli.html#daggle-monitor",
+    "href": "reference/cli.html#daggle-monitor",
+    "title": "CLI Reference",
+    "section": "daggle monitor",
+    "text": "daggle monitor\nInteractive TUI that streams a run’s events live.\ndaggle monitor &lt;dag&gt; [--run-id &lt;id&gt;] [--url &lt;url&gt;]\n\n\n\nFlag\nType\nDefault\nDescription\n\n\n\n\n--run-id\nstring\nlatest\nSpecific run ID to follow\n\n\n--url\nstring\nauto-detect\nBase URL of a daggle server\n\n\n\nSubscribes to the SSE stream endpoint and renders per-step status, duration, peak RSS, and annotation count. If no server is listening on http://localhost:8080, daggle monitor spawns an embedded read-only API on a random port for the session. Press q or esc to quit.",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
+    "objectID": "reference/cli.html#daggle-impact",
+    "href": "reference/cli.html#daggle-impact",
+    "title": "CLI Reference",
+    "section": "daggle impact",
+    "text": "daggle impact\nShow a DAG’s downstream dependents and declared exposures.\ndaggle impact &lt;dag&gt;\nLists other DAGs that trigger off this one (via trigger.on_dag.name) plus any exposures: declared on the DAG itself (Shiny apps, Quarto reports, dashboards, etc.). Purely informational — daggle does not deploy or monitor the exposures.",
     "crumbs": [
       "Reference",
       "CLI"
@@ -2192,7 +2258,18 @@
     "href": "writing-dags/hooks.html#hook-types",
     "title": "Lifecycle Hooks",
     "section": "Hook types",
-    "text": "Hook types\nEach hook is an R expression or a shell command (not both):\non_failure:\n  r_expr: 'slackr::slackr_msg(\"Step failed\")'\n  # OR\n  command: echo \"Step failed\" | mail -s \"Alert\" admin@example.com",
+    "text": "Hook types\nEach hook is an R expression, a shell command, or a reference to a named notification channel — exactly one:\non_failure:\n  r_expr: 'slackr::slackr_msg(\"Step failed\")'\n  # OR\n  command: echo \"Step failed\" | mail -s \"Alert\" admin@example.com\n  # OR\n  notify: team-slack",
+    "crumbs": [
+      "Writing DAGs",
+      "Lifecycle Hooks"
+    ]
+  },
+  {
+    "objectID": "writing-dags/hooks.html#notification-hooks",
+    "href": "writing-dags/hooks.html#notification-hooks",
+    "title": "Lifecycle Hooks",
+    "section": "Notification hooks",
+    "text": "Notification hooks\nThe notify: form dispatches through a named channel configured globally in ~/.config/daggle/config.yaml. Channels are sent directly from Go — no R required — so they work even when R is unavailable or the DAG has no R steps.\n# ~/.config/daggle/config.yaml\nnotifications:\n  team-slack:\n    type: slack\n    webhook_url: https://hooks.slack.com/services/...\n  ops-email:\n    type: smtp\n    smtp_host: mail.example.com\n    smtp_port: 587\n    smtp_from: daggle@example.com\n    smtp_to: [ops@example.com]\n    smtp_user: daggle\n    smtp_password: ${SMTP_PASSWORD}\nReference the channel by name from a hook:\non_failure:\n  notify: team-slack\n  message: \"ETL failed — see ${DAGGLE_RUN_DIR}\"   # optional; default uses DAG name + status\nSupported channel types: slack, clickup, http (generic webhook), smtp. Unknown channel names are rejected at DAG parse time, so typos fail fast rather than silently dropping notifications.",
     "crumbs": [
       "Writing DAGs",
       "Lifecycle Hooks"
