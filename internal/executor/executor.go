@@ -40,6 +40,12 @@ type Result struct {
 	Summaries   []Summary         // parsed ::daggle-summary:: values
 	Metadata    []MetaEntry       // parsed ::daggle-meta:: values
 	Validations []ValidationResult // parsed ::daggle-validation:: values
+
+	// Resource usage captured from syscall.Rusage after cmd.Wait().
+	// Zero when unavailable (timeout, start failure, unsupported platform).
+	PeakRSSKB  int64   // peak resident set size in KB (normalized across platforms)
+	UserCPUSec float64 // user CPU time in seconds
+	SysCPUSec  float64 // system CPU time in seconds
 }
 
 // Executor runs a single DAG step.

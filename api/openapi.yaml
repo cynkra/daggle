@@ -783,6 +783,18 @@ components:
         cache_key:
           type: string
           description: Cache key used for the cached result.
+        peak_rss_kb:
+          type: integer
+          format: int64
+          description: Peak resident-set-size in KB for the step's process tree.
+        user_cpu_sec:
+          type: number
+          format: double
+          description: User CPU time in seconds.
+        sys_cpu_sec:
+          type: number
+          format: double
+          description: System CPU time in seconds.
 
     StepLog:
       type: object

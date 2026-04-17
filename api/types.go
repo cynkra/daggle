@@ -86,6 +86,11 @@ type StepSummary struct {
 	Message         string  `json:"message,omitempty"` // approval message
 	Cached          bool    `json:"cached,omitempty"`
 	CacheKey        string  `json:"cache_key,omitempty"`
+
+	// Resource usage (only populated for completed steps).
+	PeakRSSKB  int64   `json:"peak_rss_kb,omitempty"`
+	UserCPUSec float64 `json:"user_cpu_sec,omitempty"`
+	SysCPUSec  float64 `json:"sys_cpu_sec,omitempty"`
 }
 
 // StepLog is returned by GET .../steps/{step_id}/log.

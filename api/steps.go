@@ -136,6 +136,9 @@ func (s *Server) buildStepSummaries(runDir string) []StepSummary {
 			Message:         ss.Message,
 			Cached:          ss.Cached,
 			CacheKey:        ss.CacheKey,
+			PeakRSSKB:       ss.PeakRSSKB,
+			UserCPUSec:      ss.UserCPUSec,
+			SysCPUSec:       ss.SysCPUSec,
 		})
 	}
 	return result

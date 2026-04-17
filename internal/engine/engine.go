@@ -373,11 +373,14 @@ func (e *Engine) executeWithRetries(ctx context.Context, step dag.Step, workdir 
 // the on_success hook.
 func (e *Engine) onStepSuccess(ctx context.Context, step dag.Step, result executor.Result, workdir string, _ []string, attempt int) error {
 	e.writeEvent(state.Event{
-		Type:     state.EventStepCompleted,
-		StepID:   step.ID,
-		ExitCode: result.ExitCode,
-		Duration: result.Duration.String(),
-		Attempt:  attempt,
+		Type:       state.EventStepCompleted,
+		StepID:     step.ID,
+		ExitCode:   result.ExitCode,
+		Duration:   result.Duration.String(),
+		Attempt:    attempt,
+		PeakRSSKB:  result.PeakRSSKB,
+		UserCPUSec: result.UserCPUSec,
+		SysCPUSec:  result.SysCPUSec,
 	})
 	e.logger.Info("step completed", "step", step.ID, "duration", result.Duration)
 

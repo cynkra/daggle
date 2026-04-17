@@ -62,6 +62,11 @@ type Event struct {
 	Note   string `json:"note,omitempty"`
 	Author string `json:"author,omitempty"`
 
+	// Resource profiling fields (used by EventStepCompleted).
+	PeakRSSKB  int64   `json:"peak_rss_kb,omitempty"`
+	UserCPUSec float64 `json:"user_cpu_sec,omitempty"`
+	SysCPUSec  float64 `json:"sys_cpu_sec,omitempty"`
+
 	*ArtifactInfo `json:",omitempty"`
 	*CacheInfo    `json:",omitempty"`
 }
