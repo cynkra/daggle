@@ -17,6 +17,12 @@ type DAG struct {
 	Steps   []Step            `yaml:"steps"`
 	Workdir string            `yaml:"workdir,omitempty"`
 
+	// Ownership and annotations (Phase 8)
+	Owner       string   `yaml:"owner,omitempty"`
+	Team        string   `yaml:"team,omitempty"`
+	Description string   `yaml:"description,omitempty"`
+	Tags        []string `yaml:"tags,omitempty"`
+
 	// R version constraint, e.g. ">=4.1.0"
 	RVersion       string `yaml:"r_version,omitempty"`
 	RVersionStrict bool   `yaml:"r_version_strict,omitempty"`

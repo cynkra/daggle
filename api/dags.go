@@ -15,7 +15,11 @@ import (
 	"github.com/cynkra/daggle/state"
 )
 
-func (s *Server) handleListDAGs(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleListDAGs(w http.ResponseWriter, r *http.Request) {
+	tagFilter := r.URL.Query().Get("tag")
+	teamFilter := r.URL.Query().Get("team")
+	ownerFilter := r.URL.Query().Get("owner")
+
 	var dags []DAGSummary
 
 	for _, src := range s.sources() {
@@ -47,10 +51,18 @@ func (s *Server) handleListDAGs(w http.ResponseWriter, _ *http.Request) {
 				continue
 			}
 
+			if !matchesDAGFilters(d, tagFilter, teamFilter, ownerFilter) {
+				continue
+			}
+
 			summary := DAGSummary{
-				Name:    dagName,
-				Steps:   len(d.Steps),
-				Project: src.Name,
+				Name:        dagName,
+				Steps:       len(d.Steps),
+				Project:     src.Name,
+				Owner:       d.Owner,
+				Team:        d.Team,
+				Description: d.Description,
+				Tags:        d.Tags,
 			}
 			if d.Trigger != nil {
 				summary.Schedule = d.Trigger.Schedule
@@ -69,6 +81,30 @@ func (s *Server) handleListDAGs(w http.ResponseWriter, _ *http.Request) {
 		dags = []DAGSummary{}
 	}
 	writeJSON(w, http.StatusOK, dags)
+}
+
+// matchesDAGFilters returns true if the DAG matches all non-empty filters.
+// An empty filter string means "no filter on this field".
+func matchesDAGFilters(d *dag.DAG, tag, team, owner string) bool {
+	if owner != "" && d.Owner != owner {
+		return false
+	}
+	if team != "" && d.Team != team {
+		return false
+	}
+	if tag != "" {
+		found := false
+		for _, t := range d.Tags {
+			if t == tag {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Server) handleGetDAG(w http.ResponseWriter, r *http.Request) {
@@ -91,10 +127,14 @@ func (s *Server) handleGetDAG(w http.ResponseWriter, r *http.Request) {
 	}
 
 	detail := DAGDetail{
-		Name:    name,
-		Steps:   len(d.Steps),
-		StepIDs: stepIDs,
-		Workdir: d.Workdir,
+		Name:        name,
+		Steps:       len(d.Steps),
+		StepIDs:     stepIDs,
+		Workdir:     d.Workdir,
+		Owner:       d.Owner,
+		Team:        d.Team,
+		Description: d.Description,
+		Tags:        d.Tags,
 	}
 	if d.RVersion != "" {
 		detail.RVersion = d.RVersion

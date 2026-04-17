@@ -23,25 +23,33 @@ type LastRunInfo struct {
 
 // DAGSummary is returned in the DAG list.
 type DAGSummary struct {
-	Name       string `json:"name"`
-	Steps      int    `json:"steps"`
-	Project    string `json:"project,omitempty"`
-	Schedule   string `json:"schedule,omitempty"`
-	LastStatus string `json:"last_status,omitempty"`
-	LastRun    string `json:"last_run,omitempty"`
+	Name        string   `json:"name"`
+	Steps       int      `json:"steps"`
+	Project     string   `json:"project,omitempty"`
+	Schedule    string   `json:"schedule,omitempty"`
+	LastStatus  string   `json:"last_status,omitempty"`
+	LastRun     string   `json:"last_run,omitempty"`
+	Owner       string   `json:"owner,omitempty"`
+	Team        string   `json:"team,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
 }
 
 // DAGDetail is returned by GET /api/v1/dags/{name}.
 type DAGDetail struct {
-	Name       string   `json:"name"`
-	Steps      int      `json:"steps"`
-	StepIDs    []string `json:"step_ids"`
-	Schedule   string   `json:"schedule,omitempty"`
-	Workdir    string   `json:"workdir,omitempty"`
-	RVersion   string   `json:"r_version,omitempty"`
-	LastStatus string   `json:"last_status,omitempty"`
-	LastRunID  string   `json:"last_run_id,omitempty"`
-	LastRun    string   `json:"last_run,omitempty"`
+	Name        string   `json:"name"`
+	Steps       int      `json:"steps"`
+	StepIDs     []string `json:"step_ids"`
+	Schedule    string   `json:"schedule,omitempty"`
+	Workdir     string   `json:"workdir,omitempty"`
+	RVersion    string   `json:"r_version,omitempty"`
+	LastStatus  string   `json:"last_status,omitempty"`
+	LastRunID   string   `json:"last_run_id,omitempty"`
+	LastRun     string   `json:"last_run,omitempty"`
+	Owner       string   `json:"owner,omitempty"`
+	Team        string   `json:"team,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
 }
 
 // RunSummary is returned in the run list.

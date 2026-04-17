@@ -12,6 +12,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	listTagFilter   string
+	listTeamFilter  string
+	listOwnerFilter string
+)
+
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all available DAGs",
@@ -20,6 +26,9 @@ var listCmd = &cobra.Command{
 }
 
 func init() {
+	listCmd.Flags().StringVar(&listTagFilter, "tag", "", "filter by tag")
+	listCmd.Flags().StringVar(&listTeamFilter, "team", "", "filter by team")
+	listCmd.Flags().StringVar(&listOwnerFilter, "owner", "", "filter by owner")
 	rootCmd.AddCommand(listCmd)
 }
 
@@ -28,7 +37,7 @@ func listDAGs(_ *cobra.Command, _ []string) error {
 	sources := state.BuildDAGSources()
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "NAME\tPROJECT\tSTEPS\tLAST RUN\tSTATUS")
+	_, _ = fmt.Fprintln(w, "NAME\tPROJECT\tOWNER\tTEAM\tTAGS\tSTEPS\tLAST RUN\tSTATUS")
 
 	found := false
 	for _, src := range sources {
@@ -52,9 +61,17 @@ func listDAGs(_ *cobra.Command, _ []string) error {
 			dagPath := filepath.Join(src.Dir, name)
 			d, err := dag.ParseFile(dagPath)
 			if err != nil {
+				// Can't filter an invalid DAG by owner/team/tag; hide from filtered views.
+				if listTagFilter != "" || listTeamFilter != "" || listOwnerFilter != "" {
+					continue
+				}
 				dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
-				_, _ = fmt.Fprintf(w, "%s\t%s\t-\t-\tINVALID\n", dagName, src.Name)
+				_, _ = fmt.Fprintf(w, "%s\t%s\t-\t-\t-\t-\t-\tINVALID\n", dagName, src.Name)
 				found = true
+				continue
+			}
+
+			if !matchesFilters(d) {
 				continue
 			}
 
@@ -65,7 +82,13 @@ func listDAGs(_ *cobra.Command, _ []string) error {
 				status = state.RunStatus(run.Dir)
 			}
 
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n", d.Name, src.Name, len(d.Steps), lastRun, status)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
+				d.Name, src.Name,
+				dashIfEmpty(d.Owner),
+				dashIfEmpty(d.Team),
+				dashIfEmpty(strings.Join(d.Tags, ",")),
+				len(d.Steps), lastRun, status,
+			)
 			found = true
 		}
 	}
@@ -76,4 +99,33 @@ func listDAGs(_ *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+func matchesFilters(d *dag.DAG) bool {
+	if listOwnerFilter != "" && d.Owner != listOwnerFilter {
+		return false
+	}
+	if listTeamFilter != "" && d.Team != listTeamFilter {
+		return false
+	}
+	if listTagFilter != "" {
+		found := false
+		for _, t := range d.Tags {
+			if t == listTagFilter {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func dashIfEmpty(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }
