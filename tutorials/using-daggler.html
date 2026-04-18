@@ -478,8 +478,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>In-step helpers are base R only. They require no network access and no running daggle server – they communicate through environment variables and stdout.</p>
 </section>
 <section id="in-step-phase7" class="level3">
-<h3 class="anchored" data-anchor-id="in-step-phase7">Summaries, metadata, and validations (daggleR 0.2.0)</h3>
-<p>The following in-step helpers will be available in daggleR 0.2.0. They emit the corresponding marker protocols documented in the <a href="../reference/output-protocol.html">Output Protocol</a> reference.</p>
+<h3 class="anchored" data-anchor-id="in-step-phase7">Summaries, metadata, and validations</h3>
+<p>Rich per-step metadata helpers, added in daggleR 0.2.0. Each emits the corresponding marker protocol documented in the <a href="../reference/output-protocol.html">Output Protocol</a> reference.</p>
 <section id="summary_md" class="level4">
 <h4 class="anchored" data-anchor-id="summary_md"><code>summary_md()</code></h4>
 <p>Emit a markdown summary for display in dashboards:</p>
@@ -617,8 +617,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </section>
 <section id="api-phase7" class="level3">
-<h3 class="anchored" data-anchor-id="api-phase7">Artifacts, summaries, metadata, validations, and comparison (daggleR 0.2.0)</h3>
-<p>The following API wrappers will be available in daggleR 0.2.0.</p>
+<h3 class="anchored" data-anchor-id="api-phase7">Artifacts, summaries, metadata, validations, and comparison</h3>
+<p>API wrappers added in daggleR 0.2.0. They talk to endpoints from daggle’s Phase 7 analyst workflow features.</p>
 <section id="list_artifacts" class="level4">
 <h4 class="anchored" data-anchor-id="list_artifacts"><code>list_artifacts()</code></h4>
 <p>List declared artifacts for a run:</p>
@@ -687,6 +687,47 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </section>
 </section>
+<section id="api-phase8" class="level3">
+<h3 class="anchored" data-anchor-id="api-phase8">Annotations and impact (daggleR 0.3.0)</h3>
+<p>API wrappers added in daggleR 0.3.0, covering daggle’s Phase 8 collaboration and observability endpoints.</p>
+<section id="list_annotations-and-add_annotation" class="level4">
+<h4 class="anchored" data-anchor-id="list_annotations-and-add_annotation"><code>list_annotations()</code> and <code>add_annotation()</code></h4>
+<p>Attach free-form notes to a run — useful for post-mortems ("DB was down — manual restart at 08:30") that should surface next to the run in status output and dashboards:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>daggleR<span class="sc">::</span><span class="fu">add_annotation</span>(<span class="st">"penguin-monitor"</span>, <span class="st">"latest"</span>,</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">note =</span> <span class="st">"Restarted after upstream feed recovered"</span>,</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">author =</span> <span class="st">"alice"</span>)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>daggleR<span class="sc">::</span><span class="fu">list_annotations</span>(<span class="st">"penguin-monitor"</span>, <span class="st">"latest"</span>)</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;              timestamp  author                                     note</span></span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 2026-04-17T08:45:12Z   alice  Restarted after upstream feed recovered</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p><code>author</code> defaults to <code>Sys.getenv("USER")</code>.</p>
+</section>
+<section id="get_impact" class="level4">
+<h4 class="anchored" data-anchor-id="get_impact"><code>get_impact()</code></h4>
+<p>List DAGs that depend on a given DAG (via <code>trigger.on_dag.name</code>) plus any exposures declared on it (Shiny apps, Quarto reports, dashboards). Purely informational — daggle does not deploy or monitor the exposures.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>impact <span class="ot">&lt;-</span> daggleR<span class="sc">::</span><span class="fu">get_impact</span>(<span class="st">"penguin-clean"</span>)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>impact<span class="sc">$</span>downstream_dags</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;              name project trigger_on_status</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 penguin-models    data          completed</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 penguin-report    data                any</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>impact<span class="sc">$</span>exposures</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;             name      type                             url description</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1  ops-dashboard dashboard  https://dash.example.com/ops Main ops</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+</section>
+<section id="list-and-filter-dags-by-ownership" class="level3">
+<h3 class="anchored" data-anchor-id="list-and-filter-dags-by-ownership">List and filter DAGs by ownership</h3>
+<p><code>list_dags()</code> accepts <code>tag</code>, <code>team</code>, and <code>owner</code> filters that map directly to the <code>?tag=&amp;team=&amp;owner=</code> query params on <code>GET /api/v1/dags</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>etl_dags <span class="ot">&lt;-</span> daggleR<span class="sc">::</span><span class="fu">list_dags</span>(<span class="at">tag =</span> <span class="st">"etl"</span>, <span class="at">team =</span> <span class="st">"data"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>When a DAG declares <code>owner:</code>, <code>team:</code>, <code>description:</code>, or <code>tags:</code>, those fields appear as columns in the response data frame.</p>
+</section>
 </section>
 <section id="when-to-use-which" class="level2">
 <h2 class="anchored" data-anchor-id="when-to-use-which">When to use which</h2>
@@ -721,6 +762,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td>Reading upstream data in a step</td>
 <td>In-step <code>get_output()</code></td>
+</tr>
+<tr class="even">
+<td>Post-mortem notes on a failed run</td>
+<td><code>add_annotation()</code></td>
+</tr>
+<tr class="odd">
+<td>Auditing downstream consumers before a schema change</td>
+<td><code>get_impact()</code></td>
 </tr>
 </tbody>
 </table>
