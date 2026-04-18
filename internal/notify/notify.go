@@ -64,13 +64,22 @@ func ValidateChannel(name string, ch state.NotificationChannel) error {
 }
 
 func sendSlack(ch state.NotificationChannel, message string) error {
-	body, _ := json.Marshal(map[string]string{"text": message})
-	return postJSON(ch.WebhookURL, body, nil)
+	return sendWebhookText(ch.WebhookURL, "text", message, nil)
 }
 
 func sendClickup(ch state.NotificationChannel, message string) error {
-	body, _ := json.Marshal(map[string]string{"text": message})
-	return postJSON(ch.WebhookURL, body, nil)
+	return sendWebhookText(ch.WebhookURL, "text", message, nil)
+}
+
+// sendWebhookText posts a single-field JSON body (`{bodyKey: message}`) to
+// url. Shared by webhook-style channels (slack, clickup) that expect the
+// same shape with a different key.
+func sendWebhookText(url, bodyKey, message string, headers map[string]string) error {
+	body, err := json.Marshal(map[string]string{bodyKey: message})
+	if err != nil {
+		return fmt.Errorf("marshal body: %w", err)
+	}
+	return postJSON(url, body, headers)
 }
 
 func sendHTTP(ch state.NotificationChannel, message string) error {
@@ -78,7 +87,10 @@ func sendHTTP(ch state.NotificationChannel, message string) error {
 	if method == "" {
 		method = http.MethodPost
 	}
-	body, _ := json.Marshal(map[string]string{"message": message})
+	body, err := json.Marshal(map[string]string{"message": message})
+	if err != nil {
+		return fmt.Errorf("marshal body: %w", err)
+	}
 	req, err := http.NewRequest(method, ch.WebhookURL, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
