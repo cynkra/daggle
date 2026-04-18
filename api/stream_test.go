@@ -52,6 +52,55 @@ func TestStream_ExistingEventsThenEnd(t *testing.T) {
 	}
 }
 
+func TestStreamNewLines_DisconnectReturnsAdvancedOffset(t *testing.T) {
+	run, _ := state.CreateRun("test-dag")
+	w := state.NewEventWriter(run.Dir)
+	_ = w.Write(state.Event{Type: state.EventRunStarted})
+	_ = w.Write(state.Event{Type: state.EventStepStarted, StepID: "a"})
+	_ = w.Write(state.Event{Type: state.EventStepCompleted, StepID: "a"})
+
+	path := run.Dir + "/events.jsonl"
+
+	// Writer that signals disconnect after the second call.
+	calls := 0
+	fail := func(_, _ string) bool {
+		calls++
+		return calls < 2
+	}
+
+	got, done, err := streamNewLines(path, 0, fail)
+	if err != nil {
+		t.Fatalf("streamNewLines: %v", err)
+	}
+	if done {
+		t.Error("done should be false on disconnect")
+	}
+	if got == 0 {
+		t.Fatalf("offset should advance past the first line; got %d", got)
+	}
+
+	// Subsequent call from `got` offset must emit the remaining events and
+	// not re-emit the ones already consumed.
+	var seen []string
+	ok := func(_, data string) bool {
+		seen = append(seen, data)
+		return true
+	}
+	if _, _, err := streamNewLines(path, got, ok); err != nil {
+		t.Fatalf("second streamNewLines: %v", err)
+	}
+	if len(seen) == 0 {
+		t.Fatalf("expected to pick up remaining events from advanced offset")
+	}
+	// None of the remaining events should be the already-written first event
+	// (run_started) — disconnect happened after it was written.
+	for _, line := range seen {
+		if strings.Contains(line, `"run_started"`) {
+			t.Errorf("re-emitted run_started after disconnect; line=%s", line)
+		}
+	}
+}
+
 func TestStream_UnknownRun(t *testing.T) {
 	srv, _ := setupTestServer(t)
 
