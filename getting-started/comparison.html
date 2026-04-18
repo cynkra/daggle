@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Installation – daggle</title>
+<title>Comparison with other tools – daggle</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -344,7 +344,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../getting-started/install.html">Installation</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../getting-started/comparison.html">Comparison with other tools</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -358,7 +358,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../getting-started/install.html" class="sidebar-item-text sidebar-link active">
+  <a href="../getting-started/install.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Installation</span></a>
   </div>
 </li>
@@ -376,7 +376,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../getting-started/comparison.html" class="sidebar-item-text sidebar-link">
+  <a href="../getting-started/comparison.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Comparison with other tools</span></a>
   </div>
 </li>
@@ -390,11 +390,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul class="collapse">
-  <li><a href="#system-requirements" id="toc-system-requirements" class="nav-link active" data-scroll-target="#system-requirements">System requirements</a></li>
-  <li><a href="#install-script" id="toc-install-script" class="nav-link" data-scroll-target="#install-script">Install script</a></li>
-  <li><a href="#download-binary" id="toc-download-binary" class="nav-link" data-scroll-target="#download-binary">Download binary</a></li>
-  <li><a href="#from-source" id="toc-from-source" class="nav-link" data-scroll-target="#from-source">From source</a></li>
-  <li><a href="#verify-installation" id="toc-verify-installation" class="nav-link" data-scroll-target="#verify-installation">Verify installation</a></li>
+  <li><a href="#targets" id="toc-targets" class="nav-link active" data-scroll-target="#targets"><code>targets</code></a></li>
+  <li><a href="#cron-rscript" id="toc-cron-rscript" class="nav-link" data-scroll-target="#cron-rscript"><code>cron</code> + <code>Rscript</code></a></li>
+  <li><a href="#dagu" id="toc-dagu" class="nav-link" data-scroll-target="#dagu"><code>dagu</code></a></li>
+  <li><a href="#airflow-prefect-dagster" id="toc-airflow-prefect-dagster" class="nav-link" data-scroll-target="#airflow-prefect-dagster">Airflow / Prefect / Dagster</a></li>
+  <li><a href="#github-actions" id="toc-github-actions" class="nav-link" data-scroll-target="#github-actions">GitHub Actions</a></li>
+  <li><a href="#orderly2" id="toc-orderly2" class="nav-link" data-scroll-target="#orderly2"><code>orderly2</code></a></li>
+  <li><a href="#when-not-to-use-daggle" id="toc-when-not-to-use-daggle" class="nav-link" data-scroll-target="#when-not-to-use-daggle">When <em>not</em> to use daggle</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -404,7 +406,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Installation</h1>
+<h1 class="title">Comparison with other tools</h1>
 </div>
 
 
@@ -421,51 +423,448 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="system-requirements" class="level2">
-<h2 class="anchored" data-anchor-id="system-requirements">System requirements</h2>
+<p>Deciding between daggle and something else? This page maps daggle against the main alternatives you’re likely to already be using. The short version:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>If you use…</th>
+<th>Consider daggle when…</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://docs.ropensci.org/targets/">targets</a></td>
+<td>You need scheduling, retries, notifications, deadlines, or multi-pipeline orchestration around your existing <code>tar_make()</code> runs.</td>
+</tr>
+<tr class="even">
+<td><code>cron</code> + <code>Rscript</code></td>
+<td>You want dependencies, retries, timeouts, parallel execution, and structured logs for scheduled R scripts.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://dagu.readthedocs.io/">dagu</a></td>
+<td>You run R in your pipelines and want first-class R awareness rather than shelling out to <code>Rscript</code>.</td>
+</tr>
+<tr class="even">
+<td>Airflow / Prefect / Dagster</td>
+<td>Your workloads are R-centric and you don’t need a database-backed, Kubernetes-scale platform.</td>
+</tr>
+<tr class="odd">
+<td>GitHub Actions</td>
+<td>You need to run R workflows on your own machines, with direct access to private data and seconds (not minutes) of trigger latency.</td>
+</tr>
+<tr class="even">
+<td><a href="https://mrc-ide.github.io/orderly2/">orderly2</a></td>
+<td>You need scheduling or broader workflow orchestration around reproducible orderly reports.</td>
+</tr>
+</tbody>
+</table>
+<p>Skip to any section below – they’re independent.</p>
+<hr>
+<section id="targets" class="level2">
+<h2 class="anchored" data-anchor-id="targets"><code>targets</code></h2>
+<p><a href="https://docs.ropensci.org/targets/">targets</a> is an R package for reproducible, dependency-aware computation. It tracks which objects are stale and rebuilds them.</p>
+<p><strong>daggle and targets solve different problems.</strong> targets answers <em>“which objects need rebuilding?”</em>. daggle answers <em>“when should this run, what happens if it fails, and who gets told?”</em>.</p>
+<p>The two are <strong>complementary</strong>. A common pattern is to run <code>tar_make()</code> inside a daggle step:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> nightly-etl</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">trigger</span><span class="kw">:</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span><span class="at"> </span><span class="st">"0 2 * * *"</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">steps</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> pipeline</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">targets</span><span class="kw">:</span><span class="at"> .</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">timeout</span><span class="kw">:</span><span class="at"> 2h</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">retry</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">limit</span><span class="kw">:</span><span class="at"> </span><span class="dv">2</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">backoff</span><span class="kw">:</span><span class="at"> exponential</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">on_failure</span><span class="kw">:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">r_expr</span><span class="kw">:</span><span class="at"> slackr::slackr_msg("nightly ETL failed")</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>daggle handles the <em>when</em>, <em>retry</em>, <em>timeout</em>, and <em>notify</em>. targets handles the <em>what</em> and <em>cache</em>. Neither replaces the other.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>targets</th>
+<th>daggle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Core job</td>
+<td>Dependency-based caching and invalidation</td>
+<td>Scheduling, orchestration, observability</td>
+</tr>
+<tr class="even">
+<td>Scheduling</td>
+<td>None (you call <code>tar_make()</code>)</td>
+<td>Built-in cron, CLI, API, file watch, webhook</td>
+</tr>
+<tr class="odd">
+<td>Failure handling</td>
+<td>Stops; you check <code>tar_meta()</code></td>
+<td>Retries, timeouts, SIGTERM/SIGKILL, hooks</td>
+</tr>
+<tr class="even">
+<td>Notifications</td>
+<td>None</td>
+<td><code>on_success</code> / <code>on_failure</code> hooks (R expressions)</td>
+</tr>
+<tr class="odd">
+<td>Multi-pipeline</td>
+<td>One <code>_targets.R</code> per project</td>
+<td>Unlimited DAGs, each a YAML file</td>
+</tr>
+<tr class="even">
+<td>Non-R steps</td>
+<td><code>tar_target_raw()</code> + <code>system2</code></td>
+<td>First-class <code>command:</code> steps</td>
+</tr>
+<tr class="odd">
+<td>Package dev</td>
+<td>Not designed for it</td>
+<td><code>test:</code>, <code>check:</code>, <code>document:</code>, <code>pkgdown:</code> steps</td>
+</tr>
+<tr class="even">
+<td>Artifact tracking</td>
+<td>Object store keyed by hash</td>
+<td>Format-aware (<code>.rds</code>, <code>.parquet</code>, <code>.arrow</code>), SHA-256 hashed, per-run</td>
+</tr>
+<tr class="odd">
+<td>Run comparison</td>
+<td><code>tar_meta()</code> diffing by hand</td>
+<td><code>daggle diff run-a run-b</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pick targets alone if</strong> you have a single-project, locally invoked pipeline and you just want <code>tar_make()</code> to rebuild stale objects.</p>
+<p><strong>Pick daggle (with or without targets inside) if</strong> you need scheduling, retries, notifications, deadlines, parallel DAGs, or run history.</p>
+<hr>
+</section>
+<section id="cron-rscript" class="level2">
+<h2 class="anchored" data-anchor-id="cron-rscript"><code>cron</code> + <code>Rscript</code></h2>
+<p>The incumbent for most R users doing scheduled work: a crontab line that calls <code>Rscript some_script.R</code>.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><code>cron</code> + <code>Rscript</code></th>
+<th>daggle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Dependencies between scripts</td>
+<td>Implicit (run order, hope for the best)</td>
+<td>Explicit <code>depends:</code> with parallel execution</td>
+</tr>
+<tr class="even">
+<td>Failure visibility</td>
+<td>Buried in syslog or email</td>
+<td>Structured events, <code>daggle status</code>, hooks</td>
+</tr>
+<tr class="odd">
+<td>Retries</td>
+<td>DIY in each script</td>
+<td>Declarative <code>retry: { limit: 3, backoff: exponential }</code></td>
+</tr>
+<tr class="even">
+<td>Timeouts</td>
+<td>None (runaway R processes forever)</td>
+<td>SIGTERM then SIGKILL with process group cleanup</td>
+</tr>
+<tr class="odd">
+<td>Passing data between scripts</td>
+<td>Hardcoded temp file paths</td>
+<td><code>::daggle-output::</code> markers + per-run artifact dir</td>
+</tr>
+<tr class="even">
+<td>History</td>
+<td>None</td>
+<td>Full run history with logs and artifacts</td>
+</tr>
+<tr class="odd">
+<td>Triggers</td>
+<td>Time only</td>
+<td>Cron + file watch + webhook + on_dag + git + condition</td>
+</tr>
+<tr class="even">
+<td>Setup cost</td>
+<td>Zero</td>
+<td><code>go install</code> + one YAML file</td>
+</tr>
+</tbody>
+</table>
+<p>Migration is incremental. You can put one script behind daggle, keep the rest in cron, and migrate the rest as you see value.</p>
+<p><strong>Pick cron alone if</strong> you have a single script, no dependencies, no failure notifications needed, and you’re happy reading syslog.</p>
+<p><strong>Pick daggle if</strong> anything on that list starts to pinch.</p>
+<hr>
+</section>
+<section id="dagu" class="level2">
+<h2 class="anchored" data-anchor-id="dagu"><code>dagu</code></h2>
+<p><a href="https://dagu.readthedocs.io/">dagu</a> is the closest spiritual ancestor – same philosophy: single binary, YAML DAGs, file-based storage, local-first. daggle takes inspiration from it.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>dagu</th>
+<th>daggle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Language awareness</td>
+<td>None – all steps are shell commands</td>
+<td>R-native: <code>script:</code>, <code>r_expr:</code>, <code>test:</code>, <code>check:</code>, <code>quarto:</code>, …</td>
+</tr>
+<tr class="even">
+<td>R step boilerplate</td>
+<td><code>command: Rscript --no-save --no-restore script.R</code></td>
+<td><code>script: script.R</code></td>
+</tr>
+<tr class="odd">
+<td>renv / library mgmt</td>
+<td>Manual env var setup</td>
+<td>Auto-detect <code>renv.lock</code>, set <code>R_LIBS_USER</code></td>
+</tr>
+<tr class="even">
+<td>R version constraints</td>
+<td>DIY</td>
+<td><code>r_version: "&gt;= 4.3"</code></td>
+</tr>
+<tr class="odd">
+<td>Test output</td>
+<td>Exit code only</td>
+<td>Structured pass/fail/skip + coverage</td>
+</tr>
+<tr class="even">
+<td>R CMD check</td>
+<td>DIY shell command</td>
+<td><code>check:</code> with parsed errors/warnings/notes</td>
+</tr>
+<tr class="odd">
+<td>Rendering</td>
+<td>DIY</td>
+<td><code>quarto:</code> and <code>rmd:</code> with format and site support</td>
+</tr>
+<tr class="even">
+<td>Process observability</td>
+<td>None</td>
+<td>Per-step <code>peak_rss_kb</code>, <code>user_cpu_sec</code>, <code>sys_cpu_sec</code></td>
+</tr>
+<tr class="odd">
+<td>Live monitoring</td>
+<td>Web UI polling</td>
+<td><code>daggle monitor</code> TUI + SSE event stream</td>
+</tr>
+</tbody>
+</table>
+<p>The gap: dagu treats R like any other shell command. It has no concept of what an <code>R CMD check</code> warning means, what renv is, or why a testthat failure should show <em>which</em> tests failed.</p>
+<p><strong>Pick dagu if</strong> your steps are mostly shell commands and R is incidental.</p>
+<p><strong>Pick daggle if</strong> R is the assumed language.</p>
+<hr>
+</section>
+<section id="airflow-prefect-dagster" class="level2">
+<h2 class="anchored" data-anchor-id="airflow-prefect-dagster">Airflow / Prefect / Dagster</h2>
+<p>The enterprise Python pipeline tools. Industry standard for data engineering at scale.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Airflow et al.</th>
+<th>daggle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Primary language</td>
+<td>Python-first (DAGs as Python code)</td>
+<td>R-first (DAGs as YAML, steps are R)</td>
+</tr>
+<tr class="even">
+<td>Install</td>
+<td>pip + database + webserver + scheduler + workers</td>
+<td>Single binary</td>
+</tr>
+<tr class="odd">
+<td>Infrastructure</td>
+<td>PostgreSQL/MySQL, Redis/RabbitMQ, Python env</td>
+<td>R</td>
+</tr>
+<tr class="even">
+<td>Memory at idle</td>
+<td>500 MB+</td>
+<td>10–30 MB</td>
+</tr>
+<tr class="odd">
+<td>R integration</td>
+<td><code>BashOperator("Rscript ...")</code></td>
+<td>Native R step types</td>
+</tr>
+<tr class="even">
+<td>Distributed execution</td>
+<td>Yes (Celery, K8s, Dask)</td>
+<td>No – single host</td>
+</tr>
+<tr class="odd">
+<td>Learning curve</td>
+<td>Weeks</td>
+<td>Minutes</td>
+</tr>
+<tr class="even">
+<td>Approval gates</td>
+<td>Custom operator code</td>
+<td>First-class <code>approve:</code> step</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pick Airflow-class tools if</strong> you have a data engineering team, dozens of pipelines across many languages, Kubernetes or similar for workers, or strict compliance requirements that demand a managed platform.</p>
+<p><strong>Pick daggle if</strong> your workload is R-centric and the operational cost of Airflow isn’t justified.</p>
+<hr>
+</section>
+<section id="github-actions" class="level2">
+<h2 class="anchored" data-anchor-id="github-actions">GitHub Actions</h2>
+<p>Many R package authors use GHA for testing and checking on push and PR. <a href="https://github.com/r-lib/actions">r-lib/actions</a> provides solid R setup.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>GitHub Actions</th>
+<th>daggle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Runs where</td>
+<td>GitHub’s cloud runners</td>
+<td>Your machine, your server</td>
+</tr>
+<tr class="even">
+<td>Data access</td>
+<td>Must upload/download</td>
+<td>Direct access to local files, databases, network</td>
+</tr>
+<tr class="odd">
+<td>Trigger</td>
+<td>Push, PR, schedule</td>
+<td>CLI, cron, file watch, webhook, on_dag, git, condition</td>
+</tr>
+<tr class="even">
+<td>R awareness</td>
+<td>r-lib/actions provides setup</td>
+<td>Native R step types with structured output</td>
+</tr>
+<tr class="odd">
+<td>Iteration speed</td>
+<td>Push, wait, read logs</td>
+<td><code>daggle run</code> with instant feedback</td>
+</tr>
+<tr class="even">
+<td>Cost</td>
+<td>Free tier limits, then paid</td>
+<td>Free</td>
+</tr>
+<tr class="odd">
+<td>Privacy</td>
+<td>Code and data on GitHub infrastructure</td>
+<td>Everything stays local</td>
+</tr>
+<tr class="even">
+<td>Scheduling latency</td>
+<td>Minutes</td>
+<td>Seconds</td>
+</tr>
+</tbody>
+</table>
+<p><strong>They coexist well.</strong> Use GHA for public CI on pushes and PRs. Use daggle locally (or on a self-hosted server) for:</p>
 <ul>
-<li><strong>R</strong> (required) – daggle spawns <code>Rscript</code> processes to execute R steps</li>
-<li><strong>Quarto</strong> (optional) – only needed for <code>quarto:</code> step types</li>
-<li><strong>Go 1.22+</strong> (optional) – only needed if building from source</li>
-<li><strong>Platforms:</strong> macOS (arm64, amd64), Linux (arm64, amd64). Windows is not supported.</li>
+<li>workflows that touch private data,</li>
+<li>scheduled runs that need seconds (not minutes) of trigger latency,</li>
+<li>interactive iteration on DAGs where the push-wait-read-logs loop is too slow.</li>
 </ul>
+<hr>
 </section>
-<section id="install-script" class="level2">
-<h2 class="anchored" data-anchor-id="install-script">Install script</h2>
-<p>The recommended method for Linux and macOS:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-fsSL</span> https://raw.githubusercontent.com/cynkra/daggle/main/install.sh <span class="kw">|</span> <span class="fu">sh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Set <code>DAGGLE_INSTALL_DIR</code> to change the install location (default: <code>/usr/local/bin</code>):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="va">DAGGLE_INSTALL_DIR</span><span class="op">=</span>~/.local/bin <span class="ex">curl</span> <span class="at">-fsSL</span> https://raw.githubusercontent.com/cynkra/daggle/main/install.sh <span class="kw">|</span> <span class="fu">sh</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="orderly2" class="level2">
+<h2 class="anchored" data-anchor-id="orderly2"><code>orderly2</code></h2>
+<p><a href="https://mrc-ide.github.io/orderly2/">orderly2</a> is an R package from VIMC for reproducible report <em>packets</em> with dependency tracking between reports.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>orderly2</th>
+<th>daggle</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Core focus</td>
+<td>Reproducible report packets with provenance</td>
+<td>General workflow orchestration</td>
+</tr>
+<tr class="even">
+<td>Scheduling</td>
+<td>None</td>
+<td>Built-in cron + 5 other trigger types</td>
+</tr>
+<tr class="odd">
+<td>Step types</td>
+<td>R scripts producing “packets”</td>
+<td>27 step types: script, test, check, quarto, targets, …</td>
+</tr>
+<tr class="even">
+<td>Scope</td>
+<td>Reports and their dependencies</td>
+<td>Any R workflow: ETL, training, package dev, reports</td>
+</tr>
+<tr class="odd">
+<td>Artifact model</td>
+<td>Immutable packets with metadata</td>
+<td>Format-aware artifacts per run, SHA-256 hashed</td>
+</tr>
+</tbody>
+</table>
+<p>These aren’t mutually exclusive. If you already use orderly2, daggle can call <code>orderly2::orderly_run()</code> from an <code>r_expr:</code> or <code>script:</code> step when you need scheduling, retries, or notifications around orderly report generation.</p>
+<hr>
 </section>
-<section id="download-binary" class="level2">
-<h2 class="anchored" data-anchor-id="download-binary">Download binary</h2>
-<p>Pre-built binaries are available from <a href="https://github.com/cynkra/daggle/releases">GitHub Releases</a> for:</p>
+<section id="when-not-to-use-daggle" class="level2">
+<h2 class="anchored" data-anchor-id="when-not-to-use-daggle">When <em>not</em> to use daggle</h2>
+<p>Honest limits:</p>
 <ul>
-<li>Linux amd64 / arm64</li>
-<li>macOS amd64 / arm64</li>
+<li><strong>You’re Python-first.</strong> All our R-specific affordances (renv, testthat output, R CMD check, Quarto integration) are dead weight. Use Airflow, Prefect, or Dagster.</li>
+<li><strong>You want a bundled drag-and-drop DAG editor.</strong> daggle intentionally ships only a minimal read-only status dashboard (<code>daggle serve</code>). The UI story is a REST API plus the <a href="https://cynkra.github.io/daggleR/">daggleR</a> package, so you build whatever Shiny app fits your team – an operator dashboard, a report browser, a mobile status page. That’s a feature if you already know Shiny (you get a UI in the language your R users read anyway), a limit if you want visual DAG authoring out of the box.</li>
+<li><strong>You need distributed execution across many machines.</strong> daggle runs on a single host. It doesn’t schedule to Kubernetes or a cluster.</li>
+<li><strong>You need tight integration with one cloud vendor’s managed pipeline service.</strong> daggle is local-first by design.</li>
+<li><strong>Your needs genuinely are <code>tar_make()</code>.</strong> Single project, no schedule, no notifications, no multi-pipeline? Keep targets.</li>
+<li><strong>Your needs genuinely are one cron line.</strong> One script, no dependencies, no retries? Keep cron.</li>
 </ul>
-<p>Download, extract, and move to a directory on your <code>PATH</code>.</p>
-</section>
-<section id="from-source" class="level2">
-<h2 class="anchored" data-anchor-id="from-source">From source</h2>
-<p>Requires Go 1.22+:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">go</span> install github.com/cynkra/daggle/cmd/daggle@latest</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Or clone and build:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/cynkra/daggle.git</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> daggle</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="ex">go</span> build <span class="at">-o</span> daggle ./cmd/daggle/</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="verify-installation" class="level2">
-<h2 class="anchored" data-anchor-id="verify-installation">Verify installation</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> doctor</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This checks:</p>
-<ul>
-<li>R is installed and reports its version</li>
-<li>renv status (if applicable)</li>
-<li>Scheduler status</li>
-<li>Configuration paths</li>
-<li>DAG file validity</li>
-</ul>
+<p>The honest positioning: daggle fits the space between “a crontab line” and “a data platform” – where you need more than cron but less than Airflow, and where R is the assumed language.</p>
 
 
 </section>
