@@ -77,9 +77,9 @@ output("pct_retained", round(nrow(data) / as.integer(raw_count) * 100, 1))
 
 In-step helpers are base R only. They require no network access and no running daggle server -- they communicate through environment variables and stdout.
 
-### Summaries, metadata, and validations (daggleR 0.2.0) {#in-step-phase7}
+### Summaries, metadata, and validations {#in-step-phase7}
 
-The following in-step helpers will be available in daggleR 0.2.0. They emit the corresponding marker protocols documented in the [Output Protocol](../reference/output-protocol.qmd) reference.
+Rich per-step metadata helpers, added in daggleR 0.2.0. Each emits the corresponding marker protocol documented in the [Output Protocol](../reference/output-protocol.qmd) reference.
 
 #### `summary_md()`
 
@@ -248,9 +248,9 @@ cleanup("30d")
 #> [1] "10.0 MB"
 ```
 
-### Artifacts, summaries, metadata, validations, and comparison (daggleR 0.2.0) {#api-phase7}
+### Artifacts, summaries, metadata, validations, and comparison {#api-phase7}
 
-The following API wrappers will be available in daggleR 0.2.0.
+API wrappers added in daggleR 0.2.0. They talk to endpoints from daggle's Phase 7 analyst workflow features.
 
 #### `list_artifacts()`
 
@@ -331,6 +331,55 @@ diff$duration_diff
 #> [1] 5.6
 ```
 
+### Annotations and impact (daggleR 0.3.0) {#api-phase8}
+
+API wrappers added in daggleR 0.3.0, covering daggle's Phase 8 collaboration and observability endpoints.
+
+#### `list_annotations()` and `add_annotation()`
+
+Attach free-form notes to a run — useful for post-mortems (\"DB was down — manual restart at 08:30\") that should surface next to the run in status output and dashboards:
+
+```{r}
+#| eval: false
+daggleR::add_annotation("penguin-monitor", "latest",
+  note = "Restarted after upstream feed recovered",
+  author = "alice")
+
+daggleR::list_annotations("penguin-monitor", "latest")
+#>              timestamp  author                                     note
+#> 1 2026-04-17T08:45:12Z   alice  Restarted after upstream feed recovered
+```
+
+`author` defaults to `Sys.getenv("USER")`.
+
+#### `get_impact()`
+
+List DAGs that depend on a given DAG (via `trigger.on_dag.name`) plus any exposures declared on it (Shiny apps, Quarto reports, dashboards). Purely informational — daggle does not deploy or monitor the exposures.
+
+```{r}
+#| eval: false
+impact <- daggleR::get_impact("penguin-clean")
+impact$downstream_dags
+#>              name project trigger_on_status
+#> 1 penguin-models    data          completed
+#> 2 penguin-report    data                any
+
+impact$exposures
+#>             name      type                             url description
+#> 1  ops-dashboard dashboard  https://dash.example.com/ops Main ops
+```
+
+### List and filter DAGs by ownership
+
+`list_dags()` accepts `tag`, `team`, and `owner` filters that map directly to the `?tag=&team=&owner=` query params on `GET /api/v1/dags`:
+
+```{r}
+#| eval: false
+etl_dags <- daggleR::list_dags(tag = "etl", team = "data")
+```
+
+When a DAG declares `owner:`, `team:`, `description:`, or `tags:`, those fields appear as columns in the response data frame.
+
 ## When to use which
 
 | Scenario | Use |
@@ -340,3 +389,5 @@ diff$duration_diff
 | Shiny app controlling pipelines | API wrappers |
 | CI script kicking off a pipeline | API wrappers |
 | Reading upstream data in a step | In-step `get_output()` |
+| Post-mortem notes on a failed run | `add_annotation()` |
+| Auditing downstream consumers before a schema change | `get_impact()` |

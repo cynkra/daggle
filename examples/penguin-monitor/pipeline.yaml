@@ -1,4 +1,14 @@
 name: penguin-monitor
+description: Scheduled data-quality check on the Palmer Penguins feed.
+owner: data-eng
+team: platform
+tags: [monitoring, data-quality, daily]
+
+exposures:
+  - name: quality-log
+    type: report
+    description: Rolling CSV of completeness and outlier counts (reports/quality_log.csv)
+
 trigger:
   schedule: "@every 6h"
 

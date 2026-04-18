@@ -1,4 +1,9 @@
 name: penguin-models
+description: Fit and compare three classification models on the Palmer Penguins dataset.
+owner: data-science
+team: analytics
+tags: [ml, classification, example]
+
 env:
   DATA_DIR: data
   MODEL_DIR: models

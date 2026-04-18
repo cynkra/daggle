@@ -145,10 +145,10 @@ You do not need the git trigger to run the pipeline. Run it directly any time:
 daggle run pkg-check
 ```
 
-Or run a subset:
+Use `daggle validate` to see the resolved execution plan without running anything — useful for diagnosing missing packages or typos before kicking off the full pipeline:
 
 ```bash
-daggle run pkg-check --only test
+daggle validate pkg-check
 ```
 
 ## Viewing results
@@ -158,3 +158,5 @@ daggle status pkg-check
 daggle logs pkg-check test
 daggle logs pkg-check check
 ```
+
+If the run fails, `daggle why pkg-check` collapses the failed step, error detail, stderr tail, and any DAG-hash drift against the last successful run into one screen.

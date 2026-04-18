@@ -1,4 +1,17 @@
 name: penguin-report
+description: ETL + Quarto report over the Palmer Penguins dataset.
+owner: analytics
+team: analytics
+tags: [etl, reporting, example]
+
+exposures:
+  - name: penguin-report
+    type: quarto
+    description: Rendered HTML report (output/report.html)
+  - name: species-summary-csv
+    type: report
+    description: Per-species summary statistics (output/species_summary.csv)
+
 env:
   DATA_DIR: data
   OUTPUT_DIR: output
