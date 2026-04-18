@@ -144,8 +144,15 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 	// Safe to Wait now — all pipe reads are complete.
 	waitErr := cmd.Wait()
 	<-killerDone
-	_ = stdoutFile.Sync()
-	_ = stderrFile.Sync()
+	// If fsync fails, log buffers may be truncated on crash. Surface it in
+	// stderr.log so a post-mortem can tell whether missing output is a real
+	// truncation vs. an incomplete script. Best-effort; don't fail the step.
+	if err := stdoutFile.Sync(); err != nil {
+		_, _ = fmt.Fprintf(stderrFile, "\n[daggle] warning: stdout.log sync failed: %v\n", err)
+	}
+	if err := stderrFile.Sync(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "[daggle] warning: %s.stderr.log sync failed: %v\n", stepID, err)
+	}
 
 	if ctx.Err() != nil {
 		return Result{
