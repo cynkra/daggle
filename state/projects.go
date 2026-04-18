@@ -142,6 +142,45 @@ func BuildDAGSources() []DAGSource {
 	return sources
 }
 
+// WalkDAGFiles iterates every DAG YAML across all sources. It skips
+// subdirectories, non-.yaml/.yml files, and base.yaml/base.yml overlays.
+// For each remaining file, fn is called with the source and the full path.
+// If fn returns a non-nil error the walk stops immediately and that error
+// is returned. os.ReadDir errors (e.g. a source dir that doesn't exist) are
+// silently skipped — the intended behavior for optional sources.
+func WalkDAGFiles(sources []DAGSource, fn func(src DAGSource, path string) error) error {
+	for _, src := range sources {
+		entries, err := os.ReadDir(src.Dir)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
+				continue
+			}
+			if name == "base.yaml" || name == "base.yml" {
+				continue
+			}
+			if err := fn(src, filepath.Join(src.Dir, name)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// DAGNameFromFile derives the DAG name from a YAML filename by stripping the
+// .yaml / .yml extension. Used by callers that need a fallback name when
+// dag.ParseFile fails (e.g. the INVALID row in `daggle list`).
+func DAGNameFromFile(filename string) string {
+	base := filepath.Base(filename)
+	return strings.TrimSuffix(strings.TrimSuffix(base, ".yaml"), ".yml")
+}
+
 // CollectDAGNames returns all DAG names across sources, mapped to their source name.
 // Used for collision detection.
 func CollectDAGNames(sources []DAGSource) map[string]string {

@@ -3,9 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/cynkra/daggle/dag"
@@ -31,7 +29,8 @@ func runImpact(_ *cobra.Command, args []string) error {
 	applyOverrides()
 	sources := state.BuildDAGSources()
 
-	// Parse every DAG in every source and collect exposures + downstream refs.
+	// Single pass across all DAG files: capture the target and anything
+	// that declares trigger.on_dag.name == target.
 	var targetDAG *dag.DAG
 	type downstream struct {
 		name    string
@@ -40,34 +39,19 @@ func runImpact(_ *cobra.Command, args []string) error {
 	}
 	var downs []downstream
 
-	for _, src := range sources {
-		entries, err := os.ReadDir(src.Dir)
+	_ = state.WalkDAGFiles(sources, func(src state.DAGSource, path string) error {
+		d, err := dag.ParseFile(path)
 		if err != nil {
-			continue
+			return nil
 		}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			name := entry.Name()
-			if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
-				continue
-			}
-			if name == "base.yaml" || name == "base.yml" {
-				continue
-			}
-			d, err := dag.ParseFile(filepath.Join(src.Dir, name))
-			if err != nil {
-				continue
-			}
-			if d.Name == target {
-				targetDAG = d
-			}
-			if d.Trigger != nil && d.Trigger.OnDAG != nil && d.Trigger.OnDAG.Name == target {
-				downs = append(downs, downstream{name: d.Name, project: src.Name, status: d.Trigger.OnDAG.Status})
-			}
+		if d.Name == target {
+			targetDAG = d
 		}
-	}
+		if d.Trigger != nil && d.Trigger.OnDAG != nil && d.Trigger.OnDAG.Name == target {
+			downs = append(downs, downstream{name: d.Name, project: src.Name, status: d.Trigger.OnDAG.Status})
+		}
+		return nil
+	})
 
 	if targetDAG == nil {
 		return fmt.Errorf("DAG %q not found", target)
