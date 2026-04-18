@@ -123,6 +123,11 @@ func streamNewLines(path string, offset int64, write func(event, data string) bo
 
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	// Track offset per consumed line rather than reading f.Seek(0, 1) —
+	// bufio.Scanner reads ahead in chunks, so the file descriptor's
+	// position can overshoot past lines not yet emitted. Assumes LF line
+	// endings (events.jsonl is always \n-terminated).
+	consumed := offset
 	var terminal bool
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -132,19 +137,17 @@ func streamNewLines(path string, offset int64, write func(event, data string) bo
 				terminal = true
 			}
 		}
+		consumed += int64(len(scanner.Bytes())) + 1 // +1 for the '\n'
 		if !write("", line) {
-			// client disconnected mid-write; the next select{} tick will exit.
-			return offset, false, nil
+			// Client disconnected mid-write. Return the consumed offset so
+			// a retry resumes past the line that was just emitted. The
+			// parent loop's <-ctx.Done() path still drives the real exit.
+			return consumed, false, nil
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return offset, false, err
 	}
 
-	// Return current file position so the next poll resumes correctly.
-	pos, err := f.Seek(0, 1)
-	if err != nil {
-		return offset, terminal, err
-	}
-	return pos, terminal, nil
+	return consumed, terminal, nil
 }
