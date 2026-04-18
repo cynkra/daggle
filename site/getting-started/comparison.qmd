@@ -1,0 +1,181 @@
+---
+title: "Comparison with other tools"
+---
+
+Deciding between daggle and something else? This page maps daggle against the main alternatives you're likely to already be using. The short version:
+
+| If you use... | Consider daggle when... |
+|---|---|
+| [targets](https://docs.ropensci.org/targets/) | You need scheduling, retries, notifications, deadlines, or multi-pipeline orchestration around your existing `tar_make()` runs. |
+| `cron` + `Rscript` | You want dependencies, retries, timeouts, parallel execution, and structured logs for scheduled R scripts. |
+| [dagu](https://dagu.readthedocs.io/) | You run R in your pipelines and want first-class R awareness rather than shelling out to `Rscript`. |
+| Airflow / Prefect / Dagster | Your workloads are R-centric and you don't need a database-backed, Kubernetes-scale platform. |
+| GitHub Actions | You need to run R workflows on your own machines, with direct access to private data and seconds (not minutes) of trigger latency. |
+| [orderly2](https://mrc-ide.github.io/orderly2/) | You need scheduling or broader workflow orchestration around reproducible orderly reports. |
+
+Skip to any section below -- they're independent.
+
+---
+
+## `targets`
+
+[targets](https://docs.ropensci.org/targets/) is an R package for reproducible, dependency-aware computation. It tracks which objects are stale and rebuilds them.
+
+**daggle and targets solve different problems.** targets answers *"which objects need rebuilding?"*. daggle answers *"when should this run, what happens if it fails, and who gets told?"*.
+
+The two are **complementary**. A common pattern is to run `tar_make()` inside a daggle step:
+
+```yaml
+name: nightly-etl
+trigger:
+  schedule: "0 2 * * *"
+steps:
+  - id: pipeline
+    targets: .
+    timeout: 2h
+    retry:
+      limit: 2
+      backoff: exponential
+    on_failure:
+      r_expr: slackr::slackr_msg("nightly ETL failed")
+```
+
+daggle handles the *when*, *retry*, *timeout*, and *notify*. targets handles the *what* and *cache*. Neither replaces the other.
+
+| | targets | daggle |
+|---|---|---|
+| Core job | Dependency-based caching and invalidation | Scheduling, orchestration, observability |
+| Scheduling | None (you call `tar_make()`) | Built-in cron, CLI, API, file watch, webhook |
+| Failure handling | Stops; you check `tar_meta()` | Retries, timeouts, SIGTERM/SIGKILL, hooks |
+| Notifications | None | `on_success` / `on_failure` hooks (R expressions) |
+| Multi-pipeline | One `_targets.R` per project | Unlimited DAGs, each a YAML file |
+| Non-R steps | `tar_target_raw()` + `system2` | First-class `command:` steps |
+| Package dev | Not designed for it | `test:`, `check:`, `document:`, `pkgdown:` steps |
+| Artifact tracking | Object store keyed by hash | Format-aware (`.rds`, `.parquet`, `.arrow`), SHA-256 hashed, per-run |
+| Run comparison | `tar_meta()` diffing by hand | `daggle diff run-a run-b` |
+
+**Pick targets alone if** you have a single-project, locally invoked pipeline and you just want `tar_make()` to rebuild stale objects.
+
+**Pick daggle (with or without targets inside) if** you need scheduling, retries, notifications, deadlines, parallel DAGs, or run history.
+
+---
+
+## `cron` + `Rscript`
+
+The incumbent for most R users doing scheduled work: a crontab line that calls `Rscript some_script.R`.
+
+| | `cron` + `Rscript` | daggle |
+|---|---|---|
+| Dependencies between scripts | Implicit (run order, hope for the best) | Explicit `depends:` with parallel execution |
+| Failure visibility | Buried in syslog or email | Structured events, `daggle status`, hooks |
+| Retries | DIY in each script | Declarative `retry: { limit: 3, backoff: exponential }` |
+| Timeouts | None (runaway R processes forever) | SIGTERM then SIGKILL with process group cleanup |
+| Passing data between scripts | Hardcoded temp file paths | `::daggle-output::` markers + per-run artifact dir |
+| History | None | Full run history with logs and artifacts |
+| Triggers | Time only | Cron + file watch + webhook + on_dag + git + condition |
+| Setup cost | Zero | `go install` + one YAML file |
+
+Migration is incremental. You can put one script behind daggle, keep the rest in cron, and migrate the rest as you see value.
+
+**Pick cron alone if** you have a single script, no dependencies, no failure notifications needed, and you're happy reading syslog.
+
+**Pick daggle if** anything on that list starts to pinch.
+
+---
+
+## `dagu`
+
+[dagu](https://dagu.readthedocs.io/) is the closest spiritual ancestor -- same philosophy: single binary, YAML DAGs, file-based storage, local-first. daggle takes inspiration from it.
+
+| | dagu | daggle |
+|---|---|---|
+| Language awareness | None -- all steps are shell commands | R-native: `script:`, `r_expr:`, `test:`, `check:`, `quarto:`, ... |
+| R step boilerplate | `command: Rscript --no-save --no-restore script.R` | `script: script.R` |
+| renv / library mgmt | Manual env var setup | Auto-detect `renv.lock`, set `R_LIBS_USER` |
+| R version constraints | DIY | `r_version: ">= 4.3"` |
+| Test output | Exit code only | Structured pass/fail/skip + coverage |
+| R CMD check | DIY shell command | `check:` with parsed errors/warnings/notes |
+| Rendering | DIY | `quarto:` and `rmd:` with format and site support |
+| Process observability | None | Per-step `peak_rss_kb`, `user_cpu_sec`, `sys_cpu_sec` |
+| Live monitoring | Web UI polling | `daggle monitor` TUI + SSE event stream |
+
+The gap: dagu treats R like any other shell command. It has no concept of what an `R CMD check` warning means, what renv is, or why a testthat failure should show *which* tests failed.
+
+**Pick dagu if** your steps are mostly shell commands and R is incidental.
+
+**Pick daggle if** R is the assumed language.
+
+---
+
+## Airflow / Prefect / Dagster
+
+The enterprise Python pipeline tools. Industry standard for data engineering at scale.
+
+| | Airflow et al. | daggle |
+|---|---|---|
+| Primary language | Python-first (DAGs as Python code) | R-first (DAGs as YAML, steps are R) |
+| Install | pip + database + webserver + scheduler + workers | Single binary |
+| Infrastructure | PostgreSQL/MySQL, Redis/RabbitMQ, Python env | R |
+| Memory at idle | 500 MB+ | 10--30 MB |
+| R integration | `BashOperator("Rscript ...")` | Native R step types |
+| Distributed execution | Yes (Celery, K8s, Dask) | No -- single host |
+| Learning curve | Weeks | Minutes |
+| Approval gates | Custom operator code | First-class `approve:` step |
+
+**Pick Airflow-class tools if** you have a data engineering team, dozens of pipelines across many languages, Kubernetes or similar for workers, or strict compliance requirements that demand a managed platform.
+
+**Pick daggle if** your workload is R-centric and the operational cost of Airflow isn't justified.
+
+---
+
+## GitHub Actions
+
+Many R package authors use GHA for testing and checking on push and PR. [r-lib/actions](https://github.com/r-lib/actions) provides solid R setup.
+
+| | GitHub Actions | daggle |
+|---|---|---|
+| Runs where | GitHub's cloud runners | Your machine, your server |
+| Data access | Must upload/download | Direct access to local files, databases, network |
+| Trigger | Push, PR, schedule | CLI, cron, file watch, webhook, on_dag, git, condition |
+| R awareness | r-lib/actions provides setup | Native R step types with structured output |
+| Iteration speed | Push, wait, read logs | `daggle run` with instant feedback |
+| Cost | Free tier limits, then paid | Free |
+| Privacy | Code and data on GitHub infrastructure | Everything stays local |
+| Scheduling latency | Minutes | Seconds |
+
+**They coexist well.** Use GHA for public CI on pushes and PRs. Use daggle locally (or on a self-hosted server) for:
+
+- workflows that touch private data,
+- scheduled runs that need seconds (not minutes) of trigger latency,
+- interactive iteration on DAGs where the push-wait-read-logs loop is too slow.
+
+---
+
+## `orderly2`
+
+[orderly2](https://mrc-ide.github.io/orderly2/) is an R package from VIMC for reproducible report *packets* with dependency tracking between reports.
+
+| | orderly2 | daggle |
+|---|---|---|
+| Core focus | Reproducible report packets with provenance | General workflow orchestration |
+| Scheduling | None | Built-in cron + 5 other trigger types |
+| Step types | R scripts producing "packets" | 27 step types: script, test, check, quarto, targets, ... |
+| Scope | Reports and their dependencies | Any R workflow: ETL, training, package dev, reports |
+| Artifact model | Immutable packets with metadata | Format-aware artifacts per run, SHA-256 hashed |
+
+These aren't mutually exclusive. If you already use orderly2, daggle can call `orderly2::orderly_run()` from an `r_expr:` or `script:` step when you need scheduling, retries, or notifications around orderly report generation.
+
+---
+
+## When *not* to use daggle
+
+Honest limits:
+
+- **You're Python-first.** All our R-specific affordances (renv, testthat output, R CMD check, Quarto integration) are dead weight. Use Airflow, Prefect, or Dagster.
+- **You want a drag-and-drop DAG builder.** daggle is YAML-first. There's a read-only status dashboard (`daggle serve`), not a visual editor.
+- **You need distributed execution across many machines.** daggle runs on a single host. It doesn't schedule to Kubernetes or a cluster.
+- **You need tight integration with one cloud vendor's managed pipeline service.** daggle is local-first by design.
+- **Your needs genuinely are `tar_make()`.** Single project, no schedule, no notifications, no multi-pipeline? Keep targets.
+- **Your needs genuinely are one cron line.** One script, no dependencies, no retries? Keep cron.
+
+The honest positioning: daggle fits the space between "a crontab line" and "a data platform" -- where you need more than cron but less than Airflow, and where R is the assumed language.

@@ -47,6 +47,8 @@ website:
           href: getting-started/first-dag.qmd
         - text: "Project-Local DAGs"
           href: getting-started/project-local.qmd
+        - text: "Comparison with other tools"
+          href: getting-started/comparison.qmd
 
     - title: "Writing DAGs"
       style: floating
