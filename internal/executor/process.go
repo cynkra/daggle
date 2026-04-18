@@ -282,14 +282,21 @@ func extractPatternError(lines []string, pattern *regexp.Regexp, skipLine string
 	return truncateDetail(strings.Join(errorLines, "\n"))
 }
 
-// extractLastLines returns the last n non-empty lines from stderr.
+// extractLastLines returns the last n non-empty lines from stderr, in order.
 func extractLastLines(lines []string, n int) string {
-	var result []string
+	if n <= 0 {
+		return ""
+	}
+	result := make([]string, 0, n)
 	for i := len(lines) - 1; i >= 0 && len(result) < n; i-- {
 		line := strings.TrimSpace(lines[i])
 		if line != "" {
-			result = append([]string{line}, result...)
+			result = append(result, line)
 		}
+	}
+	// Reverse in place so lines appear in original order.
+	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
 	}
 	return truncateDetail(strings.Join(result, "\n"))
 }

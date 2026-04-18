@@ -188,6 +188,31 @@ func TestExtractErrorDetail_QuartoError(t *testing.T) {
 	}
 }
 
+func TestExtractLastLines_OrderAndFiltering(t *testing.T) {
+	lines := []string{"one", "", "two", "  ", "three", "four", "five"}
+	got := extractLastLines(lines, 3)
+	want := "three\nfour\nfive"
+	if got != want {
+		t.Errorf("extractLastLines(n=3) = %q, want %q", got, want)
+	}
+
+	// All non-empty, n larger than input
+	got = extractLastLines([]string{"a", "b"}, 10)
+	if got != "a\nb" {
+		t.Errorf("extractLastLines(n=10) = %q, want 'a\\nb'", got)
+	}
+
+	// n=0 returns empty
+	if got := extractLastLines(lines, 0); got != "" {
+		t.Errorf("n=0 should return empty, got %q", got)
+	}
+
+	// Only empty/whitespace lines -> empty result
+	if got := extractLastLines([]string{"", "   ", "\t"}, 5); got != "" {
+		t.Errorf("whitespace-only should return empty, got %q", got)
+	}
+}
+
 func TestExtractErrorDetail_ShellFallback(t *testing.T) {
 	tmpDir := t.TempDir()
 
