@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -251,7 +252,16 @@ func streamFromHTTP(ctx context.Context, cfg Config, ch chan<- tea.Msg) {
 	}
 	req.Header.Set("Accept", "text/event-stream")
 
-	client := &http.Client{Timeout: 0}
+	// SSE is long-lived, so the overall Timeout must be 0 — but we still
+	// need guards against a hung upstream that never writes response
+	// headers, or a TCP dial that never completes.
+	client := &http.Client{
+		Timeout: 0,
+		Transport: &http.Transport{
+			DialContext:           (&net.Dialer{Timeout: 5 * time.Second}).DialContext,
+			ResponseHeaderTimeout: 30 * time.Second,
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		ch <- errMsg{err}
@@ -270,7 +280,11 @@ func streamFromHTTP(ctx context.Context, cfg Config, ch chan<- tea.Msg) {
 // On `event: end` or `event: error`, sends the appropriate final msg and returns.
 func parseSSE(r io.Reader, ch chan<- tea.Msg) {
 	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 0, 64*1024), 2*1024*1024)
+	// Event lines are JSON objects — typical size is a few KB. 256 KB is
+	// plenty of headroom; oversize lines trip bufio.ErrTooLong, which
+	// bubbles up via scanner.Err() as an errMsg so the user sees a real
+	// error instead of the stream silently ending.
+	scanner.Buffer(make([]byte, 0, 64*1024), 256*1024)
 	var eventName string
 	for scanner.Scan() {
 		line := scanner.Text()

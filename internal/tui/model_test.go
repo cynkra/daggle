@@ -80,6 +80,31 @@ func TestParseSSE_EndpointEventsFlowToChannel(t *testing.T) {
 	}
 }
 
+func TestParseSSE_OversizeLineSurfacesError(t *testing.T) {
+	// Build a data: line 512 KB long, well past the 256 KB cap, followed by
+	// a newline. Scanner should return ErrTooLong via scanner.Err() which
+	// parseSSE forwards as errMsg.
+	big := make([]byte, 512*1024)
+	for i := range big {
+		big[i] = 'x'
+	}
+	payload := "data: " + string(big) + "\n\n"
+
+	ch := make(chan tea.Msg, 2)
+	parseSSE(io.NopCloser(bytes.NewBufferString(payload)), ch)
+	close(ch)
+
+	var gotErr error
+	for msg := range ch {
+		if em, ok := msg.(errMsg); ok {
+			gotErr = em.err
+		}
+	}
+	if gotErr == nil {
+		t.Fatal("oversize line should surface an errMsg; got none")
+	}
+}
+
 func TestParseSSE_ErrorEvent(t *testing.T) {
 	payload := "event: error\ndata: boom\n\n"
 	ch := make(chan tea.Msg, 2)
