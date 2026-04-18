@@ -155,7 +155,7 @@ func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
 
 			if run, err := state.LatestRun(dagName); err == nil && run != nil {
 				item.LastStatus = state.RunStatus(run.Dir)
-				item.LastRun = run.StartTime.Format(time.RFC3339)
+				item.LastRun = formatTime(run.StartTime)
 				item.LastRunFmt = timeAgo(run.StartTime)
 				item.LastRunID = run.ID
 			}
