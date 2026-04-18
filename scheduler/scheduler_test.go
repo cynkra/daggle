@@ -93,6 +93,53 @@ steps:
 	}
 }
 
+func TestScheduler_MTimeCacheShortCircuits(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0o755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	dagPath := filepath.Join(dagDir, "scheduled.yaml")
+	writeDAG(t, dagDir, "scheduled.yaml", `
+name: cached-dag
+trigger:
+  schedule: "@every 1h"
+steps:
+  - id: a
+    command: echo a
+`)
+
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
+	if err := sched.syncDAGs(context.Background()); err != nil {
+		t.Fatalf("first syncDAGs: %v", err)
+	}
+
+	// First sync populated the mtime cache.
+	if entry, ok := sched.syncCache[dagPath]; !ok || entry.dagName != "cached-dag" {
+		t.Fatalf("expected cache entry for %q with dagName=cached-dag; got %+v ok=%v", dagPath, entry, ok)
+	}
+	cachedMtime := sched.syncCache[dagPath].mtime
+
+	// Second sync with no file changes: cache entry should be identical.
+	if err := sched.syncDAGs(context.Background()); err != nil {
+		t.Fatalf("second syncDAGs: %v", err)
+	}
+	if got := sched.syncCache[dagPath].mtime; !got.Equal(cachedMtime) {
+		t.Errorf("mtime changed without file edit: before=%v after=%v", cachedMtime, got)
+	}
+
+	// Delete the file and confirm the cache entry gets pruned.
+	if err := os.Remove(dagPath); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if err := sched.syncDAGs(context.Background()); err != nil {
+		t.Fatalf("third syncDAGs: %v", err)
+	}
+	if _, ok := sched.syncCache[dagPath]; ok {
+		t.Error("cache should prune entries for deleted files")
+	}
+}
+
 func TestScheduler_HotReload(t *testing.T) {
 	tmpDir := t.TempDir()
 	dagDir := filepath.Join(tmpDir, "dags")

@@ -83,6 +83,20 @@ type Scheduler struct {
 	deadlineFired  map[string]string                  // dagName -> date string (YYYY-MM-DD) of last fired deadline
 	pollInterval   time.Duration
 	watchDebounce  time.Duration
+	// syncCache short-circuits syncSource when a DAG file's mtime hasn't
+	// changed since the last tick. Keyed by absolute file path. Guarded by
+	// s.mu along with the rest of the registration state.
+	syncCache map[string]syncCacheEntry
+}
+
+// syncCacheEntry records the mtime and derived DAG name for a file so a
+// subsequent syncSource tick can skip re-hashing and re-parsing when nothing
+// has changed on disk. dagName == "" means the file was parseable but had no
+// triggers (or parse failed); we still short-circuit so we don't warn on
+// every tick.
+type syncCacheEntry struct {
+	mtime   time.Time
+	dagName string
 }
 
 // New creates a new Scheduler that watches the given DAG sources.
@@ -121,6 +135,7 @@ func NewWithConfig(sources []state.DAGSource, cfg state.SchedulerConfig) *Schedu
 		deadlineFired:  make(map[string]string),
 		pollInterval:   pollInt,
 		watchDebounce:  debounce,
+		syncCache:      make(map[string]syncCacheEntry),
 	}
 }
 
@@ -339,6 +354,12 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 			s.logger.Info("unregistered DAG", "dag", name)
 		}
 	}
+	// Prune syncCache entries whose file was deleted, to bound cache size.
+	for path := range s.syncCache {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			delete(s.syncCache, path)
+		}
+	}
 	// Update on_dag listeners and webhooks
 	s.onDAGListeners = newListeners
 	s.webhooks = newWebhooks
@@ -391,6 +412,23 @@ func (s *Scheduler) syncSource(ctx context.Context, src state.DAGSource, seen ma
 		}
 
 		path := filepath.Join(src.Dir, name)
+
+		// Short-circuit via mtime cache: if the file's modification time
+		// hasn't changed since the last tick, skip hashing and parsing
+		// entirely. Keeps idle schedulers cheap even with hundreds of DAGs.
+		info, statErr := os.Stat(path)
+		if statErr == nil {
+			s.mu.Lock()
+			if cached, ok := s.syncCache[path]; ok && cached.mtime.Equal(info.ModTime()) {
+				if cached.dagName != "" {
+					seen[cached.dagName] = true
+				}
+				s.mu.Unlock()
+				continue
+			}
+			s.mu.Unlock()
+		}
+
 		hash, err := fileHash(path)
 		if err != nil {
 			s.logger.Warn("failed to hash DAG file", "path", path, "error", err)
@@ -400,14 +438,31 @@ func (s *Scheduler) syncSource(ctx context.Context, src state.DAGSource, seen ma
 		d, err := dag.ParseFile(path)
 		if err != nil {
 			s.logger.Warn("failed to parse DAG", "path", path, "error", err)
+			if info != nil {
+				s.mu.Lock()
+				s.syncCache[path] = syncCacheEntry{mtime: info.ModTime()}
+				s.mu.Unlock()
+			}
 			continue
 		}
 
 		if !d.HasTrigger() {
+			// Remember the mtime so we don't re-parse a trigger-less DAG
+			// on every tick.
+			if info != nil {
+				s.mu.Lock()
+				s.syncCache[path] = syncCacheEntry{mtime: info.ModTime(), dagName: d.Name}
+				s.mu.Unlock()
+			}
 			continue
 		}
 
 		seen[d.Name] = true
+		if info != nil {
+			s.mu.Lock()
+			s.syncCache[path] = syncCacheEntry{mtime: info.ModTime(), dagName: d.Name}
+			s.mu.Unlock()
+		}
 
 		// Check and teardown under lock to prevent races with triggerRun
 		s.mu.Lock()
