@@ -31,3 +31,7 @@ daggle run pipeline.yaml
 - `output/bill_scatter.png` — Bill length vs depth scatter plot
 - `output/flipper_boxplot.png` — Flipper length boxplot
 - `output/report.html` — Final Quarto report
+
+## Exposures
+
+The pipeline declares its downstream consumers via `exposures:` so they show up in `daggle impact penguin-report`. Use this when you need to warn stakeholders before changing the report's columns or dropping a step.

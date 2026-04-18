@@ -145,11 +145,21 @@ env:
   OUTPUT_DIR: output
 ```
 
-Steps read them with `Sys.getenv()`. You can override these at run time:
+Steps read them with `Sys.getenv()`. DAG-level `env:` values may reference shell environment variables with the `${env:VARNAME}` secret-reference syntax:
+
+```yaml
+env:
+  DATA_DIR: "${env:DATA_DIR}"
+  OUTPUT_DIR: "${env:OUTPUT_DIR}"
+```
+
+Then export them in the shell before invoking the pipeline:
 
 ```bash
-daggle run penguin-report -e DATA_DIR=/tmp/data -e OUTPUT_DIR=/tmp/output
+DATA_DIR=/tmp/data OUTPUT_DIR=/tmp/output daggle run penguin-report
 ```
+
+For values that should appear in `meta.json` and be changeable per run without editing YAML, use `params:` instead and pass `-p key=value` on the command line.
 
 ## Lifecycle hooks
 
