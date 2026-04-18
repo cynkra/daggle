@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
@@ -22,60 +20,38 @@ func (s *Server) handleListDAGs(w http.ResponseWriter, r *http.Request) {
 
 	var dags []DAGSummary
 
-	for _, src := range s.sources() {
-		entries, err := os.ReadDir(src.Dir)
+	_ = state.WalkDAGFiles(s.sources(), func(src state.DAGSource, path string) error {
+		d, err := dag.ParseFile(path)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			continue
+			return nil
 		}
 
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			name := entry.Name()
-			if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
-				continue
-			}
-			if name == "base.yaml" || name == "base.yml" {
-				continue
-			}
-
-			dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
-			path := filepath.Join(src.Dir, name)
-
-			d, err := dag.ParseFile(path)
-			if err != nil {
-				continue
-			}
-
-			if !matchesDAGFilters(d, tagFilter, teamFilter, ownerFilter) {
-				continue
-			}
-
-			summary := DAGSummary{
-				Name:        dagName,
-				Steps:       len(d.Steps),
-				Project:     src.Name,
-				Owner:       d.Owner,
-				Team:        d.Team,
-				Description: d.Description,
-				Tags:        d.Tags,
-			}
-			if d.Trigger != nil {
-				summary.Schedule = d.Trigger.Schedule
-			}
-
-			if run, err := state.LatestRun(dagName); err == nil && run != nil {
-				summary.LastStatus = state.RunStatus(run.Dir)
-				summary.LastRun = formatTime(run.StartTime)
-			}
-
-			dags = append(dags, summary)
+		if !matchesDAGFilters(d, tagFilter, teamFilter, ownerFilter) {
+			return nil
 		}
-	}
+
+		dagName := state.DAGNameFromFile(path)
+		summary := DAGSummary{
+			Name:        dagName,
+			Steps:       len(d.Steps),
+			Project:     src.Name,
+			Owner:       d.Owner,
+			Team:        d.Team,
+			Description: d.Description,
+			Tags:        d.Tags,
+		}
+		if d.Trigger != nil {
+			summary.Schedule = d.Trigger.Schedule
+		}
+
+		if run, err := state.LatestRun(dagName); err == nil && run != nil {
+			summary.LastStatus = state.RunStatus(run.Dir)
+			summary.LastRun = formatTime(run.StartTime)
+		}
+
+		dags = append(dags, summary)
+		return nil
+	})
 
 	if dags == nil {
 		dags = []DAGSummary{}
@@ -192,39 +168,24 @@ func (s *Server) handleGetImpact(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Scan every DAG in every source for trigger.on_dag.name == target.
-	for _, src := range s.sources() {
-		entries, err := os.ReadDir(src.Dir)
+	_ = state.WalkDAGFiles(s.sources(), func(src state.DAGSource, path string) error {
+		d, err := dag.ParseFile(path)
 		if err != nil {
-			continue
+			return nil
 		}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
+		if d.Trigger != nil && d.Trigger.OnDAG != nil && d.Trigger.OnDAG.Name == name {
+			status := d.Trigger.OnDAG.Status
+			if status == "" {
+				status = "any"
 			}
-			fname := entry.Name()
-			if !strings.HasSuffix(fname, ".yaml") && !strings.HasSuffix(fname, ".yml") {
-				continue
-			}
-			if fname == "base.yaml" || fname == "base.yml" {
-				continue
-			}
-			d, err := dag.ParseFile(filepath.Join(src.Dir, fname))
-			if err != nil {
-				continue
-			}
-			if d.Trigger != nil && d.Trigger.OnDAG != nil && d.Trigger.OnDAG.Name == name {
-				status := d.Trigger.OnDAG.Status
-				if status == "" {
-					status = "any"
-				}
-				resp.Downstream = append(resp.Downstream, DownstreamDAGInfo{
-					Name:      d.Name,
-					Project:   src.Name,
-					TriggerOn: status,
-				})
-			}
+			resp.Downstream = append(resp.Downstream, DownstreamDAGInfo{
+				Name:      d.Name,
+				Project:   src.Name,
+				TriggerOn: status,
+			})
 		}
-	}
+		return nil
+	})
 
 	writeJSON(w, http.StatusOK, resp)
 }

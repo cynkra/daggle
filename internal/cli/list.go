@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
@@ -40,58 +39,39 @@ func listDAGs(_ *cobra.Command, _ []string) error {
 	_, _ = fmt.Fprintln(w, "NAME\tPROJECT\tOWNER\tTEAM\tTAGS\tSTEPS\tLAST RUN\tSTATUS")
 
 	found := false
-	for _, src := range sources {
-		entries, err := os.ReadDir(src.Dir)
+	_ = state.WalkDAGFiles(sources, func(src state.DAGSource, path string) error {
+		d, err := dag.ParseFile(path)
 		if err != nil {
-			continue
-		}
-
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
+			// Can't filter an invalid DAG by owner/team/tag; hide from filtered views.
+			if listTagFilter != "" || listTeamFilter != "" || listOwnerFilter != "" {
+				return nil
 			}
-			name := entry.Name()
-			if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
-				continue
-			}
-			if name == "base.yaml" || name == "base.yml" {
-				continue
-			}
-
-			dagPath := filepath.Join(src.Dir, name)
-			d, err := dag.ParseFile(dagPath)
-			if err != nil {
-				// Can't filter an invalid DAG by owner/team/tag; hide from filtered views.
-				if listTagFilter != "" || listTeamFilter != "" || listOwnerFilter != "" {
-					continue
-				}
-				dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
-				_, _ = fmt.Fprintf(w, "%s\t%s\t-\t-\t-\t-\t-\tINVALID\n", dagName, src.Name)
-				found = true
-				continue
-			}
-
-			if !matchesFilters(d) {
-				continue
-			}
-
-			lastRun := "-"
-			status := "-"
-			if run, err := state.LatestRun(d.Name); err == nil && run != nil {
-				lastRun = run.StartTime.Format("2006-01-02 15:04")
-				status = state.RunStatus(run.Dir)
-			}
-
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
-				d.Name, src.Name,
-				dashIfEmpty(d.Owner),
-				dashIfEmpty(d.Team),
-				dashIfEmpty(strings.Join(d.Tags, ",")),
-				len(d.Steps), lastRun, status,
-			)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t-\t-\t-\t-\t-\tINVALID\n", state.DAGNameFromFile(path), src.Name)
 			found = true
+			return nil
 		}
-	}
+
+		if !matchesFilters(d) {
+			return nil
+		}
+
+		lastRun := "-"
+		status := "-"
+		if run, err := state.LatestRun(d.Name); err == nil && run != nil {
+			lastRun = run.StartTime.Format("2006-01-02 15:04")
+			status = state.RunStatus(run.Dir)
+		}
+
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
+			d.Name, src.Name,
+			dashIfEmpty(d.Owner),
+			dashIfEmpty(d.Team),
+			dashIfEmpty(strings.Join(d.Tags, ",")),
+			len(d.Steps), lastRun, status,
+		)
+		found = true
+		return nil
+	})
 	_ = w.Flush()
 
 	if !found {
