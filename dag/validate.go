@@ -72,6 +72,7 @@ func validateSteps(d *DAG) []string {
 		errs = append(errs, validateStepFreshness(s)...)
 		errs = append(errs, validateStepCache(s)...)
 		errs = append(errs, validateStepRetry(s)...)
+		errs = append(errs, validateStepApprove(s)...)
 	}
 	return errs
 }
@@ -135,6 +136,19 @@ func validateStepTimeout(s Step) []string {
 	}
 	if _, err := s.ParseTimeout(); err != nil {
 		return []string{fmt.Sprintf("step %q has invalid timeout %q: %v", s.ID, s.Timeout, err)}
+	}
+	return nil
+}
+
+// validateStepApprove rejects invalid durations in approve.timeout. An empty
+// string is valid and means "no timeout" — matches the runtime behavior in
+// internal/executor/approve.go.
+func validateStepApprove(s Step) []string {
+	if s.Approve == nil || s.Approve.Timeout == "" {
+		return nil
+	}
+	if _, err := time.ParseDuration(s.Approve.Timeout); err != nil {
+		return []string{fmt.Sprintf("step %q approve.timeout %q is invalid: %v", s.ID, s.Approve.Timeout, err)}
 	}
 	return nil
 }

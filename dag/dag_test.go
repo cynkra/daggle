@@ -198,6 +198,39 @@ func TestValidate_RetryBackoff(t *testing.T) {
 	}
 }
 
+func TestValidate_ApproveTimeout(t *testing.T) {
+	cases := []struct {
+		name    string
+		timeout string
+		wantErr string
+	}{
+		{"empty is valid (no timeout)", "", ""},
+		{"valid duration", "24h", ""},
+		{"valid short duration", "30m", ""},
+		{"invalid English", "5minutes", "approve.timeout"},
+		{"invalid with space", "1 hour", "approve.timeout"},
+		{"invalid word", "forever", "approve.timeout"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &DAG{Name: "t", Steps: []Step{{ID: "a", Approve: &ApproveStep{Timeout: tc.timeout}}}}
+			err := Validate(d)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("error = %v, want contains %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestTriggerHelpers(t *testing.T) {
 	// No trigger
 	d1 := &DAG{Name: "no-trigger"}
