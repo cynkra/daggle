@@ -198,6 +198,50 @@ func TestValidate_RetryBackoff(t *testing.T) {
 	}
 }
 
+func TestValidateChannels(t *testing.T) {
+	cases := []struct {
+		name     string
+		hook     *Hook
+		channels map[string]bool
+		wantErr  string
+	}{
+		{"no hook", nil, map[string]bool{"slack": true}, ""},
+		{"notify matches channel", &Hook{Notify: "slack"}, map[string]bool{"slack": true}, ""},
+		{"notify unknown channel", &Hook{Notify: "typo"}, map[string]bool{"slack": true}, `notify channel "typo"`},
+		{"notify unknown with empty channels", &Hook{Notify: "x"}, map[string]bool{}, `notify channel "x"`},
+		{"command hook (no notify) is not checked", &Hook{Command: "echo"}, map[string]bool{}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &DAG{Name: "t", Steps: []Step{{ID: "a", Command: "echo"}}, OnFailure: tc.hook}
+			err := ValidateChannels(d, tc.channels)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("error = %v, want contains %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateWithChannels_NilSkipsCheck(t *testing.T) {
+	// Passing nil channels must behave like Validate (no channel check).
+	d := &DAG{Name: "t", Steps: []Step{{ID: "a", Command: "echo"}}, OnFailure: &Hook{Notify: "unknown"}}
+	if err := ValidateWithChannels(d, nil); err != nil {
+		t.Errorf("nil channels must skip check, got error: %v", err)
+	}
+	if err := Validate(d); err != nil {
+		t.Errorf("Validate must match nil-channels behavior, got: %v", err)
+	}
+}
+
 func TestValidate_ApproveTimeout(t *testing.T) {
 	cases := []struct {
 		name    string

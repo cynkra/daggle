@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/state"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +24,16 @@ func validateDAG(_ *cobra.Command, args []string) error {
 	d, err := dag.ParseFile(dagPath)
 	if err != nil {
 		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	if cfg, err := state.LoadConfig(); err == nil {
+		channels := make(map[string]bool, len(cfg.Notifications))
+		for name := range cfg.Notifications {
+			channels[name] = true
+		}
+		if err := dag.ValidateChannels(d, channels); err != nil {
+			return fmt.Errorf("validation failed: %w", err)
+		}
 	}
 
 	// Show execution plan

@@ -97,6 +97,16 @@ func (e *Engine) SetNotifications(channels map[string]state.NotificationChannel)
 // Steps within a tier run in parallel. If any step fails (after retries),
 // remaining tiers are skipped and the run is marked as failed.
 func (e *Engine) Run(ctx context.Context) error {
+	// Reject notify: references to channels missing from the loaded config
+	// before we do anything else. Falls through for DAGs without notify hooks.
+	channels := make(map[string]bool, len(e.notifications))
+	for name := range e.notifications {
+		channels[name] = true
+	}
+	if err := dag.ValidateChannels(e.dag, channels); err != nil {
+		return err
+	}
+
 	// Expand matrix steps before topo sort
 	e.dag.Steps = dag.ExpandMatrix(e.dag.Steps)
 
