@@ -99,7 +99,12 @@ func runApprovalNotify(ctx context.Context, hook *dag.Hook, logDir, stepID strin
 		cmd := exec.CommandContext(ctx, state.ToolPath("rscript"), "--no-save", "--no-restore", tmpFile)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		_ = cmd.Run()
+		runErr := cmd.Run()
+		// Notify hooks are fire-and-forget; remove the temp script on
+		// success, keep it on failure for post-mortem.
+		if runErr == nil {
+			_ = os.Remove(tmpFile)
+		}
 	}
 }
 
