@@ -103,9 +103,3 @@ func matchesFilters(d *dag.DAG) bool {
 	return true
 }
 
-func dashIfEmpty(s string) string {
-	if s == "" {
-		return "-"
-	}
-	return s
-}
