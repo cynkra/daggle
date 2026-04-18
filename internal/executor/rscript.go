@@ -25,7 +25,14 @@ func runRScript(ctx context.Context, rCode string, step dag.Step, logDir, workdi
 	}
 	args := append([]string{"--no-save", "--no-restore", tmpFile}, step.Args...)
 	cmd := exec.CommandContext(ctx, state.ToolPath("rscript"), args...)
-	return runProcess(ctx, cmd, step.ID, logDir, workdir, env)
+	r := runProcess(ctx, cmd, step.ID, logDir, workdir, env)
+	// On success, remove the wrapper script — debugging evidence isn't
+	// useful and the file just bloats the run directory. Keep it on
+	// failure so post-mortems can see what R actually executed.
+	if r.Err == nil && r.ExitCode == 0 {
+		_ = os.Remove(tmpFile)
+	}
+	return r
 }
 
 // wrapRCodeWithSessionInfo wraps R code in a tryCatch that writes sessionInfo

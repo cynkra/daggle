@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -243,7 +244,10 @@ func TestExtractErrorDetail_EmptyStderr(t *testing.T) {
 
 func TestInlineRExecutor_WritesFile(t *testing.T) {
 	logDir := t.TempDir()
-	step := dag.Step{ID: "test-inline", RExpr: "cat('hello from R\\n')"}
+	// Use a failing expression so the temp .R file survives (we clean up
+	// on successful exit; see #83). This still exercises the
+	// WriteFile+wrapper path we want to verify.
+	step := dag.Step{ID: "test-inline", RExpr: "cat('hello from R\\n'); quit(status = 1)"}
 
 	exec := &InlineRExecutor{}
 	_ = exec.Run(context.Background(), step, logDir, "", nil)
@@ -257,6 +261,24 @@ func TestInlineRExecutor_WritesFile(t *testing.T) {
 	// must still appear somewhere in the file.
 	if !strings.Contains(string(content), "cat('hello from R\\n')") {
 		t.Errorf("inline R content missing user code: %q", string(content))
+	}
+}
+
+func TestInlineRExecutor_CleanupOnSuccess(t *testing.T) {
+	if _, err := exec.LookPath("Rscript"); err != nil {
+		t.Skip("Rscript not installed")
+	}
+	logDir := t.TempDir()
+	step := dag.Step{ID: "clean-ok", RExpr: "cat('ok\\n')"}
+
+	e := &InlineRExecutor{}
+	r := e.Run(context.Background(), step, logDir, "", nil)
+	if r.ExitCode != 0 || r.Err != nil {
+		t.Fatalf("expected successful run; exit=%d err=%v", r.ExitCode, r.Err)
+	}
+	rFile := filepath.Join(logDir, "clean-ok.inline.R")
+	if _, err := os.Stat(rFile); !os.IsNotExist(err) {
+		t.Errorf("expected temp R file removed on success; stat err=%v", err)
 	}
 }
 
