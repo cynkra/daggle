@@ -172,7 +172,7 @@ These aren't mutually exclusive. If you already use orderly2, daggle can call `o
 Honest limits:
 
 - **You're Python-first.** All our R-specific affordances (renv, testthat output, R CMD check, Quarto integration) are dead weight. Use Airflow, Prefect, or Dagster.
-- **You want a drag-and-drop DAG builder.** daggle is YAML-first. There's a read-only status dashboard (`daggle serve`), not a visual editor.
+- **You want a bundled drag-and-drop DAG editor.** daggle intentionally ships only a minimal read-only status dashboard (`daggle serve`). The UI story is a REST API plus the [daggleR](https://cynkra.github.io/daggleR/) package, so you build whatever Shiny app fits your team -- an operator dashboard, a report browser, a mobile status page. That's a feature if you already know Shiny (you get a UI in the language your R users read anyway), a limit if you want visual DAG authoring out of the box.
 - **You need distributed execution across many machines.** daggle runs on a single host. It doesn't schedule to Kubernetes or a cluster.
 - **You need tight integration with one cloud vendor's managed pipeline service.** daggle is local-first by design.
 - **Your needs genuinely are `tar_make()`.** Single project, no schedule, no notifications, no multi-pipeline? Keep targets.
