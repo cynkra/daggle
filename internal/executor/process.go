@@ -187,8 +187,11 @@ func killProcessGroup(cmd *exec.Cmd) {
 			_ = syscall.Kill(pgid, syscall.SIGKILL)
 			return
 		case <-ticker.C:
-			// Check if process has exited (signal 0 returns error if gone)
-			if err := syscall.Kill(-pgid, 0); err != nil {
+			// Signal 0 with a negative pid checks the whole process group.
+			// Previously this used -pgid, which flipped the sign and polled
+			// only the lead PID — a child that out-lived the lead would let
+			// the poll exit before the grace-period SIGKILL fired.
+			if err := syscall.Kill(pgid, 0); err != nil {
 				return // process group already exited
 			}
 		}
