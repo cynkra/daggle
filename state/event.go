@@ -73,14 +73,16 @@ type Event struct {
 
 // EventWriter provides thread-safe JSONL event writing.
 type EventWriter struct {
-	mu   sync.Mutex
-	path string
+	mu     sync.Mutex
+	path   string
+	runDir string
 }
 
 // NewEventWriter creates an EventWriter for the given run directory.
 func NewEventWriter(runDir string) *EventWriter {
 	return &EventWriter{
-		path: filepath.Join(runDir, "events.jsonl"),
+		path:   filepath.Join(runDir, "events.jsonl"),
+		runDir: runDir,
 	}
 }
 
@@ -107,13 +109,76 @@ func (w *EventWriter) Write(e Event) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	_, err = fmt.Fprintf(f, "%s\n", data)
-	return err
+	if _, err := fmt.Fprintf(f, "%s\n", data); err != nil {
+		return err
+	}
+	// Invalidate the read cache so callers in this process pick up the new
+	// event immediately. Cross-process callers rely on mtime/size change.
+	InvalidateEventCache(w.runDir)
+	return nil
 }
 
 // ReadEvents reads all events from a run directory's events.jsonl file.
+// The result is cached per runDir and invalidated when the file's mtime
+// changes. The SSE streaming endpoint tails events.jsonl with its own
+// offset logic and does NOT go through this cache.
 func ReadEvents(runDir string) ([]Event, error) {
 	path := filepath.Join(runDir, "events.jsonl")
+	info, statErr := os.Stat(path)
+	if statErr == nil {
+		eventCache.mu.Lock()
+		cached, ok := eventCache.entries[runDir]
+		eventCache.mu.Unlock()
+		if ok && cached.mtime.Equal(info.ModTime()) && cached.size == info.Size() {
+			return cached.events, nil
+		}
+	} else if os.IsNotExist(statErr) {
+		return nil, statErr
+	}
+
+	events, err := readEventsFromFile(path, runDir)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only cache when the stat succeeded. Re-stat after read so we capture
+	// the mtime that actually matches the data we parsed; if it changed
+	// mid-read, skip caching so a subsequent call re-parses.
+	if post, postErr := os.Stat(path); postErr == nil {
+		if statErr == nil && post.ModTime().Equal(info.ModTime()) && post.Size() == info.Size() {
+			eventCache.mu.Lock()
+			eventCache.entries[runDir] = cachedEvents{
+				events: events,
+				mtime:  post.ModTime(),
+				size:   post.Size(),
+			}
+			eventCache.mu.Unlock()
+		}
+	}
+	return events, nil
+}
+
+// InvalidateEventCache drops the cached events for a given runDir. Tests
+// that mutate events.jsonl at the same mtime (possible on second-resolution
+// filesystems) should call this to force a re-read.
+func InvalidateEventCache(runDir string) {
+	eventCache.mu.Lock()
+	delete(eventCache.entries, runDir)
+	eventCache.mu.Unlock()
+}
+
+type cachedEvents struct {
+	events []Event
+	mtime  time.Time
+	size   int64
+}
+
+var eventCache = struct {
+	mu      sync.Mutex
+	entries map[string]cachedEvents
+}{entries: make(map[string]cachedEvents)}
+
+func readEventsFromFile(path, runDir string) ([]Event, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
