@@ -82,7 +82,9 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		return Result{ExitCode: -1, Err: err, Duration: time.Since(start), Stdout: stdoutPath, Stderr: stderrPath}
 	}
 
-	// Read stdout, parse output/summary/meta/validation markers, write to log file and terminal
+	// Read stdout, parse output/summary/meta/validation markers, write to log file and terminal.
+	// The scanner must finish BEFORE cmd.Wait() is called, otherwise Wait closes the
+	// pipe and any unread kernel-buffered data is discarded (see StdoutPipe docs).
 	outputs := make(map[string]string)
 	var summaries []Summary
 	var metadata []MetaEntry
@@ -124,28 +126,28 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		}
 	}()
 
-	// Wait for completion in a goroutine so we can handle context cancellation
-	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
+	// Watch for context cancellation: kill the process group so its stdout closes
+	// and the scanner unblocks. Exits when scanDone closes regardless.
+	killerDone := make(chan struct{})
+	go func() {
+		defer close(killerDone)
+		select {
+		case <-ctx.Done():
+			killProcessGroup(cmd)
+		case <-scanDone:
+		}
+	}()
 
-	select {
-	case err := <-done:
-		<-scanDone // ensure all stdout is read
-		_ = stdoutFile.Sync()
-		_ = stderrFile.Sync()
-		r := buildResult(err, start, stdoutPath, stderrPath)
-		r.Outputs = outputs
-		r.Summaries = summaries
-		r.Metadata = metadata
-		r.Validations = validations
-		r.PeakRSSKB, r.UserCPUSec, r.SysCPUSec = extractRusage(cmd)
-		return r
-	case <-ctx.Done():
-		killProcessGroup(cmd)
-		<-done
-		<-scanDone
-		_ = stdoutFile.Sync()
-		_ = stderrFile.Sync()
+	// Block until the scanner has drained stdout (process exited, pipe EOF).
+	<-scanDone
+
+	// Safe to Wait now — all pipe reads are complete.
+	waitErr := cmd.Wait()
+	<-killerDone
+	_ = stdoutFile.Sync()
+	_ = stderrFile.Sync()
+
+	if ctx.Err() != nil {
 		return Result{
 			ExitCode:    -1,
 			Err:         ctx.Err(),
@@ -158,6 +160,14 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 			Validations: validations,
 		}
 	}
+
+	r := buildResult(waitErr, start, stdoutPath, stderrPath)
+	r.Outputs = outputs
+	r.Summaries = summaries
+	r.Metadata = metadata
+	r.Validations = validations
+	r.PeakRSSKB, r.UserCPUSec, r.SysCPUSec = extractRusage(cmd)
+	return r
 }
 
 func killProcessGroup(cmd *exec.Cmd) {
