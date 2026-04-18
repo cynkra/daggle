@@ -14,8 +14,18 @@ var artifactNameRe = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 // deadlineRe validates HH:MM time format.
 var deadlineRe = regexp.MustCompile(`^\d{2}:\d{2}$`)
 
-// Validate checks that a DAG definition is well-formed.
+// Validate checks that a DAG definition is well-formed. It skips validation
+// of notify: channel names, since that requires the loaded Config. Use
+// ValidateWithChannels when channel configuration is available (engine
+// startup, `daggle validate`).
 func Validate(d *DAG) error {
+	return ValidateWithChannels(d, nil)
+}
+
+// ValidateWithChannels runs all checks in Validate and additionally rejects
+// hooks that reference unknown notify: channel names. Pass nil to skip the
+// channel-name check (equivalent to Validate).
+func ValidateWithChannels(d *DAG, channels map[string]bool) error {
 	var errs []string
 
 	if d.Name == "" {
@@ -30,6 +40,9 @@ func Validate(d *DAG) error {
 	errs = append(errs, validateRVersion(d)...)
 	errs = append(errs, validateTriggers(d)...)
 	errs = append(errs, validateHooks(d)...)
+	if channels != nil {
+		errs = append(errs, validateNotifyChannels(d, channels)...)
+	}
 	errs = append(errs, validateExposures(d)...)
 	errs = append(errs, validateCycles(d, errs)...)
 
@@ -351,6 +364,45 @@ func validateHooks(d *DAG) []string {
 	check(d.OnExit, "on_exit")
 	if d.Trigger != nil {
 		check(d.Trigger.OnDeadline, "trigger.on_deadline")
+	}
+	return errs
+}
+
+// ValidateChannels checks that every notify: channel name in the DAG is
+// present in the provided channel set. Callers that already parsed and
+// validated a DAG via ParseFile/Validate can run this as a follow-up once
+// the config is loaded.
+func ValidateChannels(d *DAG, channels map[string]bool) error {
+	errs := validateNotifyChannels(d, channels)
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("validation errors:\n  - %s", strings.Join(errs, "\n  - "))
+}
+
+// validateNotifyChannels rejects hooks whose notify: value doesn't name a
+// channel in the loaded config. Only called when the channel set is
+// available; Validate skips this check.
+func validateNotifyChannels(d *DAG, channels map[string]bool) []string {
+	var errs []string
+	check := func(h *Hook, where string) {
+		if h == nil || h.Notify == "" {
+			return
+		}
+		if !channels[h.Notify] {
+			errs = append(errs, fmt.Sprintf("%s: notify channel %q is not defined in config.yaml notifications", where, h.Notify))
+		}
+	}
+	check(d.OnSuccess, "on_success")
+	check(d.OnFailure, "on_failure")
+	check(d.OnExit, "on_exit")
+	if d.Trigger != nil {
+		check(d.Trigger.OnDeadline, "trigger.on_deadline")
+	}
+	for _, s := range d.Steps {
+		if s.Approve != nil {
+			check(s.Approve.Notify, fmt.Sprintf("step %q approve.notify", s.ID))
+		}
 	}
 	return errs
 }
