@@ -102,6 +102,7 @@ func New(cfg Config) (*Engine, error) {
 // Steps within a tier run in parallel. If any step fails (after retries),
 // remaining tiers are skipped and the run is marked as failed.
 func (e *Engine) Run(ctx context.Context) error {
+	defer func() { _ = e.events.Close() }()
 	// Reject notify: references to channels missing from the loaded config
 	// before we do anything else. Falls through for DAGs without notify hooks.
 	channels := make(map[string]bool, len(e.notifications))

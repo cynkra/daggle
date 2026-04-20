@@ -41,6 +41,7 @@ func annotateRun(_ *cobra.Command, args []string) error {
 	}
 
 	w := state.NewEventWriter(run.Dir)
+	defer func() { _ = w.Close() }()
 	if err := w.Write(state.Event{
 		Type:   state.EventRunAnnotated,
 		Note:   note,
