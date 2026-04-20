@@ -790,13 +790,24 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 			old.cancel()
 			doneCh := old.done
 			s.mu.Unlock()
-			// Wait for the old run to finish cleanup
+			// Wait for the old run to finish cleanup. Use a Timer so the goroutine
+			// scheduled by time.After doesn't leak when doneCh fires first.
+			timer := time.NewTimer(5 * time.Second)
 			select {
 			case <-doneCh:
-			case <-time.After(5 * time.Second):
+				timer.Stop()
+			case <-timer.C:
 				s.logger.Warn("timeout waiting for cancelled run", "dag", d.Name)
 			}
 			s.mu.Lock()
+			// While we were waiting without the lock, another trigger may have
+			// won the race to register a new run for this DAG. Bail so we don't
+			// clobber its cancel/done channels and leak runningCount.
+			if _, stillRunning := s.running[d.Name]; stillRunning {
+				s.mu.Unlock()
+				s.logger.Info("another trigger registered during cancel wait; skipping", "dag", d.Name, "source", source)
+				return
+			}
 		} else {
 			s.mu.Unlock()
 			s.logger.Info("skipping run, DAG already active", "dag", d.Name, "source", source)
