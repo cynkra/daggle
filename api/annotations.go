@@ -76,6 +76,7 @@ func (s *Server) handleAddAnnotation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ew := state.NewEventWriter(run.Dir)
+	defer func() { _ = ew.Close() }()
 	if err := ew.Write(state.Event{
 		Type:   state.EventRunAnnotated,
 		Note:   req.Note,

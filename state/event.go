@@ -71,11 +71,15 @@ type Event struct {
 	*CacheInfo    `json:",omitempty"`
 }
 
-// EventWriter provides thread-safe JSONL event writing.
+// EventWriter provides thread-safe JSONL event writing. The underlying
+// file handle is opened on first Write and kept open until Close —
+// callers that write more than once should `defer ew.Close()` after
+// construction to release the handle promptly.
 type EventWriter struct {
 	mu     sync.Mutex
 	path   string
 	runDir string
+	f      *os.File
 }
 
 // NewEventWriter creates an EventWriter for the given run directory.
@@ -103,19 +107,34 @@ func (w *EventWriter) Write(e Event) error {
 		return fmt.Errorf("marshal event: %w", err)
 	}
 
-	f, err := os.OpenFile(w.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return fmt.Errorf("open events file: %w", err)
+	if w.f == nil {
+		f, err := os.OpenFile(w.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			return fmt.Errorf("open events file: %w", err)
+		}
+		w.f = f
 	}
-	defer func() { _ = f.Close() }()
 
-	if _, err := fmt.Fprintf(f, "%s\n", data); err != nil {
+	if _, err := fmt.Fprintf(w.f, "%s\n", data); err != nil {
 		return err
 	}
 	// Invalidate the read cache so callers in this process pick up the new
 	// event immediately. Cross-process callers rely on mtime/size change.
 	InvalidateEventCache(w.runDir)
 	return nil
+}
+
+// Close releases the underlying events.jsonl handle. Safe to call
+// multiple times; safe to call on a writer that never wrote.
+func (w *EventWriter) Close() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.f == nil {
+		return nil
+	}
+	err := w.f.Close()
+	w.f = nil
+	return err
 }
 
 // ReadEvents reads all events from a run directory's events.jsonl file.

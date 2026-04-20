@@ -23,6 +23,7 @@ func (e *ApproveExecutor) Run(ctx context.Context, step dag.Step, logDir string,
 
 	// Write waiting event
 	writer := state.NewEventWriter(logDir)
+	defer func() { _ = writer.Close() }()
 	_ = writer.Write(state.Event{
 		Type:    state.EventStepWaitingApproval,
 		StepID:  step.ID,
@@ -111,6 +112,7 @@ func runApprovalNotify(ctx context.Context, hook *dag.Hook, logDir, stepID strin
 // WriteApprovalEvent writes an approval or rejection event to a run's events.jsonl.
 func WriteApprovalEvent(runDir, stepID string, approved bool) error {
 	writer := state.NewEventWriter(runDir)
+	defer func() { _ = writer.Close() }()
 	eventType := state.EventStepApproved
 	if !approved {
 		eventType = state.EventStepRejected
