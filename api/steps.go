@@ -90,7 +90,7 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request, approved
 
 	waiting := false
 	for _, e := range events {
-		if e.StepID == stepID && e.Type == state.EventStepWaitApproval {
+		if e.StepID == stepID && e.Type == state.EventStepWaitingApproval {
 			waiting = true
 		}
 		if e.StepID == stepID && (e.Type == state.EventStepApproved || e.Type == state.EventStepRejected) {

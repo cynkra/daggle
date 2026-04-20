@@ -24,7 +24,7 @@ func (e *ApproveExecutor) Run(ctx context.Context, step dag.Step, logDir string,
 	// Write waiting event
 	writer := state.NewEventWriter(logDir)
 	_ = writer.Write(state.Event{
-		Type:    state.EventStepWaitApproval,
+		Type:    state.EventStepWaitingApproval,
 		StepID:  step.ID,
 		Message: a.Message,
 	})

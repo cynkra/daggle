@@ -57,7 +57,7 @@ func BuildStepSummaries(events []Event) []StepState {
 			ss.ErrorDetail = e.ErrorDetail
 		case EventStepRetrying:
 			ss.Status = "retrying"
-		case EventStepWaitApproval:
+		case EventStepWaitingApproval:
 			ss.Status = "waiting"
 			ss.Message = e.Message
 		case EventStepApproved:
