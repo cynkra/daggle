@@ -26,6 +26,21 @@ import (
 // ExecutorFactory creates an executor for a given step.
 type ExecutorFactory func(dag.Step) executor.Executor
 
+// Config bundles everything needed to construct an Engine. The first three
+// fields are required; the rest are optional but production callers should
+// set them — in particular Redactor, or secret values leak into events.
+type Config struct {
+	DAG         *dag.DAG
+	Run         *state.RunInfo
+	ExecFactory ExecutorFactory
+
+	Meta          *state.RunMeta
+	Redactor      *dag.Redactor
+	CacheStore    *cache.Store
+	RenvLibPath   string
+	Notifications map[string]state.NotificationChannel
+}
+
 // Engine orchestrates the execution of a DAG.
 type Engine struct {
 	dag     *dag.DAG
@@ -56,41 +71,31 @@ type Engine struct {
 	outputs map[string]string
 }
 
-// New creates a new Engine.
-func New(d *dag.DAG, runInfo *state.RunInfo, execFn ExecutorFactory) *Engine {
-	return &Engine{
-		dag:     d,
-		execFn:  execFn,
-		events:  state.NewEventWriter(runInfo.Dir),
-		runInfo: runInfo,
-		logger:  slog.Default(),
-		outputs: make(map[string]string),
+// New creates an Engine from the given Config. Returns an error if any of
+// the three required fields (DAG, Run, ExecFactory) is nil.
+func New(cfg Config) (*Engine, error) {
+	if cfg.DAG == nil {
+		return nil, errors.New("engine: Config.DAG is required")
 	}
-}
-
-// SetMeta sets the run metadata to be written at start and updated at completion.
-func (e *Engine) SetMeta(meta *state.RunMeta) {
-	e.meta = meta
-}
-
-// SetRedactor sets the secret redactor for sanitizing event messages.
-func (e *Engine) SetRedactor(r *dag.Redactor) {
-	e.redactor = r
-}
-
-// SetCacheStore configures the step-level cache store.
-func (e *Engine) SetCacheStore(s *cache.Store) {
-	e.cacheStore = s
-}
-
-// SetRenvLibPath configures the renv library path to inject as R_LIBS_USER.
-func (e *Engine) SetRenvLibPath(p string) {
-	e.renvLibPath = p
-}
-
-// SetNotifications registers named notification channels for notify: hooks.
-func (e *Engine) SetNotifications(channels map[string]state.NotificationChannel) {
-	e.notifications = channels
+	if cfg.Run == nil {
+		return nil, errors.New("engine: Config.Run is required")
+	}
+	if cfg.ExecFactory == nil {
+		return nil, errors.New("engine: Config.ExecFactory is required")
+	}
+	return &Engine{
+		dag:           cfg.DAG,
+		execFn:        cfg.ExecFactory,
+		events:        state.NewEventWriter(cfg.Run.Dir),
+		runInfo:       cfg.Run,
+		meta:          cfg.Meta,
+		redactor:      cfg.Redactor,
+		cacheStore:    cfg.CacheStore,
+		renvLibPath:   cfg.RenvLibPath,
+		notifications: cfg.Notifications,
+		logger:        slog.Default(),
+		outputs:       make(map[string]string),
+	}, nil
 }
 
 // Run executes the DAG by walking tiers in topological order.

@@ -16,6 +16,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/robfig/cron/v3"
 
+	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/internal/engine"
 	"github.com/cynkra/daggle/internal/executor"
@@ -838,15 +839,48 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 			return
 		}
 
+		// Resolve secret references so ${env:}/${file:}/${vault:} don't reach
+		// step processes as literals, and so the redactor has the actual
+		// values to mask.
+		if err := dag.ResolveEnv(expanded.Env); err != nil {
+			s.logger.Error("resolve env failed", "dag", d.Name, "error", err)
+			return
+		}
+		for i := range expanded.Steps {
+			if err := dag.ResolveEnv(expanded.Steps[i].Env); err != nil {
+				s.logger.Error("resolve step env failed", "dag", d.Name, "step", expanded.Steps[i].ID, "error", err)
+				return
+			}
+		}
+
 		run, err := state.CreateRun(expanded.Name)
 		if err != nil {
 			s.logger.Error("create run failed", "dag", d.Name, "error", err)
 			return
 		}
 
-		eng := engine.New(expanded, run, executor.New)
+		envMaps := []dag.EnvMap{expanded.Env}
+		for _, st := range expanded.Steps {
+			if len(st.Env) > 0 {
+				envMaps = append(envMaps, st.Env)
+			}
+		}
+
+		cacheDir := filepath.Join(state.DataDir(), "cache")
+		engCfg := engine.Config{
+			DAG:         expanded,
+			Run:         run,
+			ExecFactory: executor.New,
+			Redactor:    dag.NewRedactor(envMaps...),
+			CacheStore:  cache.NewStore(cacheDir),
+		}
 		if cfg, err := state.LoadConfig(); err == nil && cfg.Notifications != nil {
-			eng.SetNotifications(cfg.Notifications)
+			engCfg.Notifications = cfg.Notifications
+		}
+		eng, err := engine.New(engCfg)
+		if err != nil {
+			s.logger.Error("engine init failed", "dag", d.Name, "error", err)
+			return
 		}
 
 		status := "completed"

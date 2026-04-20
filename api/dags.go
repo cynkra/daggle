@@ -240,14 +240,20 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithCancel(s.ctx)
 		defer cancel()
 
-		eng := engine.New(expanded, run, executor.New)
-		eng.SetMeta(meta)
-
-		redactor := dag.NewRedactor(expanded.Env)
-		eng.SetRedactor(redactor)
-
+		engCfg := engine.Config{
+			DAG:         expanded,
+			Run:         run,
+			ExecFactory: executor.New,
+			Meta:        meta,
+			Redactor:    dag.NewRedactor(expanded.Env),
+		}
 		if cfg, err := state.LoadConfig(); err == nil && cfg.Notifications != nil {
-			eng.SetNotifications(cfg.Notifications)
+			engCfg.Notifications = cfg.Notifications
+		}
+		eng, err := engine.New(engCfg)
+		if err != nil {
+			s.logger.Error("API-triggered run init failed", "dag", expanded.Name, "run_id", run.ID, "error", err)
+			return
 		}
 
 		_ = eng.Run(ctx)
