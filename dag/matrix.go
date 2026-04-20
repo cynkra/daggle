@@ -12,7 +12,7 @@ import (
 func ExpandMatrix(steps []Step) []Step {
 	// First pass: expand matrix steps and collect ID mappings
 	replacements := make(map[string][]string) // original ID → expanded IDs
-	var expanded []Step
+	expanded := make([]Step, 0, len(steps))
 
 	for _, s := range steps {
 		if len(s.Matrix) == 0 {
@@ -22,13 +22,13 @@ func ExpandMatrix(steps []Step) []Step {
 
 		combos := matrixCombinations(s.Matrix)
 		originalID := s.ID
-		var instanceIDs []string
+		instanceIDs := make([]string, 0, len(combos))
 
 		for _, combo := range combos {
 			instance := s
 			instance.Matrix = nil
 
-			var parts []string
+			parts := make([]string, 0, len(combo))
 			for k, v := range combo {
 				parts = append(parts, fmt.Sprintf("%s_%s", k, v))
 			}
@@ -36,32 +36,25 @@ func ExpandMatrix(steps []Step) []Step {
 			instanceIDs = append(instanceIDs, instance.ID)
 
 			if instance.Env == nil {
-				instance.Env = make(EnvMap)
+				instance.Env = make(EnvMap, len(combo))
 			}
 			for k, v := range combo {
 				instance.Env["DAGGLE_MATRIX_"+strings.ToUpper(k)] = EnvVar{Value: v}
 			}
 
-			// Make a copy of args to avoid sharing the slice
+			// Build a single Replacer for this combo that handles both the
+			// "{{ .Matrix.X }}" and "{{.Matrix.X}}" forms in one pass.
+			rep := matrixReplacer(combo)
+
 			if len(s.Args) > 0 {
 				instance.Args = make([]string, len(s.Args))
-				copy(instance.Args, s.Args)
-			}
-			for i, arg := range instance.Args {
-				for k, v := range combo {
-					arg = strings.ReplaceAll(arg, "{{ .Matrix."+k+" }}", v)
-					arg = strings.ReplaceAll(arg, "{{.Matrix."+k+"}}", v)
+				for i, arg := range s.Args {
+					instance.Args[i] = rep.Replace(arg)
 				}
-				instance.Args[i] = arg
 			}
 
-			// Interpolate OutputDir and OutputName with matrix values
-			for k, v := range combo {
-				instance.OutputDir = strings.ReplaceAll(instance.OutputDir, "{{ .Matrix."+k+" }}", v)
-				instance.OutputDir = strings.ReplaceAll(instance.OutputDir, "{{.Matrix."+k+"}}", v)
-				instance.OutputName = strings.ReplaceAll(instance.OutputName, "{{ .Matrix."+k+" }}", v)
-				instance.OutputName = strings.ReplaceAll(instance.OutputName, "{{.Matrix."+k+"}}", v)
-			}
+			instance.OutputDir = rep.Replace(instance.OutputDir)
+			instance.OutputName = rep.Replace(instance.OutputName)
 
 			expanded = append(expanded, instance)
 		}
@@ -69,10 +62,14 @@ func ExpandMatrix(steps []Step) []Step {
 		replacements[originalID] = instanceIDs
 	}
 
-	// Second pass: update dependencies to reference expanded instance IDs
+	// Second pass: update dependencies to reference expanded instance IDs.
 	for i := range expanded {
-		var newDeps []string
-		for _, dep := range expanded[i].Depends {
+		deps := expanded[i].Depends
+		if len(deps) == 0 {
+			continue
+		}
+		newDeps := make([]string, 0, len(deps))
+		for _, dep := range deps {
 			if ids, ok := replacements[dep]; ok {
 				newDeps = append(newDeps, ids...)
 			} else {
@@ -85,24 +82,43 @@ func ExpandMatrix(steps []Step) []Step {
 	return expanded
 }
 
+// matrixReplacer builds a strings.Replacer that substitutes every
+// "{{ .Matrix.KEY }}" and "{{.Matrix.KEY}}" token with the corresponding
+// value from combo, in a single linear scan per Replace call.
+func matrixReplacer(combo map[string]string) *strings.Replacer {
+	pairs := make([]string, 0, len(combo)*4)
+	for k, v := range combo {
+		pairs = append(pairs,
+			"{{ .Matrix."+k+" }}", v,
+			"{{.Matrix."+k+"}}", v,
+		)
+	}
+	return strings.NewReplacer(pairs...)
+}
+
 // matrixCombinations generates all combinations from a matrix definition.
 // e.g. {"a": ["1","2"], "b": ["x","y"]} → [{"a":"1","b":"x"}, {"a":"1","b":"y"}, ...]
 func matrixCombinations(matrix map[string][]string) []map[string]string {
 	// Get sorted keys for deterministic output
-	var keys []string
+	keys := make([]string, 0, len(matrix))
 	for k := range matrix {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
-	// Generate combinations via cartesian product
-	combos := []map[string]string{{}}
+	// Preallocate the result slice to the exact cartesian-product size.
+	total := 1
+	for _, key := range keys {
+		total *= len(matrix[key])
+	}
+	combos := make([]map[string]string, 0, total)
+	combos = append(combos, map[string]string{})
 	for _, key := range keys {
 		vals := matrix[key]
-		var newCombos []map[string]string
+		newCombos := make([]map[string]string, 0, len(combos)*len(vals))
 		for _, combo := range combos {
 			for _, val := range vals {
-				newCombo := make(map[string]string, len(combo)+1)
+				newCombo := make(map[string]string, len(keys))
 				for k, v := range combo {
 					newCombo[k] = v
 				}
