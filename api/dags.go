@@ -23,7 +23,7 @@ func (s *Server) handleListDAGs(w http.ResponseWriter, r *http.Request) {
 	var dags []DAGSummary
 
 	_ = state.WalkDAGFiles(s.sources(), func(src state.DAGSource, path string) error {
-		d, err := dag.ParseFile(path)
+		d, err := dag.ParseFileCached(path)
 		if err != nil {
 			return nil
 		}
@@ -69,7 +69,7 @@ func (s *Server) handleGetDAG(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d, err := dag.ParseFile(path)
+	d, err := dag.ParseFileCached(path)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "parse DAG: "+err.Error())
 		return
@@ -133,7 +133,7 @@ func (s *Server) handleGetImpact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target, err := dag.ParseFile(path)
+	target, err := dag.ParseFileCached(path)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "parse DAG: "+err.Error())
 		return
@@ -147,7 +147,7 @@ func (s *Server) handleGetImpact(w http.ResponseWriter, r *http.Request) {
 
 	// Scan every DAG in every source for trigger.on_dag.name == target.
 	_ = state.WalkDAGFiles(s.sources(), func(src state.DAGSource, path string) error {
-		d, err := dag.ParseFile(path)
+		d, err := dag.ParseFileCached(path)
 		if err != nil {
 			return nil
 		}
