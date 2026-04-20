@@ -65,7 +65,7 @@ func handleApproval(dagName, runID string, approved bool) error {
 
 	var waitingStepID string
 	for _, e := range events {
-		if e.Type == state.EventStepWaitApproval {
+		if e.Type == state.EventStepWaitingApproval {
 			waitingStepID = e.StepID
 		}
 		if e.Type == state.EventStepApproved || e.Type == state.EventStepRejected {

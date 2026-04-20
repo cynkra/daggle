@@ -163,7 +163,7 @@ func RunStatus(runDir string) string {
 	// Check for waiting approval state
 	hasWaiting := false
 	for _, e := range events {
-		if e.Type == EventStepWaitApproval {
+		if e.Type == EventStepWaitingApproval {
 			hasWaiting = true
 		}
 		if e.Type == EventStepApproved || e.Type == EventStepRejected {

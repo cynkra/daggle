@@ -147,7 +147,7 @@ func (m *model) applyEvent(e state.Event) {
 	case state.EventStepCached:
 		ss.Status = "cached"
 		ss.Cached = true
-	case state.EventStepWaitApproval:
+	case state.EventStepWaitingApproval:
 		ss.Status = "waiting"
 	case state.EventStepApproved:
 		ss.Status = "approved"
