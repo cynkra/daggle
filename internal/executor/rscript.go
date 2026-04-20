@@ -12,6 +12,21 @@ import (
 	"github.com/cynkra/daggle/state"
 )
 
+// runRScriptSource executes an R source file via Rscript. When step.ErrorOn
+// is set to something other than "error" (e.g. "warning"), the file is
+// source()'d from a wrapper that escalates warnings per ErrorOn semantics;
+// otherwise it's executed directly. Shared by ScriptExecutor and
+// ValidateExecutor, which differ only in which step field holds the path.
+func runRScriptSource(ctx context.Context, sourcePath string, step dag.Step, logDir, workdir string, env []string) Result {
+	if step.ErrorOn != "" && step.ErrorOn != "error" {
+		rCode := wrapErrorOn(fmt.Sprintf("source(%q)", sourcePath), step.ErrorOn)
+		return runRScript(ctx, rCode, step, logDir, workdir, env, "wrapper")
+	}
+	args := append([]string{"--no-save", "--no-restore", sourcePath}, step.Args...)
+	cmd := exec.CommandContext(ctx, state.ToolPath("rscript"), args...)
+	return runProcess(ctx, cmd, step.ID, logDir, workdir, env)
+}
+
 // runRScript writes R code to a temp file and executes it via Rscript.
 // The suffix is used to name the temp file (e.g. "inline", "rpkg", "rmd").
 //
