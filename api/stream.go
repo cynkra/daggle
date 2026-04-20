@@ -3,6 +3,7 @@ package api
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,6 +21,11 @@ var streamPollInterval = 250 * time.Millisecond
 // event if the run never emits a terminal event. Prevents hung connections
 // when events.jsonl stops growing mid-run (e.g. the process crashed).
 var streamIdleTimeout = 30 * time.Minute
+
+// streamMaxLineBytes is the largest single event line the SSE stream will
+// emit. Events larger than this are skipped with a "truncated" marker so
+// the stream can recover. 8MB covers any realistic event payload.
+const streamMaxLineBytes = 8 * 1024 * 1024
 
 // handleStream tails events.jsonl for a run and pushes each new event as a
 // Server-Sent Event. The stream ends when run_completed or run_failed is
@@ -122,7 +128,7 @@ func streamNewLines(path string, offset int64, write func(event, data string) bo
 	}
 
 	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	scanner.Buffer(make([]byte, 0, 64*1024), streamMaxLineBytes)
 	// Track offset per consumed line rather than reading f.Seek(0, 1) —
 	// bufio.Scanner reads ahead in chunks, so the file descriptor's
 	// position can overshoot past lines not yet emitted. Assumes LF line
@@ -132,7 +138,7 @@ func streamNewLines(path string, offset int64, write func(event, data string) bo
 	for scanner.Scan() {
 		line := scanner.Text()
 		var e state.Event
-		if err := json.Unmarshal([]byte(line), &e); err == nil {
+		if err := json.Unmarshal(scanner.Bytes(), &e); err == nil {
 			if e.Type == state.EventRunCompleted || e.Type == state.EventRunFailed {
 				terminal = true
 			}
@@ -146,8 +152,46 @@ func streamNewLines(path string, offset int64, write func(event, data string) bo
 		}
 	}
 	if err := scanner.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			// One line in events.jsonl is larger than streamMaxLineBytes.
+			// Skip past it so the stream can continue, and emit a marker
+			// so clients know an event was dropped.
+			next, skipErr := skipToNextLine(path, consumed)
+			if skipErr != nil {
+				return offset, false, skipErr
+			}
+			skippedBytes := next - consumed - 1 // minus the trailing '\n'
+			write("truncated", fmt.Sprintf(`{"bytes":%d}`, skippedBytes))
+			return next, false, nil
+		}
 		return offset, false, err
 	}
 
 	return consumed, terminal, nil
+}
+
+// skipToNextLine returns the byte offset immediately after the next '\n'
+// that follows `start`. If EOF is reached without a newline, the final
+// file size is returned.
+func skipToNextLine(path string, start int64) (int64, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = f.Close() }()
+	if _, err := f.Seek(start, 0); err != nil {
+		return 0, err
+	}
+	r := bufio.NewReader(f)
+	pos := start
+	for {
+		b, err := r.ReadByte()
+		if err != nil {
+			return pos, nil // treat EOF as end-of-line
+		}
+		pos++
+		if b == '\n' {
+			return pos, nil
+		}
+	}
 }
