@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -296,6 +297,66 @@ steps:
 	}
 	sched.mu.Unlock()
 	time.Sleep(200 * time.Millisecond)
+}
+
+// TestScheduler_CancelOverlap_Concurrent verifies that many overlap:cancel
+// triggers firing in parallel leave the scheduler in a consistent state —
+// no orphaned cancel funcs, no leaked runningCount. Run with -race.
+func TestScheduler_CancelOverlap_Concurrent(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0o755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	writeDAG(t, dagDir, "cancel.yaml", `
+name: cancel-dag
+trigger:
+  schedule: "@every 1s"
+  overlap: cancel
+steps:
+  - id: slow
+    command: sleep 30
+`)
+
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
+	_ = sched.syncDAGs(context.Background())
+	dagPath := filepath.Join(dagDir, "cancel.yaml")
+
+	// Fan out many overlapping triggers.
+	const N = 20
+	var wg sync.WaitGroup
+	for i := 0; i < N; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sched.triggerRun(dagPath, "test")
+		}()
+	}
+	wg.Wait()
+
+	// Cancel whatever survived and let the goroutines drain.
+	sched.mu.Lock()
+	for _, entry := range sched.running {
+		entry.cancel()
+	}
+	sched.mu.Unlock()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		sched.mu.Lock()
+		empty := len(sched.running) == 0 && sched.runningCount == 0
+		sched.mu.Unlock()
+		if empty {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	if len(sched.running) != 0 || sched.runningCount != 0 {
+		t.Fatalf("scheduler did not drain: running=%d map_size=%d", sched.runningCount, len(sched.running))
+	}
 }
 
 func TestScheduler_MaxConcurrent(t *testing.T) {
