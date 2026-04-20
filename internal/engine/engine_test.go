@@ -35,6 +35,16 @@ func setupRun(t *testing.T) *state.RunInfo {
 	return run
 }
 
+// newTestEngine builds an Engine with the minimum required Config for tests.
+func newTestEngine(t *testing.T, d *dag.DAG, run *state.RunInfo, factory ExecutorFactory) *Engine {
+	t.Helper()
+	eng, err := New(Config{DAG: d, Run: run, ExecFactory: factory})
+	if err != nil {
+		t.Fatalf("engine.New: %v", err)
+	}
+	return eng
+}
+
 func TestEngine_LinearDAG(t *testing.T) {
 	run := setupRun(t)
 	d := &dag.DAG{
@@ -52,7 +62,7 @@ func TestEngine_LinearDAG(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -103,7 +113,7 @@ func TestEngine_ParallelTier(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -134,7 +144,7 @@ func TestEngine_FailureStopsTiers(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -173,7 +183,7 @@ func TestEngine_Retry(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v (should have succeeded on attempt 3)", err)
@@ -203,7 +213,7 @@ func TestEngine_EnvPropagation(t *testing.T) {
 		return &envCapture{inner: mock, captured: &receivedEnv}
 	}
 
-	eng := New(d, run, wrappedFactory)
+	eng := newTestEngine(t, d, run, wrappedFactory)
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -252,7 +262,7 @@ func TestEngine_OutputPassing(t *testing.T) {
 		return mock
 	}
 
-	eng := New(d, run, factory)
+	eng := newTestEngine(t, d, run, factory)
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -294,7 +304,7 @@ func TestEngine_Workdir(t *testing.T) {
 		captured: &capturedWorkdir,
 	}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return wrappedMock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return wrappedMock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -332,8 +342,10 @@ func TestEngine_RenvEnvInjection(t *testing.T) {
 		return &envCapture{inner: mock, captured: &receivedEnv}
 	}
 
-	eng := New(d, run, factory)
-	eng.SetRenvLibPath("/project/renv/library/R-4.4/aarch64-apple-darwin20")
+	eng, err := New(Config{DAG: d, Run: run, ExecFactory: factory, RenvLibPath: "/project/renv/library/R-4.4/aarch64-apple-darwin20"})
+	if err != nil {
+		t.Fatalf("engine.New: %v", err)
+	}
 	if err := eng.Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -362,8 +374,10 @@ func TestEngine_RenvEnvOptOut(t *testing.T) {
 		return &envCapture{inner: mock, captured: &receivedEnv}
 	}
 
-	eng := New(d, run, factory)
-	eng.SetRenvLibPath("/project/renv/library/R-4.4/aarch64-apple-darwin20")
+	eng, err := New(Config{DAG: d, Run: run, ExecFactory: factory, RenvLibPath: "/project/renv/library/R-4.4/aarch64-apple-darwin20"})
+	if err != nil {
+		t.Fatalf("engine.New: %v", err)
+	}
 	if err := eng.Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -391,7 +405,7 @@ func TestEngine_NoRenvByDefault(t *testing.T) {
 		return &envCapture{inner: mock, captured: &receivedEnv}
 	}
 
-	eng := New(d, run, factory)
+	eng := newTestEngine(t, d, run, factory)
 	if err := eng.Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -429,7 +443,7 @@ func TestEngine_Hooks(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -459,7 +473,7 @@ func TestEngine_OnFailureHook(t *testing.T) {
 		return executor.Result{ExitCode: 1, Err: fmt.Errorf("step failed")}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	_ = eng.Run(context.Background())
 
 	time.Sleep(100 * time.Millisecond)
@@ -482,13 +496,20 @@ func TestEngine_WriteMeta(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
-	eng.SetMeta(&state.RunMeta{
-		RunID:    run.ID,
-		DAGName:  "test",
-		DAGHash:  "abc123",
-		RVersion: "4.4.1",
+	eng, err := New(Config{
+		DAG:         d,
+		Run:         run,
+		ExecFactory: func(_ dag.Step) executor.Executor { return mock },
+		Meta: &state.RunMeta{
+			RunID:    run.ID,
+			DAGName:  "test",
+			DAGHash:  "abc123",
+			RVersion: "4.4.1",
+		},
 	})
+	if err != nil {
+		t.Fatalf("engine.New: %v", err)
+	}
 
 	if err := eng.Run(context.Background()); err != nil {
 		t.Fatalf("Run: %v", err)
@@ -521,7 +542,7 @@ func TestEngine_WhenConditionSkip(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -548,7 +569,7 @@ func TestEngine_WhenConditionRun(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -572,7 +593,7 @@ func TestEngine_PreconditionFail(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err == nil {
 		t.Fatal("expected error from failed precondition")
@@ -599,7 +620,7 @@ func TestEngine_CancelBetweenTiers(t *testing.T) {
 		return executor.Result{ExitCode: 0}
 	}}
 
-	eng := New(d, run, func(_ dag.Step) executor.Executor { return mock })
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
 	err := eng.Run(context.Background())
 	if err == nil {
 		t.Fatal("expected cancel error, got nil")

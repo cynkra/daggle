@@ -135,20 +135,23 @@ func runDAG(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// Execute
-	eng := engine.New(expanded, run, executor.New)
-	eng.SetMeta(meta)
-	eng.SetRedactor(redactor)
-	if renvInfo.Detected && renvInfo.LibraryReady {
-		eng.SetRenvLibPath(renvInfo.LibraryPath)
-	}
-	if globalCfg.Notifications != nil {
-		eng.SetNotifications(globalCfg.Notifications)
-	}
-
-	// Initialize step-level cache
 	cacheDir := filepath.Join(state.DataDir(), "cache")
-	eng.SetCacheStore(cache.NewStore(cacheDir))
+	cfg := engine.Config{
+		DAG:           expanded,
+		Run:           run,
+		ExecFactory:   executor.New,
+		Meta:          meta,
+		Redactor:      redactor,
+		CacheStore:    cache.NewStore(cacheDir),
+		Notifications: globalCfg.Notifications,
+	}
+	if renvInfo.Detected && renvInfo.LibraryReady {
+		cfg.RenvLibPath = renvInfo.LibraryPath
+	}
+	eng, err := engine.New(cfg)
+	if err != nil {
+		return fmt.Errorf("engine init: %w", err)
+	}
 
 	if err := eng.Run(ctx); err != nil {
 		fmt.Printf("\nDAG %q failed: %v\n", expanded.Name, err)
