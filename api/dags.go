@@ -256,7 +256,9 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_ = eng.Run(ctx)
+		if err := eng.Run(ctx); err != nil {
+			s.logger.Error("API-triggered run failed", "dag", expanded.Name, "run_id", run.ID, "error", err)
+		}
 	}()
 
 	writeJSON(w, http.StatusCreated, TriggerResponse{
