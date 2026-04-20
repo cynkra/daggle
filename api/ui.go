@@ -139,7 +139,7 @@ func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
 			dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
 			path := filepath.Join(src.Dir, name)
 
-			d, err := dag.ParseFile(path)
+			d, err := dag.ParseFileCached(path)
 			if err != nil {
 				continue
 			}
