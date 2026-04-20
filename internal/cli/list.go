@@ -51,7 +51,8 @@ func listDAGs(_ *cobra.Command, _ []string) error {
 			return nil
 		}
 
-		if !matchesFilters(d) {
+		filters := dag.Filters{Tag: listTagFilter, Team: listTeamFilter, Owner: listOwnerFilter}
+		if !filters.Match(d) {
 			return nil
 		}
 
@@ -79,27 +80,5 @@ func listDAGs(_ *cobra.Command, _ []string) error {
 	}
 
 	return nil
-}
-
-func matchesFilters(d *dag.DAG) bool {
-	if listOwnerFilter != "" && d.Owner != listOwnerFilter {
-		return false
-	}
-	if listTeamFilter != "" && d.Team != listTeamFilter {
-		return false
-	}
-	if listTagFilter != "" {
-		found := false
-		for _, t := range d.Tags {
-			if t == listTagFilter {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
 }
 

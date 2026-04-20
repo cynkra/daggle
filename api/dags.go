@@ -14,9 +14,11 @@ import (
 )
 
 func (s *Server) handleListDAGs(w http.ResponseWriter, r *http.Request) {
-	tagFilter := r.URL.Query().Get("tag")
-	teamFilter := r.URL.Query().Get("team")
-	ownerFilter := r.URL.Query().Get("owner")
+	filters := dag.Filters{
+		Tag:   r.URL.Query().Get("tag"),
+		Team:  r.URL.Query().Get("team"),
+		Owner: r.URL.Query().Get("owner"),
+	}
 
 	var dags []DAGSummary
 
@@ -26,7 +28,7 @@ func (s *Server) handleListDAGs(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 
-		if !matchesDAGFilters(d, tagFilter, teamFilter, ownerFilter) {
+		if !filters.Match(d) {
 			return nil
 		}
 
@@ -57,30 +59,6 @@ func (s *Server) handleListDAGs(w http.ResponseWriter, r *http.Request) {
 		dags = []DAGSummary{}
 	}
 	writeJSON(w, http.StatusOK, dags)
-}
-
-// matchesDAGFilters returns true if the DAG matches all non-empty filters.
-// An empty filter string means "no filter on this field".
-func matchesDAGFilters(d *dag.DAG, tag, team, owner string) bool {
-	if owner != "" && d.Owner != owner {
-		return false
-	}
-	if team != "" && d.Team != team {
-		return false
-	}
-	if tag != "" {
-		found := false
-		for _, t := range d.Tags {
-			if t == tag {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
 }
 
 func (s *Server) handleGetDAG(w http.ResponseWriter, r *http.Request) {
