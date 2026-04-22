@@ -512,6 +512,29 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/runs/{run_id}/verify:
+    post:
+      summary: Verify a previously-created run archive against its manifest
+      description: |
+        Recomputes SHA-256 hashes of every file in the server-stored archive and
+        compares them to the embedded manifest. Returns the Report (ok,
+        files, mismatched, missing, extra). The archive must have been created
+        via POST to /archive first; otherwise returns 404.
+      operationId: verifyArchive
+      tags: [archive]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Verification report. `ok = true` iff every file matched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/projects:
     get:
       summary: List registered projects
@@ -1202,3 +1225,29 @@ components:
           type: string
           format: date-time
           description: Archive file mtime (RFC3339 UTC).
+
+    VerifyResponse:
+      type: object
+      required: [ok, files, mismatched, missing, extra]
+      properties:
+        ok:
+          type: boolean
+          description: True iff every file matched the manifest (no mismatches, missing, or extras).
+        files:
+          type: integer
+          description: Number of files present in the archive that were also in the manifest.
+        mismatched:
+          type: array
+          items:
+            type: string
+          description: Paths whose recomputed hash did not match the manifest.
+        missing:
+          type: array
+          items:
+            type: string
+          description: Paths listed in the manifest but absent from the archive.
+        extra:
+          type: array
+          items:
+            type: string
+          description: Paths present in the archive but not listed in the manifest.

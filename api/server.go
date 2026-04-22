@@ -140,6 +140,7 @@ func (s *Server) registerRoutes() {
 	// Archive
 	s.mux.HandleFunc("POST /api/v1/dags/{name}/runs/{run_id}/archive", s.handleCreateArchive)
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}/archive", s.handleDownloadArchive)
+	s.mux.HandleFunc("POST /api/v1/dags/{name}/runs/{run_id}/verify", s.handleVerifyArchive)
 
 	// Projects
 	s.mux.HandleFunc("GET /api/v1/projects", s.handleListProjects)
