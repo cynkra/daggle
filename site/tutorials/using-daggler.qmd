@@ -19,10 +19,10 @@ cat("::daggle-output name=row_count::", nrow(data), "\n")
 **After:**
 
 ```r
-daggleR::output("row_count", nrow(data))
+daggleR::daggle_output("row_count", nrow(data))
 ```
 
-`output()` validates the key format, coerces the value to character, and prints the marker. It returns the value invisibly.
+`daggle_output()` validates the key format, coerces the value to character, and prints the marker. It returns the value invisibly.
 
 ### Reading upstream outputs
 
@@ -35,10 +35,10 @@ n <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
 **After:**
 
 ```r
-n <- daggleR::get_output("extract", "row_count")
+n <- daggleR::daggle_get_output("extract", "row_count")
 ```
 
-`get_output()` handles the uppercasing and hyphen-to-underscore conversion. It returns the value as a character string (you still need `as.integer()` or `as.numeric()` if you want a number).
+`daggle_get_output()` handles the uppercasing and hyphen-to-underscore conversion. It returns the value as a character string (you still need `as.integer()` or `as.numeric()` if you want a number).
 
 ### Run metadata
 
@@ -53,9 +53,9 @@ dir <- Sys.getenv("DAGGLE_RUN_DIR")
 **After:**
 
 ```r
-run_id <- daggleR::run_id()
-dag <- daggleR::dag_name()
-dir <- daggleR::run_dir()
+run_id <- daggleR::daggle_run_id()
+dag <- daggleR::daggle_dag_name()
+dir <- daggleR::daggle_run_dir()
 ```
 
 ### Full example
@@ -65,14 +65,14 @@ A step using daggleR:
 ```r
 library(daggleR)
 
-raw_count <- get_output("extract", "n_raw")
+raw_count <- daggle_get_output("extract", "n_raw")
 cat(sprintf("Upstream extracted %s rows\n", raw_count))
 
 data <- readRDS("data/clean.rds")
 cat(sprintf("Clean data has %d rows\n", nrow(data)))
 
-output("n_clean", nrow(data))
-output("pct_retained", round(nrow(data) / as.integer(raw_count) * 100, 1))
+daggle_output("n_clean", nrow(data))
+daggle_output("pct_retained", round(nrow(data) / as.integer(raw_count) * 100, 1))
 ```
 
 In-step helpers are base R only. They require no network access and no running daggle server -- they communicate through environment variables and stdout.
@@ -81,63 +81,63 @@ In-step helpers are base R only. They require no network access and no running d
 
 Rich per-step metadata helpers, added in daggleR 0.2.0. Each emits the corresponding marker protocol documented in the [Output Protocol](../reference/output-protocol.qmd) reference.
 
-#### `summary_md()`
+#### `daggle_summary_md()`
 
 Emit a markdown summary for display in dashboards:
 
 ```{r}
 #| eval: false
-daggleR::summary_md("## Results\n\nProcessed **42** rows successfully.")
+daggleR::daggle_summary_md("## Results\n\nProcessed **42** rows successfully.")
 ```
 
 Equivalent to printing `::daggle-summary format=markdown::...`.
 
-#### `meta_numeric()`
+#### `daggle_meta_numeric()`
 
 Emit a numeric metadata entry:
 
 ```{r}
 #| eval: false
-daggleR::meta_numeric("row_count", 1542)
+daggleR::daggle_meta_numeric("row_count", 1542)
 ```
 
-#### `meta_text()`
+#### `daggle_meta_text()`
 
 Emit a text metadata entry:
 
 ```{r}
 #| eval: false
-daggleR::meta_text("model_desc", "Linear regression with 3 predictors")
+daggleR::daggle_meta_text("model_desc", "Linear regression with 3 predictors")
 ```
 
-#### `meta_table()`
+#### `daggle_meta_table()`
 
 Emit a table metadata entry (serialized as JSON):
 
 ```{r}
 #| eval: false
-daggleR::meta_table("top5", head(results, 5))
+daggleR::daggle_meta_table("top5", head(results, 5))
 ```
 
 The data frame is converted to a JSON array of objects.
 
-#### `meta_image()`
+#### `daggle_meta_image()`
 
 Emit an image metadata entry (file path):
 
 ```{r}
 #| eval: false
-daggleR::meta_image("residuals", "output/residuals.png")
+daggleR::daggle_meta_image("residuals", "output/residuals.png")
 ```
 
-#### `validation()`
+#### `daggle_validation()`
 
 Emit a structured validation result:
 
 ```{r}
 #| eval: false
-daggleR::validation("row_count", "pass", "Expected > 0, got 1542")
-daggleR::validation("schema", "fail", "Column 'date' expected date, got character")
+daggleR::daggle_validation("row_count", "pass", "Expected > 0, got 1542")
+daggleR::daggle_validation("schema", "fail", "Column 'date' expected date, got character")
 ```
 
 The `status` argument must be one of `"pass"`, `"warn"`, or `"fail"`.
@@ -156,7 +156,7 @@ All code below assumes a running daggle server. The blocks are shown with `eval:
 #| eval: false
 library(daggleR)
 
-dags <- list_dags()
+dags <- daggle_list_dags()
 dags
 #>       name steps   schedule last_status            last_run
 #> 1 etl-daily     4 0 3 * * *     success 2025-01-15T03:00:12Z
@@ -167,11 +167,11 @@ dags
 
 ```{r}
 #| eval: false
-result <- trigger("my-pipeline", params = list(date = "2026-04-04"))
+result <- daggle_trigger("my-pipeline", params = list(date = "2026-04-04"))
 run_id <- result$run_id
 
 repeat {
-  run <- get_run("my-pipeline", run_id)
+  run <- daggle_get_run("my-pipeline", run_id)
   if (run$status %in% c("success", "failure", "cancelled")) break
   Sys.sleep(2)
 }
@@ -179,13 +179,13 @@ repeat {
 cat("Final status:", run$status, "\n")
 ```
 
-The `trigger()` function returns immediately with a run ID. Poll with `get_run()` until the status is terminal.
+The `daggle_trigger()` function returns immediately with a run ID. Poll with `daggle_get_run()` until the status is terminal.
 
 ### Get step outputs
 
 ```{r}
 #| eval: false
-outputs <- get_outputs("my-pipeline", run_id)
+outputs <- daggle_get_outputs("my-pipeline", run_id)
 outputs
 #>     step_id          key                     value
 #> 1   extract    row_count                      1432
@@ -197,7 +197,7 @@ Pass `"latest"` as the run ID to get outputs from the most recent run:
 
 ```{r}
 #| eval: false
-outputs <- get_outputs("my-pipeline", "latest")
+outputs <- daggle_get_outputs("my-pipeline", "latest")
 ```
 
 ### Approve a waiting step
@@ -206,21 +206,21 @@ If a pipeline has an `approve:` step, it pauses until someone approves or reject
 
 ```{r}
 #| eval: false
-approve("my-pipeline", run_id = "latest", step_id = "review")
+daggle_approve("my-pipeline", run_id = "latest", step_id = "review")
 ```
 
 To reject instead:
 
 ```{r}
 #| eval: false
-reject("my-pipeline", run_id = "latest", step_id = "review")
+daggle_reject("my-pipeline", run_id = "latest", step_id = "review")
 ```
 
 ### View step logs
 
 ```{r}
 #| eval: false
-log <- get_step_log("my-pipeline", "latest", "extract")
+log <- daggle_get_step_log("my-pipeline", "latest", "extract")
 cat(log$stdout)
 ```
 
@@ -228,7 +228,7 @@ cat(log$stdout)
 
 ```{r}
 #| eval: false
-health()
+daggle_health()
 #> $status
 #> [1] "ok"
 #>
@@ -240,7 +240,7 @@ health()
 
 ```{r}
 #| eval: false
-cleanup("30d")
+daggle_cleanup("30d")
 #> $removed
 #> [1] 42
 #>
@@ -252,74 +252,74 @@ cleanup("30d")
 
 API wrappers added in daggleR 0.2.0. They talk to endpoints from daggle's Phase 7 analyst workflow features.
 
-#### `list_artifacts()`
+#### `daggle_list_artifacts()`
 
 List declared artifacts for a run:
 
 ```{r}
 #| eval: false
-artifacts <- daggleR::list_artifacts("my-pipeline", "latest")
+artifacts <- daggleR::daggle_list_artifacts("my-pipeline", "latest")
 artifacts
 #>   step_id   name              path   hash      size format
 #> 1   train  model output/model.rds  e3b0c4   204800    rds
 ```
 
-#### `plan()`
+#### `daggle_plan()`
 
 Preview the execution plan with cache status before triggering:
 
 ```{r}
 #| eval: false
-daggleR::plan("my-pipeline")
+daggleR::daggle_plan("my-pipeline")
 #>      step_id   status                      reason
 #> 1      fetch outdated          input file changed
 #> 2  transform   cached inputs unchanged since last run
 #> 3     report no-cache         caching not enabled
 ```
 
-#### `get_summaries()`
+#### `daggle_get_summaries()`
 
 Retrieve step summaries emitted during a run:
 
 ```{r}
 #| eval: false
-summaries <- daggleR::get_summaries("my-pipeline", "latest")
+summaries <- daggleR::daggle_get_summaries("my-pipeline", "latest")
 cat(summaries$content[1])
 ```
 
-#### `get_metadata()`
+#### `daggle_get_metadata()`
 
 Retrieve typed metadata entries from a run:
 
 ```{r}
 #| eval: false
-meta <- daggleR::get_metadata("my-pipeline", "latest")
+meta <- daggleR::daggle_get_metadata("my-pipeline", "latest")
 meta
 #>   step_id       name    type  value
 #> 1   train  row_count numeric   1542
 #> 2   train model_desc    text Linear regression
 ```
 
-#### `get_validations()`
+#### `daggle_get_validations()`
 
 Retrieve validation results from a run:
 
 ```{r}
 #| eval: false
-vals <- daggleR::get_validations("my-pipeline", "latest")
+vals <- daggleR::daggle_get_validations("my-pipeline", "latest")
 vals
 #>     step_id       name status                               message
 #> 1  validate  row_count   pass              Expected > 0, got 1542
 #> 2  validate     schema   fail Column 'date' expected date, got char
 ```
 
-#### `compare_runs()`
+#### `daggle_compare_runs()`
 
 Compare two runs side-by-side:
 
 ```{r}
 #| eval: false
-diff <- daggleR::compare_runs("my-pipeline", run1 = "20250115T030012", run2 = "20250116T030015")
+diff <- daggleR::daggle_compare_runs("my-pipeline", run1 = "20250115T030012", run2 = "20250116T030015")
 diff$duration_diff
 #> $run1_seconds
 #> [1] 47.2
@@ -335,30 +335,30 @@ diff$duration_diff
 
 API wrappers added in daggleR 0.3.0, covering daggle's Phase 8 collaboration and observability endpoints.
 
-#### `list_annotations()` and `add_annotation()`
+#### `daggle_list_annotations()` and `daggle_add_annotation()`
 
 Attach free-form notes to a run — useful for post-mortems (\"DB was down — manual restart at 08:30\") that should surface next to the run in status output and dashboards:
 
 ```{r}
 #| eval: false
-daggleR::add_annotation("penguin-monitor", "latest",
+daggleR::daggle_add_annotation("penguin-monitor", "latest",
   note = "Restarted after upstream feed recovered",
   author = "alice")
 
-daggleR::list_annotations("penguin-monitor", "latest")
+daggleR::daggle_list_annotations("penguin-monitor", "latest")
 #>              timestamp  author                                     note
 #> 1 2026-04-17T08:45:12Z   alice  Restarted after upstream feed recovered
 ```
 
 `author` defaults to `Sys.getenv("USER")`.
 
-#### `get_impact()`
+#### `daggle_get_impact()`
 
 List DAGs that depend on a given DAG (via `trigger.on_dag.name`) plus any exposures declared on it (Shiny apps, Quarto reports, dashboards). Purely informational — daggle does not deploy or monitor the exposures.
 
 ```{r}
 #| eval: false
-impact <- daggleR::get_impact("penguin-clean")
+impact <- daggleR::daggle_get_impact("penguin-clean")
 impact$downstream_dags
 #>              name project trigger_on_status
 #> 1 penguin-models    data          completed
@@ -371,11 +371,11 @@ impact$exposures
 
 ### List and filter DAGs by ownership
 
-`list_dags()` accepts `tag`, `team`, and `owner` filters that map directly to the `?tag=&team=&owner=` query params on `GET /api/v1/dags`:
+`daggle_list_dags()` accepts `tag`, `team`, and `owner` filters that map directly to the `?tag=&team=&owner=` query params on `GET /api/v1/dags`:
 
 ```{r}
 #| eval: false
-etl_dags <- daggleR::list_dags(tag = "etl", team = "data")
+etl_dags <- daggleR::daggle_list_dags(tag = "etl", team = "data")
 ```
 
 When a DAG declares `owner:`, `team:`, `description:`, or `tags:`, those fields appear as columns in the response data frame.
@@ -384,10 +384,10 @@ When a DAG declares `owner:`, `team:`, `description:`, or `tags:`, those fields 
 
 | Scenario | Use |
 |---|---|
-| Inside a pipeline step | In-step helpers (`output()`, `get_output()`) |
-| Interactive R session | API wrappers (`trigger()`, `get_run()`) |
+| Inside a pipeline step | In-step helpers (`daggle_output()`, `daggle_get_output()`) |
+| Interactive R session | API wrappers (`daggle_trigger()`, `daggle_get_run()`) |
 | Shiny app controlling pipelines | API wrappers |
 | CI script kicking off a pipeline | API wrappers |
-| Reading upstream data in a step | In-step `get_output()` |
-| Post-mortem notes on a failed run | `add_annotation()` |
-| Auditing downstream consumers before a schema change | `get_impact()` |
+| Reading upstream data in a step | In-step `daggle_get_output()` |
+| Post-mortem notes on a failed run | `daggle_add_annotation()` |
+| Auditing downstream consumers before a schema change | `daggle_get_impact()` |

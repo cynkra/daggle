@@ -55,11 +55,11 @@ daggle is a single Go binary that orchestrates R workflows defined in YAML. It s
    │  quarto    │  ext.   │  cynkra/daggleR               │
    └───────────┘  dep.    │                              │
                           │  In-step helpers:            │
-                          │    output(), run_id(), ...   │
+                          │    daggle_output(), ...      │
                           │    (env vars + stdout)       │
                           │                              │
                           │  API wrappers:               │
-                          │    list_dags(), trigger(),...│
+                          │    daggle_list_dags(), ...   │
                           │    (httr2 → REST API)        │
                           └──────────────────────────────┘
 ```
@@ -233,15 +233,15 @@ Total: 5 external Go dependencies. R and quarto are runtime dependencies only.
 The `daggleR` package ([cynkra/daggleR](https://github.com/cynkra/daggleR)) is a thin R wrapper around the daggle protocol. It lives in a separate repository and has no build-time dependency on the Go codebase.
 
 **In-step helpers** (base R, no network) run inside R steps executed by daggle. They read/write the same env vars and stdout markers that daggle uses natively:
-- `output()`, `run_id()`, `dag_name()`, `run_dir()`, `get_output()`, `get_matrix()`
-- Phase 7 additions: `summary_md()`, `meta_numeric()`, `meta_text()`, `meta_table()`, `meta_image()`, `validation()`
+- `daggle_output()`, `daggle_run_id()`, `daggle_dag_name()`, `daggle_run_dir()`, `daggle_get_output()`, `daggle_get_matrix()`
+- Phase 7 additions: `daggle_summary_md()`, `daggle_meta_numeric()`, `daggle_meta_text()`, `daggle_meta_table()`, `daggle_meta_image()`, `daggle_validation()`
 
 **API wrappers** (httr2) talk to the REST API served by `daggle serve --port`:
-- DAG management: `list_dags()`, `get_dag()`, `plan()`
-- Run management: `trigger()`, `list_runs()`, `get_run()`, `get_outputs()`, `get_step_log()`, `cancel_run()`, `compare_runs()`
-- Artifacts & metadata: `list_artifacts()`, `get_summaries()`, `get_metadata()`, `get_validations()`
-- Approval: `approve()`, `reject()`
-- Operations: `health()`, `cleanup()`
+- DAG management: `daggle_list_dags()`, `daggle_get_dag()`, `daggle_plan()`
+- Run management: `daggle_trigger()`, `daggle_list_runs()`, `daggle_get_run()`, `daggle_get_outputs()`, `daggle_get_step_log()`, `daggle_cancel_run()`, `daggle_compare_runs()`
+- Artifacts & metadata: `daggle_list_artifacts()`, `daggle_get_summaries()`, `daggle_get_metadata()`, `daggle_get_validations()`
+- Approval: `daggle_approve()`, `daggle_reject()`
+- Operations: `daggle_health()`, `daggle_cleanup()`
 
 ## Design principles
 

@@ -29,7 +29,7 @@ curl -X POST http://localhost:8787/api/v1/runs/cleanup \
 ## daggleR
 
 ```r
-daggleR::cleanup(older_than = "30d")
+daggleR::daggle_cleanup(older_than = "30d")
 ```
 
 ## Disk usage considerations

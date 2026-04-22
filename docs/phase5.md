@@ -73,13 +73,13 @@ Base R only, no network calls. Used inside R steps run by daggle.
 
 | Function | What it does |
 |----------|-------------|
-| `output(name, value)` | Emits `::daggle-output name=<key>::<value>` to stdout for downstream steps |
-| `run_id()` | Reads `DAGGLE_RUN_ID` env var |
-| `dag_name()` | Reads `DAGGLE_DAG_NAME` env var |
-| `run_dir()` | Reads `DAGGLE_RUN_DIR` env var |
-| `get_output(step, key)` | Reads `DAGGLE_OUTPUT_<STEP>_<KEY>` env var |
+| `daggle_output(name, value)` | Emits `::daggle-output name=<key>::<value>` to stdout for downstream steps |
+| `daggle_run_id()` | Reads `DAGGLE_RUN_ID` env var |
+| `daggle_dag_name()` | Reads `DAGGLE_DAG_NAME` env var |
+| `daggle_run_dir()` | Reads `DAGGLE_RUN_DIR` env var |
+| `daggle_get_output(step, key)` | Reads `DAGGLE_OUTPUT_<STEP>_<KEY>` env var |
 
-`output()` validates the key name against the protocol regex (`[a-zA-Z_][a-zA-Z0-9_]*`) and returns the value invisibly for pipe-friendly use.
+`daggle_output()` validates the key name against the protocol regex (`[a-zA-Z_][a-zA-Z0-9_]*`) and returns the value invisibly for pipe-friendly use.
 
 **Before daggleR:**
 ```r
@@ -89,8 +89,8 @@ n <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
 
 **With daggleR:**
 ```r
-daggleR::output("row_count", nrow(data))
-n <- daggleR::get_output("extract", "row_count")
+daggleR::daggle_output("row_count", nrow(data))
+n <- daggleR::daggle_get_output("extract", "row_count")
 ```
 
 ### API wrappers (`R/api.R`)
@@ -99,18 +99,18 @@ Require `httr2`. Talk to the REST API served by `daggle serve --port`.
 
 | Function | Endpoint | Returns |
 |----------|----------|---------|
-| `list_dags()` | `GET /dags` | data.frame |
-| `get_dag(name)` | `GET /dags/{name}` | list |
-| `trigger(name, params)` | `POST /dags/{name}/run` | list (run_id, status) |
-| `list_runs(name)` | `GET /dags/{name}/runs` | data.frame |
-| `get_run(name, run_id)` | `GET /dags/{name}/runs/{run_id}` | list |
-| `get_outputs(name, run_id)` | `GET /dags/{name}/runs/{run_id}/outputs` | data.frame |
-| `get_step_log(name, run_id, step_id)` | `GET .../steps/{step_id}/log` | list (stdout, stderr) |
-| `cancel_run(name, run_id)` | `POST .../cancel` | list |
-| `approve(name, run_id, step_id)` | `POST .../approve` | list |
-| `reject(name, run_id, step_id)` | `POST .../reject` | list |
-| `health()` | `GET /health` | list |
-| `cleanup(older_than)` | `POST /runs/cleanup` | list |
+| `daggle_list_dags()` | `GET /dags` | data.frame |
+| `daggle_get_dag(name)` | `GET /dags/{name}` | list |
+| `daggle_trigger(name, params)` | `POST /dags/{name}/run` | list (run_id, status) |
+| `daggle_list_runs(name)` | `GET /dags/{name}/runs` | data.frame |
+| `daggle_get_run(name, run_id)` | `GET /dags/{name}/runs/{run_id}` | list |
+| `daggle_get_outputs(name, run_id)` | `GET /dags/{name}/runs/{run_id}/outputs` | data.frame |
+| `daggle_get_step_log(name, run_id, step_id)` | `GET .../steps/{step_id}/log` | list (stdout, stderr) |
+| `daggle_cancel_run(name, run_id)` | `POST .../cancel` | list |
+| `daggle_approve(name, run_id, step_id)` | `POST .../approve` | list |
+| `daggle_reject(name, run_id, step_id)` | `POST .../reject` | list |
+| `daggle_health()` | `GET /health` | list |
+| `daggle_cleanup(older_than)` | `POST /runs/cleanup` | list |
 
 All API functions resolve the base URL in order: explicit `base_url` parameter > `DAGGLE_API_URL` env var > `http://127.0.0.1:8787`. List endpoints use `simplifyVector = TRUE` to return data.frames directly.
 
