@@ -265,6 +265,28 @@ type VerifyResponse struct {
 	Extra      []string `json:"extra"`
 }
 
+// Schedule is returned by the /schedules endpoints.
+type Schedule struct {
+	ID      string            `json:"id"`
+	Cron    string            `json:"cron"`
+	Source  string            `json:"source"` // "yaml" | "runtime"
+	Enabled bool              `json:"enabled"`
+	NextRun string            `json:"next_run,omitempty"` // RFC3339 UTC, omitted when no next run is known
+	Params  map[string]string `json:"params,omitempty"`
+}
+
+// CreateScheduleRequest is the body for POST /api/v1/dags/{name}/schedules.
+type CreateScheduleRequest struct {
+	Cron    string            `json:"cron"`
+	Enabled *bool             `json:"enabled,omitempty"` // defaults to true
+	Params  map[string]string `json:"params,omitempty"`
+}
+
+// UpdateScheduleRequest is the body for PATCH .../schedules/{schedule_id}.
+type UpdateScheduleRequest struct {
+	Enabled *bool `json:"enabled"`
+}
+
 // ErrorResponse is returned for errors.
 type ErrorResponse struct {
 	Error string `json:"error"`

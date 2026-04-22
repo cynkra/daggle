@@ -85,7 +85,10 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 				TriggerCounts:  st.TriggerCounts,
 			}
 		}
-		apiServer := api.New(state.BuildDAGSources, Version, api.WithSchedulerStatus(schedulerStatusFn))
+		apiServer := api.New(state.BuildDAGSources, Version,
+			api.WithSchedulerStatus(schedulerStatusFn),
+			api.WithScheduleManager(sched),
+		)
 		addr := fmt.Sprintf("127.0.0.1:%d", apiPort)
 		httpServer := &http.Server{
 			Addr:    addr,

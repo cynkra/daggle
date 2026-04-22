@@ -38,6 +38,7 @@ type Server struct {
 	mux             *http.ServeMux
 	sourceFunc      SourceFunc
 	schedulerStatus SchedulerStatusFunc
+	schedules       ScheduleManager
 	version         string
 	started         time.Time
 	logger          *slog.Logger
@@ -141,6 +142,12 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("POST /api/v1/dags/{name}/runs/{run_id}/archive", s.handleCreateArchive)
 	s.mux.HandleFunc("GET /api/v1/dags/{name}/runs/{run_id}/archive", s.handleDownloadArchive)
 	s.mux.HandleFunc("POST /api/v1/dags/{name}/runs/{run_id}/verify", s.handleVerifyArchive)
+
+	// Schedules
+	s.mux.HandleFunc("GET /api/v1/dags/{name}/schedules", s.handleListSchedules)
+	s.mux.HandleFunc("POST /api/v1/dags/{name}/schedules", s.handleCreateSchedule)
+	s.mux.HandleFunc("DELETE /api/v1/dags/{name}/schedules/{schedule_id}", s.handleDeleteSchedule)
+	s.mux.HandleFunc("PATCH /api/v1/dags/{name}/schedules/{schedule_id}", s.handlePatchSchedule)
 
 	// Projects
 	s.mux.HandleFunc("GET /api/v1/projects", s.handleListProjects)
