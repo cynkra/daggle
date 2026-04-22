@@ -35,7 +35,7 @@ type patchCall struct {
 	enabled bool
 }
 
-func (f *fakeScheduleManager) ListSchedules(dagName string) []scheduler.ScheduleView {
+func (f *fakeScheduleManager) ListSchedules(_ string) []scheduler.ScheduleView {
 	return f.list
 }
 func (f *fakeScheduleManager) AddRuntimeSchedule(dagName, cronExpr string, params map[string]string, enabled bool) (scheduler.ScheduleView, error) {

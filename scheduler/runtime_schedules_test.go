@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -133,7 +135,7 @@ func TestRemoveRuntimeSchedule(t *testing.T) {
 func TestRemoveRuntimeSchedule_YAMLRejected(t *testing.T) {
 	s := runtimeSchedulesSetup(t)
 
-	if err := s.RemoveRuntimeSchedule("test-dag", "yaml-test-dag"); err != ErrYAMLSchedule {
+	if err := s.RemoveRuntimeSchedule("test-dag", "yaml-test-dag"); !errors.Is(err, ErrYAMLSchedule) {
 		t.Errorf("want ErrYAMLSchedule, got %v", err)
 	}
 }
@@ -195,7 +197,7 @@ steps:
 	s := New(sources)
 
 	// syncDAGs populates the YAML-schedule registration.
-	if err := s.syncDAGs(nil); err != nil {
+	if err := s.syncDAGs(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
