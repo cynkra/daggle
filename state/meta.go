@@ -10,22 +10,22 @@ import (
 
 // RunMeta holds reproducibility metadata for a DAG run.
 type RunMeta struct {
-	RunID        string            `json:"run_id"`
-	DAGName      string            `json:"dag_name"`
-	DAGHash      string            `json:"dag_hash,omitempty"`
-	DAGPath      string            `json:"dag_path,omitempty"`
-	StartTime    time.Time         `json:"start_time"`
-	EndTime      time.Time         `json:"end_time,omitempty"`
-	Status       string            `json:"status,omitempty"`
-	RVersion     string            `json:"r_version,omitempty"`
-	Platform     string            `json:"platform"`
-	Params       map[string]string `json:"params,omitempty"`
-	DaggleVersion string           `json:"daggle_version,omitempty"`
-	RPlatform     string           `json:"r_platform,omitempty"`
-	RenvDetected   bool             `json:"renv_detected,omitempty"`
-	RenvLibrary    string           `json:"renv_library,omitempty"`
-	RenvLockHash   string           `json:"renv_lock_hash,omitempty"`
-	TriggerSource  string           `json:"trigger_source,omitempty"`
+	RunID         string            `json:"run_id"`
+	DAGName       string            `json:"dag_name"`
+	DAGHash       string            `json:"dag_hash,omitempty"`
+	DAGPath       string            `json:"dag_path,omitempty"`
+	StartTime     time.Time         `json:"start_time"`
+	EndTime       time.Time         `json:"end_time,omitempty"`
+	Status        string            `json:"status,omitempty"`
+	RVersion      string            `json:"r_version,omitempty"`
+	Platform      string            `json:"platform"`
+	Params        map[string]string `json:"params,omitempty"`
+	DaggleVersion string            `json:"daggle_version,omitempty"`
+	RPlatform     string            `json:"r_platform,omitempty"`
+	RenvDetected  bool              `json:"renv_detected,omitempty"`
+	RenvLibrary   string            `json:"renv_library,omitempty"`
+	RenvLockHash  string            `json:"renv_lock_hash,omitempty"`
+	TriggerSource string            `json:"trigger_source,omitempty"`
 }
 
 // WriteMeta writes the run metadata to meta.json in the given directory.

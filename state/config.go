@@ -37,8 +37,8 @@ type NotificationChannel struct {
 
 // EngineConfig controls execution engine behavior.
 type EngineConfig struct {
-	GracePeriod      string `yaml:"grace_period,omitempty"`       // default "5s"
-	ErrorContextLines int   `yaml:"error_context_lines,omitempty"` // default 50
+	GracePeriod       string `yaml:"grace_period,omitempty"`        // default "5s"
+	ErrorContextLines int    `yaml:"error_context_lines,omitempty"` // default 50
 }
 
 // SchedulerConfig controls scheduler behavior.

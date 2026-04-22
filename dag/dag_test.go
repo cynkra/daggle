@@ -378,8 +378,8 @@ func TestValidate_Deadline(t *testing.T) {
 	// Valid: deadline with on_deadline
 	d := base()
 	d.Trigger = &Trigger{
-		Schedule: "@every 1h",
-		Deadline: "08:00",
+		Schedule:   "@every 1h",
+		Deadline:   "08:00",
 		OnDeadline: &Hook{Command: "echo missed"},
 	}
 	if err := Validate(d); err != nil {
@@ -604,7 +604,7 @@ func TestCheckRVersion(t *testing.T) {
 		{">=4.1", "4.1.0", true},
 		{"==4.4.1", "4.4.1", true},
 		{"==4.4.1", "4.4.0", false},
-		{"", "4.4.1", true},  // empty constraint always passes
+		{"", "4.4.1", true},   // empty constraint always passes
 		{">=4.1.0", "", true}, // no R version always passes
 	}
 	for _, tt := range tests {
@@ -617,10 +617,10 @@ func TestCheckRVersion(t *testing.T) {
 
 func TestApplyBaseDefaults(t *testing.T) {
 	base := &BaseDefaults{
-		Env:     EnvMap{"BASE_VAR": {Value: "base_val"}, "SHARED": {Value: "from_base"}},
-		Workdir: "/base/workdir",
-		Timeout: "5m",
-		Retry:   &Retry{Limit: 2},
+		Env:       EnvMap{"BASE_VAR": {Value: "base_val"}, "SHARED": {Value: "from_base"}},
+		Workdir:   "/base/workdir",
+		Timeout:   "5m",
+		Retry:     &Retry{Limit: 2},
 		OnFailure: &Hook{Command: "echo base failed"},
 	}
 
@@ -629,7 +629,7 @@ func TestApplyBaseDefaults(t *testing.T) {
 		Env:  EnvMap{"SHARED": {Value: "from_dag"}, "DAG_VAR": {Value: "dag_val"}},
 		Steps: []Step{
 			{ID: "a", Command: "echo", Timeout: "10m"}, // has own timeout
-			{ID: "b", Command: "echo"},                   // inherits base timeout/retry
+			{ID: "b", Command: "echo"},                 // inherits base timeout/retry
 		},
 	}
 

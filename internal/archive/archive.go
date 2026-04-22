@@ -2,8 +2,9 @@
 // an in-archive SHA-256 manifest, and verifies bundles created the same way.
 //
 // Archive layout: a single .tar.gz containing
-//   .manifest.sha256   first entry, lines of "<hex-sha256>  <relative-path>"
-//   <run files...>     all regular files from the source directory, sorted
+//
+//	.manifest.sha256   first entry, lines of "<hex-sha256>  <relative-path>"
+//	<run files...>     all regular files from the source directory, sorted
 //
 // Verify recomputes every file's hash and compares to the manifest, reporting
 // mismatches, missing files, and extras.

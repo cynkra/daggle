@@ -88,4 +88,3 @@ func handleApproval(dagName, runID string, approved bool) error {
 	fmt.Printf("%s step %q in DAG %q run %s\n", action, waitingStepID, dagName, run.ID)
 	return nil
 }
-

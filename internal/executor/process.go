@@ -31,8 +31,8 @@ var ErrorContextLines = defaultErrorContextLines
 
 var (
 	// OutputMarkerRe matches ::daggle-output name=<key>::<value> markers in step stdout.
-	OutputMarkerRe  = regexp.MustCompile(`^::daggle-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
-	summaryMarkerRe = regexp.MustCompile(`^::daggle-summary format=([a-zA-Z]+)::(.*)$`)
+	OutputMarkerRe     = regexp.MustCompile(`^::daggle-output name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
+	summaryMarkerRe    = regexp.MustCompile(`^::daggle-summary format=([a-zA-Z]+)::(.*)$`)
 	metaMarkerRe       = regexp.MustCompile(`^::daggle-meta type=([a-zA-Z]+) name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
 	validationMarkerRe = regexp.MustCompile(`^::daggle-validation status=(pass|warn|fail) name=([a-zA-Z_][a-zA-Z0-9_]*)::(.*)$`)
 )

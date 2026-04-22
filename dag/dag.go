@@ -9,13 +9,13 @@ import (
 
 // DAG represents a directed acyclic graph workflow definition.
 type DAG struct {
-	Version string            `yaml:"version,omitempty"` // schema version, default "1"
-	Name    string            `yaml:"name"`
-	Trigger *Trigger          `yaml:"trigger,omitempty"`
-	Env     EnvMap  `yaml:"env,omitempty"`
-	Params  []Param           `yaml:"params,omitempty"`
-	Steps   []Step            `yaml:"steps"`
-	Workdir string            `yaml:"workdir,omitempty"`
+	Version string   `yaml:"version,omitempty"` // schema version, default "1"
+	Name    string   `yaml:"name"`
+	Trigger *Trigger `yaml:"trigger,omitempty"`
+	Env     EnvMap   `yaml:"env,omitempty"`
+	Params  []Param  `yaml:"params,omitempty"`
+	Steps   []Step   `yaml:"steps"`
+	Workdir string   `yaml:"workdir,omitempty"`
 
 	// MaxParallel caps the number of steps that can run concurrently across
 	// the whole run. 0 means unbounded (current default). Negative values are
@@ -57,8 +57,8 @@ type Trigger struct {
 	OnDAG      *OnDAGTrigger     `yaml:"on_dag,omitempty"`
 	Condition  *ConditionTrigger `yaml:"condition,omitempty"`
 	Git        *GitTrigger       `yaml:"git,omitempty"`
-	Overlap    string            `yaml:"overlap,omitempty"` // "skip" (default) or "cancel"
-	Deadline   string            `yaml:"deadline,omitempty"`     // HH:MM format
+	Overlap    string            `yaml:"overlap,omitempty"`  // "skip" (default) or "cancel"
+	Deadline   string            `yaml:"deadline,omitempty"` // HH:MM format
 	OnDeadline *Hook             `yaml:"on_deadline,omitempty"`
 }
 
@@ -77,7 +77,7 @@ type WebhookTrigger struct {
 // OnDAGTrigger fires when another DAG completes or fails.
 type OnDAGTrigger struct {
 	Name        string `yaml:"name"`
-	Status      string `yaml:"status,omitempty"`       // "completed" (default), "failed", "any"
+	Status      string `yaml:"status,omitempty"` // "completed" (default), "failed", "any"
 	PassOutputs bool   `yaml:"pass_outputs,omitempty"`
 }
 
@@ -91,7 +91,7 @@ type ConditionTrigger struct {
 // GitTrigger fires on new commits or tags in a git repository.
 type GitTrigger struct {
 	Branch       string   `yaml:"branch,omitempty"`
-	Events       []string `yaml:"events,omitempty"`       // "push", "tag"
+	Events       []string `yaml:"events,omitempty"`        // "push", "tag"
 	PollInterval string   `yaml:"poll_interval,omitempty"` // duration, default "30s"
 }
 
@@ -140,17 +140,17 @@ type Param struct {
 
 // Step defines a single unit of work within a DAG.
 type Step struct {
-	ID      string            `yaml:"id"`
-	Script  string            `yaml:"script,omitempty"`
-	RExpr   string            `yaml:"r_expr,omitempty"`
-	Command string            `yaml:"command,omitempty"`
-	Quarto  string            `yaml:"quarto,omitempty"`
-	Args    []string          `yaml:"args,omitempty"`
-	Depends []string          `yaml:"depends,omitempty"`
-	Timeout string            `yaml:"timeout,omitempty"`
-	Retry   *Retry            `yaml:"retry,omitempty"`
-	Env     EnvMap            `yaml:"env,omitempty"`
-	Workdir string            `yaml:"workdir,omitempty"`
+	ID      string   `yaml:"id"`
+	Script  string   `yaml:"script,omitempty"`
+	RExpr   string   `yaml:"r_expr,omitempty"`
+	Command string   `yaml:"command,omitempty"`
+	Quarto  string   `yaml:"quarto,omitempty"`
+	Args    []string `yaml:"args,omitempty"`
+	Depends []string `yaml:"depends,omitempty"`
+	Timeout string   `yaml:"timeout,omitempty"`
+	Retry   *Retry   `yaml:"retry,omitempty"`
+	Env     EnvMap   `yaml:"env,omitempty"`
+	Workdir string   `yaml:"workdir,omitempty"`
 
 	// R package development step types
 	Test     string `yaml:"test,omitempty"`
@@ -172,14 +172,14 @@ type Step struct {
 	Call *CallStep `yaml:"call,omitempty"`
 
 	// Additional R step types
-	Pin        *PinDeploy     `yaml:"pin,omitempty"`
-	Vetiver    *VetiverDeploy `yaml:"vetiver,omitempty"`
-	Shinytest  string         `yaml:"shinytest,omitempty"`
-	Pkgdown    string         `yaml:"pkgdown,omitempty"`
-	Install    string         `yaml:"install,omitempty"`
-	Targets    string         `yaml:"targets,omitempty"`
-	Benchmark  string         `yaml:"benchmark,omitempty"`
-	Revdepcheck string        `yaml:"revdepcheck,omitempty"`
+	Pin         *PinDeploy     `yaml:"pin,omitempty"`
+	Vetiver     *VetiverDeploy `yaml:"vetiver,omitempty"`
+	Shinytest   string         `yaml:"shinytest,omitempty"`
+	Pkgdown     string         `yaml:"pkgdown,omitempty"`
+	Install     string         `yaml:"install,omitempty"`
+	Targets     string         `yaml:"targets,omitempty"`
+	Benchmark   string         `yaml:"benchmark,omitempty"`
+	Revdepcheck string         `yaml:"revdepcheck,omitempty"`
 
 	// Posit Connect deployment
 	Connect *ConnectDeploy `yaml:"connect,omitempty"`
@@ -217,10 +217,10 @@ type Step struct {
 
 // Artifact declares an output file produced by a step.
 type Artifact struct {
-	Name      string `yaml:"name"`                 // unique name within the step
-	Path      string `yaml:"path"`                 // path relative to workdir
-	Format    string `yaml:"format,omitempty"`      // file format hint (parquet, rds, csv, png, etc.)
-	Versioned bool   `yaml:"versioned,omitempty"`   // if true, append epoch timestamp to filename
+	Name      string `yaml:"name"`                // unique name within the step
+	Path      string `yaml:"path"`                // path relative to workdir
+	Format    string `yaml:"format,omitempty"`    // file format hint (parquet, rds, csv, png, etc.)
+	Versioned bool   `yaml:"versioned,omitempty"` // if true, append epoch timestamp to filename
 }
 
 // EnvVar represents an environment variable value that may be a secret.
@@ -284,8 +284,8 @@ func (m EnvMap) SecretValues() []string {
 
 // ConnectDeploy configures deployment to Posit Connect.
 type ConnectDeploy struct {
-	Type        string `yaml:"type"`                  // shiny, quarto, plumber
-	Path        string `yaml:"path"`                  // content directory or file
+	Type        string `yaml:"type"`                   // shiny, quarto, plumber
+	Path        string `yaml:"path"`                   // content directory or file
 	Name        string `yaml:"name,omitempty"`         // content name on Connect
 	ForceUpdate *bool  `yaml:"force_update,omitempty"` // default true
 }
