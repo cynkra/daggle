@@ -535,6 +535,125 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/schedules:
+    get:
+      summary: List schedules for a DAG (YAML-declared and runtime-added)
+      description: |
+        Returns all schedules, merging the DAG's YAML trigger with any runtime
+        schedules from DAGGLE_CONFIG_DIR/schedules.yaml. YAML schedules have
+        synthetic IDs of the form `yaml-<dag-name>` and cannot be deleted or
+        toggled via this API.
+      operationId: listSchedules
+      tags: [schedules]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+      responses:
+        "200":
+          description: Array of schedule objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Schedule"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          description: Scheduler not available in this daggle process.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      summary: Add a runtime schedule for a DAG
+      description: |
+        Persists the schedule to DAGGLE_CONFIG_DIR/schedules.yaml and registers
+        it with the running cron scheduler (if enabled). Rejects malformed cron
+        expressions with 400.
+      operationId: createSchedule
+      tags: [schedules]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduleRequest"
+      responses:
+        "201":
+          description: Schedule created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          description: Scheduler not available in this daggle process.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/dags/{name}/schedules/{schedule_id}:
+    delete:
+      summary: Remove a runtime schedule
+      description: |
+        Unregisters the schedule from cron and removes it from storage.
+        YAML-declared schedules cannot be deleted — edit the DAG file instead
+        (returns 400).
+      operationId: deleteSchedule
+      tags: [schedules]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/scheduleId"
+      responses:
+        "204":
+          description: Schedule deleted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          description: Scheduler not available in this daggle process.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      summary: Enable or disable a runtime schedule
+      operationId: updateSchedule
+      tags: [schedules]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/scheduleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScheduleRequest"
+      responses:
+        "200":
+          description: Schedule updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Schedule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          description: Scheduler not available in this daggle process.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/projects:
     get:
       summary: List registered projects
@@ -637,6 +756,13 @@ components:
       schema:
         type: string
       description: Step ID.
+    scheduleId:
+      name: schedule_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Schedule ID. Runtime schedules use `sch_<xid>`; YAML-declared schedules use `yaml-<dag-name>` and are immutable via this API.
 
   responses:
     BadRequest:
@@ -1251,3 +1377,50 @@ components:
           items:
             type: string
           description: Paths present in the archive but not listed in the manifest.
+
+    Schedule:
+      type: object
+      required: [id, cron, source, enabled]
+      properties:
+        id:
+          type: string
+          description: Schedule ID. `sch_<xid>` for runtime schedules, `yaml-<dag-name>` for YAML-declared ones.
+        cron:
+          type: string
+          description: Cron expression (standard 5-field plus `@hourly`, `@daily`, `@every <duration>`, etc.).
+        source:
+          type: string
+          enum: [yaml, runtime]
+        enabled:
+          type: boolean
+        next_run:
+          type: string
+          format: date-time
+          description: Next fire time (RFC3339 UTC). Omitted when disabled or not schedulable.
+        params:
+          type: object
+          additionalProperties:
+            type: string
+          description: Parameter overrides passed to the DAG when this schedule fires (runtime schedules only).
+
+    CreateScheduleRequest:
+      type: object
+      required: [cron]
+      properties:
+        cron:
+          type: string
+          description: Cron expression. Validated server-side; malformed values return 400.
+        enabled:
+          type: boolean
+          description: Defaults to true if omitted.
+        params:
+          type: object
+          additionalProperties:
+            type: string
+
+    UpdateScheduleRequest:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean

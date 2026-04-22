@@ -88,6 +88,10 @@ type Scheduler struct {
 	// changed since the last tick. Keyed by absolute file path. Guarded by
 	// s.mu along with the rest of the registration state.
 	syncCache map[string]syncCacheEntry
+	// runtimeSchedules are cron entries created via the REST API (stored in
+	// DAGGLE_CONFIG_DIR/schedules.yaml), independent of YAML-declared triggers.
+	// Keyed by schedule ID. Guarded by s.mu.
+	runtimeSchedules map[string]*runtimeSchedule
 }
 
 // syncCacheEntry records the mtime and derived DAG name for a file so a
@@ -134,9 +138,10 @@ func NewWithConfig(sources []state.DAGSource, cfg state.SchedulerConfig) *Schedu
 		completions:    make(chan dagCompletionEvent, 256),
 		webhooks:       make(map[string]webhookEntry),
 		deadlineFired:  make(map[string]string),
-		pollInterval:   pollInt,
-		watchDebounce:  debounce,
-		syncCache:      make(map[string]syncCacheEntry),
+		pollInterval:     pollInt,
+		watchDebounce:    debounce,
+		syncCache:        make(map[string]syncCacheEntry),
+		runtimeSchedules: make(map[string]*runtimeSchedule),
 	}
 }
 
@@ -166,6 +171,11 @@ func (s *Scheduler) Status() Status {
 	}
 	for _, listeners := range s.onDAGListeners {
 		triggers["on_dag"] += len(listeners)
+	}
+	for _, rs := range s.runtimeSchedules {
+		if rs.entry.Enabled {
+			triggers["runtime_schedule"]++
+		}
 	}
 	// Remove "other" if zero
 	if triggers["other"] == 0 {
@@ -205,6 +215,10 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	if err := s.syncDAGs(ctx); err != nil {
 		s.logger.Error("initial DAG scan failed", "error", err)
 	}
+
+	// Load runtime schedules from DAGGLE_CONFIG_DIR/schedules.yaml after the
+	// DAG scan so dagPathFor can resolve registered DAGs.
+	s.loadRuntimeSchedules()
 
 	s.cron.Start()
 	s.logger.Info("scheduler started", "sources", len(s.sources))
@@ -769,6 +783,12 @@ func (s *Scheduler) dispatchCompletions(ctx context.Context) {
 
 // triggerRun executes a DAG run. Called by any trigger source.
 func (s *Scheduler) triggerRun(dagPath string, source string) {
+	s.triggerRunWithParams(dagPath, source, nil)
+}
+
+// triggerRunWithParams is the params-aware variant used by runtime schedules.
+// Passing a nil map is equivalent to triggerRun.
+func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params map[string]string) {
 	d, err := dag.ParseFile(dagPath)
 	if err != nil {
 		s.logger.Error("failed to parse DAG for run", "path", dagPath, "error", err)
@@ -844,7 +864,7 @@ func (s *Scheduler) triggerRun(dagPath string, source string) {
 
 		s.logger.Info("triggered run starting", "dag", d.Name, "source", source)
 
-		expanded, err := dag.ExpandDAG(d, nil)
+		expanded, err := dag.ExpandDAG(d, params)
 		if err != nil {
 			s.logger.Error("template expansion failed", "dag", d.Name, "error", err)
 			return
