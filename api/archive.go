@@ -83,3 +83,46 @@ func (s *Server) handleDownloadArchive(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s_%s.tar.gz"`, name, run.ID))
 	http.ServeFile(w, r, out)
 }
+
+func (s *Server) handleVerifyArchive(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	runID := r.PathValue("run_id")
+
+	run, err := state.FindRun(name, runID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	out := archivePath(name, run.ID)
+	if _, err := os.Stat(out); err != nil {
+		if os.IsNotExist(err) {
+			writeError(w, http.StatusNotFound, "archive not found; POST to /archive to create it first")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "stat archive: "+err.Error())
+		return
+	}
+
+	report, err := archive.Verify(out)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "verify: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, VerifyResponse{
+		OK:         report.OK(),
+		Files:      report.Files,
+		Mismatched: nonNilStrings(report.Mismatched),
+		Missing:    nonNilStrings(report.Missing),
+		Extra:      nonNilStrings(report.Extra),
+	})
+}
+
+// nonNilStrings returns s or an empty slice if nil, so JSON marshals to [] not null.
+func nonNilStrings(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}

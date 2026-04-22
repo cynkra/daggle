@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -265,7 +266,164 @@ func TestArchive_EmptyRun(t *testing.T) {
 		t.Errorf("first entry = %q, want %q", hdr.Name, intarchive.ManifestName)
 	}
 	// EOF after the manifest since the run has no files.
-	if _, err := tr.Next(); err != io.EOF {
+	if _, err := tr.Next(); !errors.Is(err, io.EOF) {
 		t.Errorf("expected EOF after manifest, got %v", err)
+	}
+}
+
+func TestVerify_OK(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	runID, _ := setupRunForArchive(t)
+
+	postReq := httptest.NewRequest("POST", "/api/v1/dags/test-dag/runs/"+runID+"/archive", nil)
+	postW := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(postW, postReq)
+	if postW.Code != http.StatusCreated {
+		t.Fatalf("POST archive: %d %s", postW.Code, postW.Body.String())
+	}
+
+	verReq := httptest.NewRequest("POST", "/api/v1/dags/test-dag/runs/"+runID+"/verify", nil)
+	verW := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(verW, verReq)
+
+	if verW.Code != http.StatusOK {
+		t.Fatalf("verify status = %d, body = %s", verW.Code, verW.Body.String())
+	}
+	var resp VerifyResponse
+	if err := json.Unmarshal(verW.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !resp.OK {
+		t.Errorf("ok = false, want true; resp = %+v", resp)
+	}
+	if resp.Files != 2 {
+		t.Errorf("files = %d, want 2", resp.Files)
+	}
+	// Empty slices must marshal as [], not null.
+	if resp.Mismatched == nil || resp.Missing == nil || resp.Extra == nil {
+		t.Errorf("expected empty slices, got nils: %+v", resp)
+	}
+}
+
+func TestVerify_NoArchive(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	runID, _ := setupRunForArchive(t)
+
+	verReq := httptest.NewRequest("POST", "/api/v1/dags/test-dag/runs/"+runID+"/verify", nil)
+	verW := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(verW, verReq)
+
+	if verW.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", verW.Code, http.StatusNotFound)
+	}
+}
+
+func TestVerify_NonexistentRun(t *testing.T) {
+	srv, _ := setupTestServer(t)
+
+	verReq := httptest.NewRequest("POST", "/api/v1/dags/test-dag/runs/nonexistent/verify", nil)
+	verW := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(verW, verReq)
+
+	if verW.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", verW.Code, http.StatusNotFound)
+	}
+}
+
+func TestVerify_TamperedArchive(t *testing.T) {
+	srv, _ := setupTestServer(t)
+	runID, dataDir := setupRunForArchive(t)
+
+	// Create the archive.
+	postReq := httptest.NewRequest("POST", "/api/v1/dags/test-dag/runs/"+runID+"/archive", nil)
+	postW := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(postW, postReq)
+	if postW.Code != http.StatusCreated {
+		t.Fatalf("POST archive: %d %s", postW.Code, postW.Body.String())
+	}
+
+	archivePath := filepath.Join(dataDir, "archives", "test-dag_"+runID+".tar.gz")
+	// Tamper by rewriting a file inside the archive while preserving the manifest.
+	tamperArchiveFile(t, archivePath, "events.jsonl", []byte(`{"type":"tampered"}`+"\n"))
+
+	verReq := httptest.NewRequest("POST", "/api/v1/dags/test-dag/runs/"+runID+"/verify", nil)
+	verW := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(verW, verReq)
+
+	if verW.Code != http.StatusOK {
+		t.Fatalf("verify status = %d, body = %s", verW.Code, verW.Body.String())
+	}
+	var resp VerifyResponse
+	if err := json.Unmarshal(verW.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.OK {
+		t.Errorf("ok = true, want false; resp = %+v", resp)
+	}
+	if len(resp.Mismatched) != 1 || resp.Mismatched[0] != "events.jsonl" {
+		t.Errorf("mismatched = %v, want [events.jsonl]", resp.Mismatched)
+	}
+}
+
+// tamperArchiveFile rewrites a single file body inside a .tar.gz while keeping
+// the rest of the entries (including the manifest) unchanged — so the on-disk
+// file no longer matches the manifest's SHA, triggering a Mismatched report.
+func tamperArchiveFile(t *testing.T, archivePath, target string, replacement []byte) {
+	t.Helper()
+	in, err := os.Open(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = in.Close() }()
+	gzin, err := gzip.NewReader(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = gzin.Close() }()
+	tr := tar.NewReader(gzin)
+
+	var buf bytes.Buffer
+	gzout := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzout)
+
+	found := false
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		var body []byte
+		if hdr.Name == target {
+			body = replacement
+			found = true
+		} else {
+			body, err = io.ReadAll(tr)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		newHdr := *hdr
+		newHdr.Size = int64(len(body))
+		if err := tw.WriteHeader(&newHdr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write(body); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !found {
+		t.Fatalf("target %q not found in archive", target)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gzout.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(archivePath, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

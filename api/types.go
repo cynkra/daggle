@@ -256,6 +256,15 @@ type ArchiveResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// VerifyResponse is returned by POST /api/v1/dags/{name}/runs/{run_id}/verify.
+type VerifyResponse struct {
+	OK         bool     `json:"ok"`
+	Files      int      `json:"files"`
+	Mismatched []string `json:"mismatched"`
+	Missing    []string `json:"missing"`
+	Extra      []string `json:"extra"`
+}
+
 // ErrorResponse is returned for errors.
 type ErrorResponse struct {
 	Error string `json:"error"`
