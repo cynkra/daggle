@@ -78,11 +78,12 @@ func diffOps(a, b []string) []diffOp {
 	}
 	for i := 1; i <= n; i++ {
 		for j := 1; j <= m; j++ {
-			if a[i-1] == b[j-1] {
+			switch {
+			case a[i-1] == b[j-1]:
 				dp[i][j] = dp[i-1][j-1] + 1
-			} else if dp[i-1][j] >= dp[i][j-1] {
+			case dp[i-1][j] >= dp[i][j-1]:
 				dp[i][j] = dp[i-1][j]
-			} else {
+			default:
 				dp[i][j] = dp[i][j-1]
 			}
 		}
@@ -91,14 +92,15 @@ func diffOps(a, b []string) []diffOp {
 	var ops []diffOp
 	i, j := n, m
 	for i > 0 && j > 0 {
-		if a[i-1] == b[j-1] {
+		switch {
+		case a[i-1] == b[j-1]:
 			ops = append(ops, diffOp{kind: ' ', text: a[i-1]})
 			i--
 			j--
-		} else if dp[i-1][j] >= dp[i][j-1] {
+		case dp[i-1][j] >= dp[i][j-1]:
 			ops = append(ops, diffOp{kind: '-', text: a[i-1]})
 			i--
-		} else {
+		default:
 			ops = append(ops, diffOp{kind: '+', text: b[j-1]})
 			j--
 		}
