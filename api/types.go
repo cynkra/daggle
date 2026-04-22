@@ -70,9 +70,9 @@ type ImpactResponse struct {
 
 // DownstreamDAGInfo is a DAG that depends on another via trigger.on_dag.
 type DownstreamDAGInfo struct {
-	Name         string `json:"name"`
-	Project      string `json:"project,omitempty"`
-	TriggerOn    string `json:"trigger_on_status,omitempty"` // "completed" | "failed" | "any"
+	Name      string `json:"name"`
+	Project   string `json:"project,omitempty"`
+	TriggerOn string `json:"trigger_on_status,omitempty"` // "completed" | "failed" | "any"
 }
 
 // RunSummary is returned in the run list.
@@ -134,10 +134,10 @@ type OutputEntry struct {
 type ArtifactEntry struct {
 	StepID  string `json:"step_id"`
 	Name    string `json:"name"`
-	Path    string `json:"path"`      // relative to workdir
-	AbsPath string `json:"abs_path"`  // resolved absolute path
-	Hash    string `json:"hash"`      // SHA-256
-	Size    int64  `json:"size"`      // bytes
+	Path    string `json:"path"`     // relative to workdir
+	AbsPath string `json:"abs_path"` // resolved absolute path
+	Hash    string `json:"hash"`     // SHA-256
+	Size    int64  `json:"size"`     // bytes
 	Format  string `json:"format,omitempty"`
 }
 
@@ -207,7 +207,7 @@ type SummaryEntry struct {
 type RunMetaEntry struct {
 	StepID string `json:"step_id"`
 	Name   string `json:"name"`
-	Type   string `json:"type"`  // numeric, text, table, image
+	Type   string `json:"type"` // numeric, text, table, image
 	Value  string `json:"value"`
 }
 
@@ -215,7 +215,7 @@ type RunMetaEntry struct {
 type ValidationEntry struct {
 	StepID  string `json:"step_id"`
 	Name    string `json:"name"`
-	Status  string `json:"status"`  // pass, warn, fail
+	Status  string `json:"status"` // pass, warn, fail
 	Message string `json:"message"`
 }
 

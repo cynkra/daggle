@@ -72,12 +72,12 @@ func ParseReader(r io.Reader) (*DAG, error) {
 // Only fields that make sense to share across DAGs are included.
 type BaseDefaults struct {
 	Env       EnvMap `yaml:"env,omitempty"`
-	Workdir   string            `yaml:"workdir,omitempty"`
-	Timeout   string            `yaml:"timeout,omitempty"`   // default step timeout
-	Retry     *Retry            `yaml:"retry,omitempty"`     // default step retry
-	OnSuccess *Hook             `yaml:"on_success,omitempty"`
-	OnFailure *Hook             `yaml:"on_failure,omitempty"`
-	OnExit    *Hook             `yaml:"on_exit,omitempty"`
+	Workdir   string `yaml:"workdir,omitempty"`
+	Timeout   string `yaml:"timeout,omitempty"` // default step timeout
+	Retry     *Retry `yaml:"retry,omitempty"`   // default step retry
+	OnSuccess *Hook  `yaml:"on_success,omitempty"`
+	OnFailure *Hook  `yaml:"on_failure,omitempty"`
+	OnExit    *Hook  `yaml:"on_exit,omitempty"`
 }
 
 // LoadBaseDefaults reads base.yaml from the given directory, if it exists.

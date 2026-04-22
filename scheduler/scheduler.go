@@ -71,17 +71,17 @@ type Scheduler struct {
 	logger  *slog.Logger
 
 	mu             sync.Mutex
-	registered     map[string]*dagEntry              // dagName -> entry
-	running        map[string]*runEntry              // dagName -> active run
+	registered     map[string]*dagEntry // dagName -> entry
+	running        map[string]*runEntry // dagName -> active run
 	runningCount   int
 	maxConcurrent  int
-	onDAGListeners map[string][]onDAGListener        // upstreamDAGName -> downstream listeners
+	onDAGListeners map[string][]onDAGListener // upstreamDAGName -> downstream listeners
 	completions    chan dagCompletionEvent
-	webhooks       map[string]webhookEntry            // dagName -> webhook config
-	webhookCloseFn func()                             // close the webhook server
-	webhookAddr    string                             // address the webhook server is listening on
-	ctx            context.Context                    // scheduler lifecycle context
-	deadlineFired  map[string]string                  // dagName -> date string (YYYY-MM-DD) of last fired deadline
+	webhooks       map[string]webhookEntry // dagName -> webhook config
+	webhookCloseFn func()                  // close the webhook server
+	webhookAddr    string                  // address the webhook server is listening on
+	ctx            context.Context         // scheduler lifecycle context
+	deadlineFired  map[string]string       // dagName -> date string (YYYY-MM-DD) of last fired deadline
 	pollInterval   time.Duration
 	watchDebounce  time.Duration
 	// syncCache short-circuits syncSource when a DAG file's mtime hasn't
@@ -128,16 +128,16 @@ func NewWithConfig(sources []state.DAGSource, cfg state.SchedulerConfig) *Schedu
 		}
 	}
 	return &Scheduler{
-		cron:           cron.New(),
-		sources:        sources,
-		logger:         slog.Default(),
-		registered:     make(map[string]*dagEntry),
-		running:        make(map[string]*runEntry),
-		maxConcurrent:  maxConc,
-		onDAGListeners: make(map[string][]onDAGListener),
-		completions:    make(chan dagCompletionEvent, 256),
-		webhooks:       make(map[string]webhookEntry),
-		deadlineFired:  make(map[string]string),
+		cron:             cron.New(),
+		sources:          sources,
+		logger:           slog.Default(),
+		registered:       make(map[string]*dagEntry),
+		running:          make(map[string]*runEntry),
+		maxConcurrent:    maxConc,
+		onDAGListeners:   make(map[string][]onDAGListener),
+		completions:      make(chan dagCompletionEvent, 256),
+		webhooks:         make(map[string]webhookEntry),
+		deadlineFired:    make(map[string]string),
 		pollInterval:     pollInt,
 		watchDebounce:    debounce,
 		syncCache:        make(map[string]syncCacheEntry),

@@ -30,10 +30,10 @@ func TestWrapRCodeWithSessionInfo_Shape(t *testing.T) {
 
 func TestRStringLiteral_Escapes(t *testing.T) {
 	cases := map[string]string{
-		`/simple/path`:   `'/simple/path'`,
-		`with'quote`:     `'with\'quote'`,
-		`back\slash`:     `'back\\slash'`,
-		`mixed\'both`:    `'mixed\\\'both'`,
+		`/simple/path`: `'/simple/path'`,
+		`with'quote`:   `'with\'quote'`,
+		`back\slash`:   `'back\\slash'`,
+		`mixed\'both`:  `'mixed\\\'both'`,
 	}
 	for in, want := range cases {
 		got := rStringLiteral(in)

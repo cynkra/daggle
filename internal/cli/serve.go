@@ -111,4 +111,3 @@ func serveDaemon(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 	return sched.Start(ctx)
 }
-

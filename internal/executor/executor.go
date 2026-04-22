@@ -35,10 +35,10 @@ type Result struct {
 	Stderr      string // path to stderr log file
 	Duration    time.Duration
 	Err         error
-	Outputs     map[string]string // parsed ::daggle-output:: values
-	ErrorDetail string            // extracted error message from stderr (R, Quarto, or last lines)
-	Summaries   []Summary         // parsed ::daggle-summary:: values
-	Metadata    []MetaEntry       // parsed ::daggle-meta:: values
+	Outputs     map[string]string  // parsed ::daggle-output:: values
+	ErrorDetail string             // extracted error message from stderr (R, Quarto, or last lines)
+	Summaries   []Summary          // parsed ::daggle-summary:: values
+	Metadata    []MetaEntry        // parsed ::daggle-meta:: values
 	Validations []ValidationResult // parsed ::daggle-validation:: values
 
 	// Resource usage captured from syscall.Rusage after cmd.Wait().
