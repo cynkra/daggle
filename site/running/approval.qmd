@@ -49,8 +49,8 @@ curl -X POST http://localhost:8787/api/v1/dags/my-pipeline/runs/abc123/steps/rev
 ### daggleR
 
 ```r
-daggleR::approve("my-pipeline", run_id = "abc123", step_id = "review")
-daggleR::reject("my-pipeline", run_id = "abc123", step_id = "review")
+daggleR::daggle_approve("my-pipeline", run_id = "abc123", step_id = "review")
+daggleR::daggle_reject("my-pipeline", run_id = "abc123", step_id = "review")
 ```
 
 :::

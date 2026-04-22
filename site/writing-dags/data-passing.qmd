@@ -66,10 +66,10 @@ n <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
 
 ```r
 # Emit
-daggleR::output("row_count", nrow(data))
+daggleR::daggle_output("row_count", nrow(data))
 
 # Read
-n <- daggleR::get_output("extract", "row_count")
+n <- daggleR::daggle_get_output("extract", "row_count")
 ```
 
 :::
