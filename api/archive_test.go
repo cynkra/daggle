@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -265,7 +266,7 @@ func TestArchive_EmptyRun(t *testing.T) {
 		t.Errorf("first entry = %q, want %q", hdr.Name, intarchive.ManifestName)
 	}
 	// EOF after the manifest since the run has no files.
-	if _, err := tr.Next(); err != io.EOF {
+	if _, err := tr.Next(); !errors.Is(err, io.EOF) {
 		t.Errorf("expected EOF after manifest, got %v", err)
 	}
 }
@@ -388,7 +389,7 @@ func tamperArchiveFile(t *testing.T, archivePath, target string, replacement []b
 	found := false
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
