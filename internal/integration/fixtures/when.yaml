@@ -1,0 +1,12 @@
+name: integration-when
+steps:
+  - id: always
+    command: echo always
+  - id: skipped
+    command: echo "should not run"
+    when:
+      command: "false"
+    depends: [always]
+  - id: after
+    command: echo after
+    depends: [always]

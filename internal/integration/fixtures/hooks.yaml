@@ -1,0 +1,13 @@
+name: integration-hooks
+params:
+  - name: hooks_dir
+    default: ""
+env:
+  HOOKS_DIR: "{{ .Params.hooks_dir }}"
+steps:
+  - id: succeed
+    command: echo ok
+on_success:
+  command: touch "${HOOKS_DIR}/on_success.marker"
+on_exit:
+  command: touch "${HOOKS_DIR}/on_exit.marker"

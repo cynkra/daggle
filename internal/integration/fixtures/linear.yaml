@@ -1,0 +1,10 @@
+name: integration-linear
+steps:
+  - id: a
+    command: echo step-a
+  - id: b
+    command: echo step-b
+    depends: [a]
+  - id: c
+    command: echo step-c
+    depends: [b]

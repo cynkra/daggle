@@ -1,0 +1,21 @@
+name: integration-retry
+steps:
+  - id: flaky
+    command: |
+      set -e
+      COUNT_FILE="${DAGGLE_RUN_DIR}/flaky.count"
+      if [ -f "$COUNT_FILE" ]; then
+        N=$(cat "$COUNT_FILE")
+      else
+        N=0
+      fi
+      N=$((N+1))
+      echo "$N" > "$COUNT_FILE"
+      if [ "$N" -lt 3 ]; then
+        echo "attempt $N: failing"
+        exit 1
+      fi
+      echo "attempt $N: ok"
+    retry:
+      limit: 3
+      backoff: linear

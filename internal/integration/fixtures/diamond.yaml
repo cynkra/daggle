@@ -1,0 +1,19 @@
+name: integration-diamond
+steps:
+  - id: seed
+    command: echo seeded
+  - id: left
+    command: |
+      echo "::daggle-output name=value::42"
+    depends: [seed]
+  - id: right
+    command: |
+      echo "::daggle-output name=value::17"
+    depends: [seed]
+  - id: join
+    command: |
+      set -e
+      test "$DAGGLE_OUTPUT_LEFT_VALUE" = "42"
+      test "$DAGGLE_OUTPUT_RIGHT_VALUE" = "17"
+      echo ok
+    depends: [left, right]

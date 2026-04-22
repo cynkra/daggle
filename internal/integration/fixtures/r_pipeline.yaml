@@ -1,0 +1,11 @@
+name: integration-r-pipeline
+steps:
+  - id: produce
+    r_expr: |
+      cat("::daggle-output name=n::", 7L, "\n", sep = "")
+  - id: consume
+    r_expr: |
+      n <- as.integer(Sys.getenv("DAGGLE_OUTPUT_PRODUCE_N"))
+      stopifnot(n == 7L)
+      cat("consumed", n, "\n")
+    depends: [produce]
