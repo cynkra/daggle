@@ -506,72 +506,78 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Working directory for all steps</td>
 </tr>
 <tr class="even">
+<td><code>max_parallel</code></td>
+<td>integer</td>
+<td>no</td>
+<td>Cap on concurrent step execution (0 = unbounded)</td>
+</tr>
+<tr class="odd">
 <td><code>env</code></td>
 <td>object</td>
 <td>no</td>
 <td>Environment variables for all steps</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>params</code></td>
 <td>array</td>
 <td>no</td>
 <td>Parameters with optional defaults</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>r_version</code></td>
 <td>string</td>
 <td>no</td>
 <td>R version constraint (e.g.&nbsp;<code>"&gt;=4.1.0"</code>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>r_version_strict</code></td>
 <td>boolean</td>
 <td>no</td>
 <td>Fail if R version doesn’t match (default: warn)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>owner</code></td>
 <td>string</td>
 <td>no</td>
 <td>DAG owner (e.g.&nbsp;<code>"alice"</code>). Filterable via <code>daggle list --owner</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>team</code></td>
 <td>string</td>
 <td>no</td>
 <td>Owning team (e.g.&nbsp;<code>"data"</code>). Filterable via <code>daggle list --team</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>description</code></td>
 <td>string</td>
 <td>no</td>
 <td>Free-form one-line description</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>tags</code></td>
 <td>string[]</td>
 <td>no</td>
 <td>Tags for filtering (e.g.&nbsp;<code>[etl, daily, critical]</code>). Filterable via <code>daggle list --tag</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>exposures</code></td>
 <td>array</td>
 <td>no</td>
 <td>Downstream consumers of this DAG (see below)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>on_success</code></td>
 <td>hook</td>
 <td>no</td>
 <td>Hook to run when DAG completes</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>on_failure</code></td>
 <td>hook</td>
 <td>no</td>
 <td>Hook to run when DAG fails</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>on_exit</code></td>
 <td>hook</td>
 <td>no</td>

@@ -383,6 +383,8 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#daggle-why" id="toc-daggle-why" class="nav-link" data-scroll-target="#daggle-why">daggle why</a></li>
   <li><a href="#daggle-annotate" id="toc-daggle-annotate" class="nav-link" data-scroll-target="#daggle-annotate">daggle annotate</a></li>
   <li><a href="#daggle-monitor" id="toc-daggle-monitor" class="nav-link" data-scroll-target="#daggle-monitor">daggle monitor</a></li>
+  <li><a href="#daggle-archive" id="toc-daggle-archive" class="nav-link" data-scroll-target="#daggle-archive">daggle archive</a></li>
+  <li><a href="#daggle-verify" id="toc-daggle-verify" class="nav-link" data-scroll-target="#daggle-verify">daggle verify</a></li>
   <li><a href="#daggle-impact" id="toc-daggle-impact" class="nav-link" data-scroll-target="#daggle-impact">daggle impact</a></li>
   <li><a href="#daggle-init" id="toc-daggle-init" class="nav-link" data-scroll-target="#daggle-init">daggle init</a></li>
   <li><a href="#daggle-register" id="toc-daggle-register" class="nav-link" data-scroll-target="#daggle-register">daggle register</a></li>
@@ -420,7 +422,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="daggle-run" class="level2">
 <h2 class="anchored" data-anchor-id="daggle-run">daggle run</h2>
 <p>Run a DAG immediately.</p>
-<pre><code>daggle run &lt;dag&gt; [-p key=value]...</code></pre>
+<pre><code>daggle run &lt;dag&gt; [-p key=value]... [--dry-run]</code></pre>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 17%">
@@ -443,9 +445,16 @@ ul.task-list li input[type="checkbox"] {
 <td>(none)</td>
 <td>Set a parameter value. Repeatable.</td>
 </tr>
+<tr class="even">
+<td><code>--dry-run</code></td>
+<td>bool</td>
+<td>false</td>
+<td>Validate and report what would happen; do not execute or create a run</td>
+</tr>
 </tbody>
 </table>
 <p>Runs the named DAG synchronously, streaming step output to the terminal. Exit code reflects the DAG outcome: 0 for success, 1 for failure.</p>
+<p>With <code>--dry-run</code>, daggle loads the DAG, resolves secrets, checks the R version constraint, detects renv, evaluates freshness rules, and verifies that referenced scripts exist — then prints a plan of which steps would run in which tiers. No run directory is created and no steps are executed. Exits non-zero if any check fails. Use <code>daggle plan</code> for cache-status analysis.</p>
 </section>
 <section id="daggle-validate" class="level2">
 <h2 class="anchored" data-anchor-id="daggle-validate">daggle validate</h2>
@@ -759,6 +768,42 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>Subscribes to the SSE stream endpoint and renders per-step status, duration, peak RSS, and annotation count. If no server is listening on <code>http://localhost:8080</code>, <code>daggle monitor</code> spawns an embedded read-only API on a random port for the session. Press <code>q</code> or <code>esc</code> to quit.</p>
+</section>
+<section id="daggle-archive" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-archive">daggle archive</h2>
+<p>Bundle a run directory into a tamper-evident <code>.tar.gz</code> with an embedded SHA-256 manifest.</p>
+<pre><code>daggle archive &lt;dag&gt; &lt;run-id&gt; [-o &lt;path&gt;]</code></pre>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 17%">
+<col style="width: 26%">
+<col style="width: 38%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>-o</code>, <code>--output</code></td>
+<td>path</td>
+<td><code>./&lt;dag&gt;_&lt;run-id&gt;.tar.gz</code></td>
+<td>Output archive path</td>
+</tr>
+</tbody>
+</table>
+<p>The archive contains <code>.manifest.sha256</code> as its first entry (one <code>&lt;sha256&gt;  &lt;path&gt;</code> line per file), followed by every regular file in the run directory in sorted order. Pair with <code>daggle verify</code> to detect corruption, tampering, missing files, or extras. FDA 21 CFR Part 11 adjacent.</p>
+</section>
+<section id="daggle-verify" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-verify">daggle verify</h2>
+<p>Check the integrity of a daggle archive.</p>
+<pre><code>daggle verify &lt;archive&gt;</code></pre>
+<p>Re-hashes every file inside the archive and compares against the embedded manifest. Prints <code>OK: &lt;N&gt; files verified</code> on success; on failure lists mismatched, missing, and extra files and exits non-zero.</p>
 </section>
 <section id="daggle-impact" class="level2">
 <h2 class="anchored" data-anchor-id="daggle-impact">daggle impact</h2>

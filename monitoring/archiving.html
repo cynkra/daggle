@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>File Layout – daggle</title>
+<title>Archiving &amp; Integrity – daggle</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -22,41 +22,6 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
-}
-/* CSS for syntax highlighting */
-html { -webkit-text-size-adjust: 100%; }
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-  { counter-reset: source-line 0; }
-pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-  }
-pre.numberSource { margin-left: 3em;  padding-left: 4px; }
-div.sourceCode
-  {   }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -311,7 +276,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">Running</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="../monitoring/status.html"> 
+    <a class="nav-link active" href="../monitoring/status.html" aria-current="page"> 
 <span class="menu-text">Monitoring</span></a>
   </li>  
   <li class="nav-item">
@@ -327,7 +292,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">Tutorials</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../reference/cli.html" aria-current="page"> 
+    <a class="nav-link" href="../reference/cli.html"> 
 <span class="menu-text">Reference</span></a>
   </li>  
 </ul>
@@ -344,7 +309,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/file-layout.html">File Layout</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../monitoring/archiving.html">Archiving &amp; Integrity</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -358,38 +323,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/cli.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">CLI</span></a>
+  <a href="../monitoring/status.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Status</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/yaml-schema.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">YAML Schema</span></a>
+  <a href="../monitoring/history.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">History &amp; Trends</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/env-vars.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Environment Variables</span></a>
+  <a href="../monitoring/logs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Log Files</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/output-protocol.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Output Protocol</span></a>
+  <a href="../monitoring/doctor.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Diagnostics</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/file-layout.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">File Layout</span></a>
+  <a href="../monitoring/cleanup.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Cleanup</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/events.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Event Schema</span></a>
+  <a href="../monitoring/archiving.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">Archiving &amp; Integrity</span></a>
   </div>
 </li>
     </ul>
@@ -402,11 +367,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul class="collapse">
-  <li><a href="#directory-structure" id="toc-directory-structure" class="nav-link active" data-scroll-target="#directory-structure">Directory structure</a></li>
-  <li><a href="#dag-discovery-order" id="toc-dag-discovery-order" class="nav-link" data-scroll-target="#dag-discovery-order">DAG discovery order</a></li>
-  <li><a href="#run-directory-contents" id="toc-run-directory-contents" class="nav-link" data-scroll-target="#run-directory-contents">Run directory contents</a></li>
-  <li><a href="#overriding-directories" id="toc-overriding-directories" class="nav-link" data-scroll-target="#overriding-directories">Overriding directories</a></li>
-  <li><a href="#global-configuration-config.yaml" id="toc-global-configuration-config.yaml" class="nav-link" data-scroll-target="#global-configuration-config.yaml">Global configuration (<code>config.yaml</code>)</a></li>
+  <li><a href="#creating-an-archive" id="toc-creating-an-archive" class="nav-link active" data-scroll-target="#creating-an-archive">Creating an archive</a></li>
+  <li><a href="#verifying-an-archive" id="toc-verifying-an-archive" class="nav-link" data-scroll-target="#verifying-an-archive">Verifying an archive</a></li>
+  <li><a href="#whats-in-the-archive" id="toc-whats-in-the-archive" class="nav-link" data-scroll-target="#whats-in-the-archive">What’s in the archive</a></li>
+  <li><a href="#compliance-framing" id="toc-compliance-framing" class="nav-link" data-scroll-target="#compliance-framing">Compliance framing</a></li>
+  <li><a href="#when-to-archive" id="toc-when-to-archive" class="nav-link" data-scroll-target="#when-to-archive">When to archive</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -416,7 +382,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">File Layout</h1>
+<h1 class="title">Archiving &amp; Integrity</h1>
 </div>
 
 
@@ -433,179 +399,73 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>daggle uses a fixed directory structure for configuration, DAG definitions, and run data.</p>
-<section id="directory-structure" class="level2">
-<h2 class="anchored" data-anchor-id="directory-structure">Directory structure</h2>
-<pre><code>~/.config/daggle/
-  config.yaml                    # Global configuration (tool paths, cleanup, etc.)
-  dags/                          # Global DAG definitions
-    my-pipeline.yml
-    nightly-etl.yml
-  projects.yaml                  # Registered project directories
-
-~/.local/share/daggle/
-  runs/                          # Run data, organized by DAG and date
-    &lt;dag&gt;/
-      &lt;YYYY-MM-DD&gt;/
-        run_&lt;id&gt;/
-          meta.json              # Run metadata (params, start time, status)
-          events.jsonl           # Append-only event log (see Event Schema)
-          dag.yaml               # Snapshot of the DAG YAML at run start
-          dag_diff.patch         # Unified diff vs. the prior run (only if dag_hash changed)
-          &lt;step&gt;.stdout.log      # Step stdout (includes output markers)
-          &lt;step&gt;.stderr.log      # Step stderr
-          &lt;step&gt;.inline.R        # Rendered inline R code (for r_expr steps)
-          &lt;step&gt;.sessioninfo.json # R sessionInfo() — written only on R step failure
-  proc/
-    scheduler.pid                # Scheduler daemon PID file
-
-.daggle/                         # Project-local DAG definitions (repo root)
-  my-dag.yml</code></pre>
+<p>For compliance, audit, or long-term retention, daggle can bundle an entire run into a single tamper-evident <code>.tar.gz</code> and later verify it byte-for-byte against an embedded SHA-256 manifest.</p>
+<section id="creating-an-archive" class="level2">
+<h2 class="anchored" data-anchor-id="creating-an-archive">Creating an archive</h2>
+<pre><code>daggle archive &lt;dag&gt; &lt;run-id&gt; [-o &lt;path&gt;]</code></pre>
+<p>The command resolves the run directory the same way <code>daggle status</code> does, then writes a gzipped tarball containing a <code>.manifest.sha256</code> file (as the first entry) followed by every regular file from the run directory in sorted order.</p>
+<pre><code>$ daggle archive etl-nightly 01HK4T8A... -o /backup/etl-2026-04-21.tar.gz
+Archive: /backup/etl-2026-04-21.tar.gz
+  files: 14
+  bytes: 48293 (uncompressed)</code></pre>
+<p>With no <code>-o</code>, the archive is written to <code>./&lt;dag&gt;_&lt;run-id&gt;.tar.gz</code> in the current directory.</p>
 </section>
-<section id="dag-discovery-order" class="level2">
-<h2 class="anchored" data-anchor-id="dag-discovery-order">DAG discovery order</h2>
-<p>When resolving a DAG by name, daggle searches in this order:</p>
-<ol type="1">
-<li><code>--dags-dir</code> flag (if provided)</li>
-<li><code>DAGGLE_DAGS_DIR</code> environment variable (if set)</li>
-<li><code>.daggle/</code> in the current working directory (project-local)</li>
-<li><code>~/.config/daggle/dags/</code> (global)</li>
-</ol>
-<p>The first match wins.</p>
+<section id="verifying-an-archive" class="level2">
+<h2 class="anchored" data-anchor-id="verifying-an-archive">Verifying an archive</h2>
+<pre><code>daggle verify &lt;archive&gt;</code></pre>
+<p>Reads the embedded manifest, re-hashes every file in the archive, and compares the two. Any file whose hash differs, is missing, or is present in the tarball without being in the manifest is reported.</p>
+<pre><code>$ daggle verify /backup/etl-2026-04-21.tar.gz
+OK: 14 files verified</code></pre>
+<p>On mismatch:</p>
+<pre><code>$ daggle verify /backup/etl-2026-04-21.tar.gz
+FAIL: /backup/etl-2026-04-21.tar.gz
+  mismatched (1):
+    events.jsonl</code></pre>
+<p>Exit code is 0 on success, non-zero on any mismatch.</p>
 </section>
-<section id="run-directory-contents" class="level2">
-<h2 class="anchored" data-anchor-id="run-directory-contents">Run directory contents</h2>
-<p>Each run gets its own directory under <code>runs/&lt;dag&gt;/&lt;date&gt;/run_&lt;id&gt;/</code>.</p>
-<table class="caption-top table">
-<thead>
-<tr class="header">
-<th>File</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>meta.json</code></td>
-<td>Run metadata: DAG name, parameters, start/end timestamps, final status.</td>
-</tr>
-<tr class="even">
-<td><code>events.jsonl</code></td>
-<td>Append-only event log. See <a href="../reference/events.html">Event Schema</a>.</td>
-</tr>
-<tr class="odd">
-<td><code>dag.yaml</code></td>
-<td>Copy of the DAG YAML taken at run start. Used by <code>dag_diff.patch</code> and by <code>daggle archive</code> to make runs self-describing and reproducible.</td>
-</tr>
-<tr class="even">
-<td><code>dag_diff.patch</code></td>
-<td>Unified diff of this run’s <code>dag.yaml</code> against the previous run’s. Written only when the DAG hash changed between runs. Gives a self-contained “what changed?” record without requiring git.</td>
-</tr>
-<tr class="odd">
-<td><code>&lt;step&gt;.stdout.log</code></td>
-<td>Captured stdout for each step. Includes raw output markers.</td>
-</tr>
-<tr class="even">
-<td><code>&lt;step&gt;.stderr.log</code></td>
-<td>Captured stderr for each step.</td>
-</tr>
-<tr class="odd">
-<td><code>&lt;step&gt;.inline.R</code></td>
-<td>Rendered R source for <code>r_expr</code> steps (useful for debugging).</td>
-</tr>
-<tr class="even">
-<td><code>&lt;step&gt;.sessioninfo.json</code></td>
-<td><code>sessionInfo()</code> snapshot written only when an R step fails. Contains <code>r_version</code>, <code>platform</code>, <code>error_message</code>, <code>session_info</code> (full text), and <code>timestamp</code>. Useful for compliance and post-mortem debugging — proves which package versions were active at the moment of failure without re-running R.</td>
-</tr>
-</tbody>
-</table>
+<section id="whats-in-the-archive" class="level2">
+<h2 class="anchored" data-anchor-id="whats-in-the-archive">What’s in the archive</h2>
+<p>The archive is a self-contained snapshot of the run:</p>
+<ul>
+<li><code>meta.json</code> — reproducibility metadata (DAG hash, R version, platform, params, renv library)</li>
+<li><code>events.jsonl</code> — full event log</li>
+<li><code>dag.yaml</code> — the DAG YAML as it was at run start</li>
+<li><code>dag_diff.patch</code> — unified diff vs.&nbsp;the prior run, if the DAG changed</li>
+<li><code>&lt;step&gt;.stdout.log</code>, <code>&lt;step&gt;.stderr.log</code> — per-step output</li>
+<li><code>&lt;step&gt;.sessioninfo.json</code> — R <code>sessionInfo()</code> for any failed R step</li>
+<li><code>&lt;step&gt;.inline.R</code> — rendered inline R source for <code>r_expr</code> steps</li>
+</ul>
+<p>See <a href="../reference/file-layout.html">File Layout</a> for the full list.</p>
 </section>
-<section id="overriding-directories" class="level2">
-<h2 class="anchored" data-anchor-id="overriding-directories">Overriding directories</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 26%">
-<col style="width: 26%">
-<col style="width: 23%">
-<col style="width: 23%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Mechanism</th>
-<th>Config dir</th>
-<th>Data dir</th>
-<th>DAGs dir</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>CLI flags</td>
-<td>–</td>
-<td><code>--data-dir</code></td>
-<td><code>--dags-dir</code></td>
-</tr>
-<tr class="even">
-<td>Environment variables</td>
-<td><code>DAGGLE_CONFIG_DIR</code></td>
-<td><code>DAGGLE_DATA_DIR</code></td>
-<td><code>DAGGLE_DAGS_DIR</code></td>
-</tr>
-<tr class="odd">
-<td>XDG fallback</td>
-<td><code>$XDG_CONFIG_HOME/daggle</code></td>
-<td><code>$XDG_DATA_HOME/daggle</code></td>
-<td>–</td>
-</tr>
-<tr class="even">
-<td>Default</td>
-<td><code>~/.config/daggle</code></td>
-<td><code>~/.local/share/daggle</code></td>
-<td>(discovery order)</td>
-</tr>
-</tbody>
-</table>
-<p>Priority is top to bottom: CLI flags override environment variables, which override XDG, which override defaults.</p>
+<section id="compliance-framing" class="level2">
+<h2 class="anchored" data-anchor-id="compliance-framing">Compliance framing</h2>
+<p>The archive format is designed to be FDA 21 CFR Part 11 adjacent:</p>
+<ul>
+<li><strong>Tamper evidence.</strong> Any change to a file flips its SHA-256 hash. The manifest lists every file with its expected hash; <code>daggle verify</code> surfaces mismatches.</li>
+<li><strong>Completeness.</strong> Extras (files in the tarball but not the manifest) and missing files (in the manifest but not the tarball) are both reported. Neither silent addition nor silent removal passes.</li>
+<li><strong>Self-contained.</strong> The manifest is bundled <em>inside</em> the same tarball — no external signature store to lose or desync. Store the tarball in read-only, replicated storage of your choice (S3 Object Lock, WORM appliances, signed backups); daggle’s job is detection, not enforcement.</li>
+<li><strong>Reproducible input.</strong> <code>dag.yaml</code> and <code>meta.json</code> (R version, renv lock hash, DAG hash, platform) are captured at run start, so the archive preserves the execution context even if the source repo later changes.</li>
+<li><strong>Deterministic output.</strong> Files are emitted in sorted relative-path order, so two archives of the same run directory agree bit-for-bit (modulo gzip’s internal timestamp).</li>
+</ul>
+<p>If you need cryptographic signing on top of the manifest (so tampering requires both file modification <em>and</em> key compromise), sign the archive externally with <code>gpg --detach-sign</code> or equivalent — daggle’s scope stops at content hashing.</p>
 </section>
-<section id="global-configuration-config.yaml" class="level2">
-<h2 class="anchored" data-anchor-id="global-configuration-config.yaml">Global configuration (<code>config.yaml</code>)</h2>
-<p>The file <code>~/.config/daggle/config.yaml</code> holds global settings. All fields are optional.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Override tool paths (useful when the scheduler can't find binaries)</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tools</span><span class="kw">:</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">rscript</span><span class="kw">:</span><span class="at"> /usr/local/bin/Rscript</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">quarto</span><span class="kw">:</span><span class="at"> /opt/homebrew/bin/quarto</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">git</span><span class="kw">:</span><span class="at"> /usr/bin/git</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Automatic cleanup of old run data</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="fu">cleanup</span><span class="kw">:</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">older_than</span><span class="kw">:</span><span class="at"> </span><span class="st">"30d"</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">interval</span><span class="kw">:</span><span class="at"> </span><span class="st">"6h"</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Named notification channels, referenced from hooks by name.</span></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co"># See the Hooks page for usage.</span></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="fu">notifications</span><span class="kw">:</span></span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">team-slack</span><span class="kw">:</span></span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> slack</span></span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">webhook_url</span><span class="kw">:</span><span class="at"> https://hooks.slack.com/services/...</span></span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">ops-email</span><span class="kw">:</span></span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">type</span><span class="kw">:</span><span class="at"> smtp</span></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_host</span><span class="kw">:</span><span class="at"> mail.example.com</span></span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_port</span><span class="kw">:</span><span class="at"> </span><span class="dv">587</span></span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_from</span><span class="kw">:</span><span class="at"> daggle@example.com</span></span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_to</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">ops@example.com</span><span class="kw">]</span></span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_user</span><span class="kw">:</span><span class="at"> daggle</span></span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">smtp_password</span><span class="kw">:</span><span class="at"> ${SMTP_PASSWORD}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<section id="tool-path-resolution" class="level3">
-<h3 class="anchored" data-anchor-id="tool-path-resolution">Tool path resolution</h3>
-<p>At startup, daggle resolves each tool path using this precedence:</p>
-<ol type="1">
-<li><strong><code>tools:</code> in config.yaml</strong> — explicit absolute path (highest priority)</li>
-<li><strong><code>exec.LookPath</code></strong> — searches the current <code>PATH</code></li>
-<li><strong>Bare binary name</strong> — fallback (may fail if not on <code>PATH</code>)</li>
-</ol>
-<p><strong>Auto-detection:</strong> When daggle discovers a tool via <code>PATH</code> lookup (step 2), it automatically saves the resolved absolute path to <code>config.yaml</code>. This means running any daggle command once from an interactive shell (e.g., <code>daggle doctor</code> or <code>daggle run</code>) will persist the tool paths. Future scheduler runs — even as a system service with a minimal <code>PATH</code> — will find the saved paths in config.</p>
-<p>Run <code>daggle doctor</code> to see which paths daggle resolved.</p>
+<section id="when-to-archive" class="level2">
+<h2 class="anchored" data-anchor-id="when-to-archive">When to archive</h2>
+<ul>
+<li><strong>End of a study / reporting period.</strong> Archive each run that produced a deliverable and keep the tarball with the deliverable.</li>
+<li><strong>Before cleanup.</strong> Run <code>daggle archive</code> before <code>daggle clean --older-than 30d</code> to retain audit trails without bloating the live data directory.</li>
+<li><strong>After each scheduled run in regulated environments.</strong> Wrap <code>daggle archive</code> in an <code>on_success</code> hook or a downstream DAG triggered via <code>trigger.on_dag</code>.</li>
+</ul>
+</section>
+<section id="limitations" class="level2">
+<h2 class="anchored" data-anchor-id="limitations">Limitations</h2>
+<ul>
+<li>The archive is a point-in-time snapshot. Changes to source scripts <em>outside</em> the run directory (the DAG YAML has been captured, but <code>script:</code> files on disk have not) are not archived. Keep scripts in version control if you need their history.</li>
+<li>Symlinks, devices, and other non-regular files are skipped.</li>
+<li>Gzip compression is deterministic for file content, but the gzip header includes a modification time; two archives of the same directory produced at different times will differ in that byte range. The manifest itself is independent of the gzip metadata.</li>
+</ul>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
