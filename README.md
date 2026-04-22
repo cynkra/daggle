@@ -452,6 +452,22 @@ daggle looks for DAG files in order: `--dags-dir` flag, `.daggle/` in the curren
 
 Config in `~/.config/daggle/`, data in `~/.local/share/daggle/` (XDG-compliant). Override with `DAGGLE_CONFIG_DIR` / `DAGGLE_DATA_DIR` or `--dags-dir` / `--data-dir` flags.
 
+## Testing
+
+Unit tests (fast, no external dependencies):
+
+```bash
+go test -race ./...
+```
+
+Integration tests live under [internal/integration/](internal/integration/) behind the `integration` build tag and exercise full DAG runs with real `Rscript` / `sh` subprocesses, a running API server, and the scheduler. They require R on `PATH`:
+
+```bash
+go test -tags=integration -race ./internal/integration/...
+```
+
+CI runs both jobs on every PR; the integration job installs R via `r-lib/actions/setup-r`.
+
 ## Editor support
 
 A [JSON Schema](docs/daggle-schema.json) is provided for DAG YAML files. Add this to the top of your YAML files for autocomplete and validation in VS Code (with the YAML extension):

@@ -1,0 +1,6 @@
+name: integration-scheduled
+trigger:
+  schedule: "@every 1s"
+steps:
+  - id: marker
+    command: touch "${DAGGLE_RUN_DIR}/marker"

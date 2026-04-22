@@ -1,0 +1,13 @@
+name: integration-hooks-fail
+params:
+  - name: hooks_dir
+    default: ""
+env:
+  HOOKS_DIR: "{{ .Params.hooks_dir }}"
+steps:
+  - id: boom
+    command: exit 1
+on_failure:
+  command: touch "${HOOKS_DIR}/on_failure.marker"
+on_exit:
+  command: touch "${HOOKS_DIR}/on_exit.marker"

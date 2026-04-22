@@ -1,0 +1,5 @@
+name: integration-timeout
+steps:
+  - id: slow
+    command: sleep 30
+    timeout: 2s
