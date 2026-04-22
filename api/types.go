@@ -248,6 +248,14 @@ type MetaDiff struct {
 	Changed  bool   `json:"changed"`
 }
 
+// ArchiveResponse is returned by POST /api/v1/dags/{name}/runs/{run_id}/archive.
+type ArchiveResponse struct {
+	Path      string `json:"path"`
+	Files     int    `json:"files"`
+	Bytes     int64  `json:"bytes"`
+	CreatedAt string `json:"created_at"`
+}
+
 // ErrorResponse is returned for errors.
 type ErrorResponse struct {
 	Error string `json:"error"`

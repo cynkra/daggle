@@ -470,6 +470,48 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/dags/{name}/runs/{run_id}/archive:
+    post:
+      summary: Create a tamper-evident archive of a run
+      description: |
+        Bundles the run directory into a .tar.gz with an embedded SHA-256 manifest
+        and stores it at DAGGLE_DATA_DIR/archives/{dag}_{run_id}.tar.gz on the data
+        volume. Idempotent: re-POST overwrites the prior archive.
+      operationId: createArchive
+      tags: [archive]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "201":
+          description: Archive created (or overwritten).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiveResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    get:
+      summary: Download a previously-created run archive
+      description: |
+        Streams the archive tarball. The archive must have been created via POST to
+        this endpoint first; otherwise returns 404.
+      operationId: downloadArchive
+      tags: [archive]
+      parameters:
+        - $ref: "#/components/parameters/dagName"
+        - $ref: "#/components/parameters/runId"
+      responses:
+        "200":
+          description: Archive tarball.
+          content:
+            application/gzip:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/projects:
     get:
       summary: List registered projects
@@ -1141,3 +1183,22 @@ components:
         freed:
           type: string
           description: Human-readable size, e.g. "1.5 GB".
+
+    ArchiveResponse:
+      type: object
+      required: [path, files, bytes, created_at]
+      properties:
+        path:
+          type: string
+          description: Server-side path of the archive on the data volume.
+        files:
+          type: integer
+          description: Number of regular files included (excluding the manifest).
+        bytes:
+          type: integer
+          format: int64
+          description: Total uncompressed size of the bundled files.
+        created_at:
+          type: string
+          format: date-time
+          description: Archive file mtime (RFC3339 UTC).
