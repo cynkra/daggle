@@ -359,8 +359,18 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 		}
 	}
 
-	// Remove DAGs that no longer exist in any source
+	s.pruneUnregisteredDAGs(seen, newListeners, newWebhooks)
+	s.syncWebhookServer(newWebhooks)
+	return nil
+}
+
+// pruneUnregisteredDAGs removes registered DAGs that are no longer present in
+// any source, drops syncCache entries for deleted files, and swaps in the
+// fresh on_dag listener and webhook maps built during the scan. Holds s.mu
+// for the whole update.
+func (s *Scheduler) pruneUnregisteredDAGs(seen map[string]bool, newListeners map[string][]onDAGListener, newWebhooks map[string]webhookEntry) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	for name, entry := range s.registered {
 		if !seen[name] {
 			s.cron.Remove(entry.cronID)
@@ -369,17 +379,20 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 			s.logger.Info("unregistered DAG", "dag", name)
 		}
 	}
-	// Prune syncCache entries whose file was deleted, to bound cache size.
 	for path := range s.syncCache {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			delete(s.syncCache, path)
 		}
 	}
-	// Update on_dag listeners and webhooks
 	s.onDAGListeners = newListeners
 	s.webhooks = newWebhooks
+}
 
-	// Start/stop webhook server based on whether any webhooks are configured
+// syncWebhookServer starts the webhook HTTP server when webhooks are newly
+// configured, or stops it when none remain. Releases s.mu across the
+// start/stop call so server I/O doesn't block other scheduler state.
+func (s *Scheduler) syncWebhookServer(newWebhooks map[string]webhookEntry) {
+	s.mu.Lock()
 	needServer := len(newWebhooks) > 0
 	hasServer := s.webhookCloseFn != nil
 	s.mu.Unlock()
@@ -388,14 +401,16 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 		addr, closeFn, err := s.startWebhookServer(newWebhooks)
 		if err != nil {
 			s.logger.Error("failed to start webhook server", "error", err)
-		} else {
-			s.mu.Lock()
-			s.webhookCloseFn = closeFn
-			s.webhookAddr = addr
-			s.mu.Unlock()
-			s.logger.Info("webhook server started", "addr", addr)
+			return
 		}
-	} else if !needServer && hasServer {
+		s.mu.Lock()
+		s.webhookCloseFn = closeFn
+		s.webhookAddr = addr
+		s.mu.Unlock()
+		s.logger.Info("webhook server started", "addr", addr)
+		return
+	}
+	if !needServer && hasServer {
 		s.mu.Lock()
 		closeFn := s.webhookCloseFn
 		s.webhookCloseFn = nil
@@ -403,8 +418,6 @@ func (s *Scheduler) syncDAGs(ctx context.Context) error {
 		closeFn()
 		s.logger.Info("webhook server stopped (no webhook triggers)")
 	}
-
-	return nil
 }
 
 // syncSource scans a single DAG source directory.

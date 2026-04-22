@@ -47,143 +47,141 @@ func ExpandDAG(d *DAG, paramOverrides map[string]string) (*DAG, error) {
 	expanded := *d
 	expanded.Steps = make([]Step, len(d.Steps))
 
-	// Expand DAG-level env
-	expandedEnv := make(EnvMap, len(d.Env))
-	for k, v := range d.Env {
-		ev, err := expandString(v.Value, ctx, fmt.Sprintf("env[%s]", k))
+	env, err := expandEnvMap(d.Env, ctx, "env")
+	if err != nil {
+		return nil, err
+	}
+	expanded.Env = env
+
+	for i, s := range d.Steps {
+		es, err := expandStep(s, ctx)
 		if err != nil {
 			return nil, err
 		}
-		expandedEnv[k] = EnvVar{Value: ev, Secret: v.Secret}
-	}
-	expanded.Env = expandedEnv
-
-	for i, s := range d.Steps {
-		es := s
-		// Deep copy mutable fields to avoid sharing with original
-		if len(s.Depends) > 0 {
-			es.Depends = make([]string, len(s.Depends))
-			copy(es.Depends, s.Depends)
-		}
-		if s.Retry != nil {
-			r := *s.Retry
-			es.Retry = &r
-		}
-		if s.When != nil {
-			w := *s.When
-			es.When = &w
-		}
-		if s.OnSuccess != nil {
-			h := *s.OnSuccess
-			es.OnSuccess = &h
-		}
-		if s.OnFailure != nil {
-			h := *s.OnFailure
-			es.OnFailure = &h
-		}
-		es.Args = make([]string, len(s.Args))
-
-		// Expand args
-		for j, arg := range s.Args {
-			v, err := expandString(arg, ctx, fmt.Sprintf("step %q args[%d]", s.ID, j))
-			if err != nil {
-				return nil, err
-			}
-			es.Args[j] = v
-		}
-
-		// Expand script path
-		if s.Script != "" {
-			v, err := expandString(s.Script, ctx, fmt.Sprintf("step %q script", s.ID))
-			if err != nil {
-				return nil, err
-			}
-			es.Script = v
-		}
-
-		// Expand r_expr
-		if s.RExpr != "" {
-			v, err := expandString(s.RExpr, ctx, fmt.Sprintf("step %q r_expr", s.ID))
-			if err != nil {
-				return nil, err
-			}
-			es.RExpr = v
-		}
-
-		// Expand command
-		if s.Command != "" {
-			v, err := expandString(s.Command, ctx, fmt.Sprintf("step %q command", s.ID))
-			if err != nil {
-				return nil, err
-			}
-			es.Command = v
-		}
-
-		// Expand quarto path
-		if s.Quarto != "" {
-			v, err := expandString(s.Quarto, ctx, fmt.Sprintf("step %q quarto", s.ID))
-			if err != nil {
-				return nil, err
-			}
-			es.Quarto = v
-		}
-
-		// Expand R package dev step paths
-		for _, field := range []struct {
-			val  *string
-			name string
-		}{
-			{&es.Test, "test"}, {&es.Check, "check"}, {&es.Document, "document"},
-			{&es.Lint, "lint"}, {&es.Style, "style"},
-			{&es.Rmd, "rmd"}, {&es.RenvRestore, "renv_restore"},
-			{&es.Coverage, "coverage"}, {&es.Validate, "validate"},
-		} {
-			src := *field.val
-			if src != "" {
-				v, err := expandString(src, ctx, fmt.Sprintf("step %q %s", s.ID, field.name))
-				if err != nil {
-					return nil, err
-				}
-				*field.val = v
-			}
-		}
-
-		// Expand connect fields
-		if s.Connect != nil {
-			ec := *s.Connect
-			if ec.Path != "" {
-				v, err := expandString(ec.Path, ctx, fmt.Sprintf("step %q connect.path", s.ID))
-				if err != nil {
-					return nil, err
-				}
-				ec.Path = v
-			}
-			if ec.Name != "" {
-				v, err := expandString(ec.Name, ctx, fmt.Sprintf("step %q connect.name", s.ID))
-				if err != nil {
-					return nil, err
-				}
-				ec.Name = v
-			}
-			es.Connect = &ec
-		}
-
-		// Expand step-level env
-		if len(s.Env) > 0 {
-			es.Env = make(EnvMap, len(s.Env))
-			for k, v := range s.Env {
-				ev, err := expandString(v.Value, ctx, fmt.Sprintf("step %q env[%s]", s.ID, k))
-				if err != nil {
-					return nil, err
-				}
-				es.Env[k] = EnvVar{Value: ev, Secret: v.Secret}
-			}
-		}
-
 		expanded.Steps[i] = es
 	}
 
 	return &expanded, nil
+}
+
+// expandStep produces a template-expanded deep copy of a single step. All
+// mutable nested structs (Depends, Retry, When, OnSuccess, OnFailure, Connect,
+// Env) are cloned so the caller can mutate the result without touching the
+// original DAG.
+func expandStep(s Step, ctx TemplateContext) (Step, error) {
+	es := s
+	cloneStepPointers(&es, s)
+	es.Args = make([]string, len(s.Args))
+
+	for j, arg := range s.Args {
+		v, err := expandString(arg, ctx, fmt.Sprintf("step %q args[%d]", s.ID, j))
+		if err != nil {
+			return Step{}, err
+		}
+		es.Args[j] = v
+	}
+
+	fields := []struct {
+		val  *string
+		name string
+	}{
+		{&es.Script, "script"}, {&es.RExpr, "r_expr"},
+		{&es.Command, "command"}, {&es.Quarto, "quarto"},
+		{&es.Test, "test"}, {&es.Check, "check"}, {&es.Document, "document"},
+		{&es.Lint, "lint"}, {&es.Style, "style"},
+		{&es.Rmd, "rmd"}, {&es.RenvRestore, "renv_restore"},
+		{&es.Coverage, "coverage"}, {&es.Validate, "validate"},
+	}
+	for _, f := range fields {
+		if err := expandOptional(f.val, ctx, fmt.Sprintf("step %q %s", s.ID, f.name)); err != nil {
+			return Step{}, err
+		}
+	}
+
+	if s.Connect != nil {
+		ec, err := expandConnect(s.Connect, ctx, s.ID)
+		if err != nil {
+			return Step{}, err
+		}
+		es.Connect = ec
+	}
+
+	if len(s.Env) > 0 {
+		env, err := expandEnvMap(s.Env, ctx, fmt.Sprintf("step %q env", s.ID))
+		if err != nil {
+			return Step{}, err
+		}
+		es.Env = env
+	}
+
+	return es, nil
+}
+
+// cloneStepPointers deep-copies the nested structs on a step so that mutations
+// to the expanded copy don't leak back into the source DAG.
+func cloneStepPointers(dst *Step, src Step) {
+	if len(src.Depends) > 0 {
+		dst.Depends = make([]string, len(src.Depends))
+		copy(dst.Depends, src.Depends)
+	}
+	if src.Retry != nil {
+		r := *src.Retry
+		dst.Retry = &r
+	}
+	if src.When != nil {
+		w := *src.When
+		dst.When = &w
+	}
+	if src.OnSuccess != nil {
+		h := *src.OnSuccess
+		dst.OnSuccess = &h
+	}
+	if src.OnFailure != nil {
+		h := *src.OnFailure
+		dst.OnFailure = &h
+	}
+}
+
+// expandEnvMap returns a template-expanded deep copy of an EnvMap. locationBase
+// is prefixed to per-key error messages ("env[KEY]" or `step "X" env[KEY]`).
+func expandEnvMap(src EnvMap, ctx TemplateContext, locationBase string) (EnvMap, error) {
+	out := make(EnvMap, len(src))
+	for k, v := range src {
+		ev, err := expandString(v.Value, ctx, fmt.Sprintf("%s[%s]", locationBase, k))
+		if err != nil {
+			return nil, err
+		}
+		out[k] = EnvVar{Value: ev, Secret: v.Secret}
+	}
+	return out, nil
+}
+
+// expandOptional runs template expansion on *field in place, but only if the
+// current value is non-empty. Empty-string fields are left untouched so callers
+// don't need to pre-check each one.
+func expandOptional(field *string, ctx TemplateContext, location string) error {
+	if *field == "" {
+		return nil
+	}
+	v, err := expandString(*field, ctx, location)
+	if err != nil {
+		return err
+	}
+	*field = v
+	return nil
+}
+
+// expandConnect returns a deep copy of c with Path and Name template-expanded.
+// Caller has already verified c != nil.
+func expandConnect(c *ConnectDeploy, ctx TemplateContext, stepID string) (*ConnectDeploy, error) {
+	ec := *c
+	if err := expandOptional(&ec.Path, ctx, fmt.Sprintf("step %q connect.path", stepID)); err != nil {
+		return nil, err
+	}
+	if err := expandOptional(&ec.Name, ctx, fmt.Sprintf("step %q connect.name", stepID)); err != nil {
+		return nil, err
+	}
+	return &ec, nil
 }
 
 func expandString(s string, ctx TemplateContext, location string) (string, error) {
