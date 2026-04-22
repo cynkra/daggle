@@ -13,6 +13,7 @@ Complete field-by-field reference for daggle DAG definitions. A [JSON Schema](ht
 | `steps` | array | yes | List of execution steps |
 | `trigger` | object | no | Automated execution triggers |
 | `workdir` | string | no | Working directory for all steps |
+| `max_parallel` | integer | no | Cap on concurrent step execution (0 = unbounded) |
 | `env` | object | no | Environment variables for all steps |
 | `params` | array | no | Parameters with optional defaults |
 | `r_version` | string | no | R version constraint (e.g. `">=4.1.0"`) |

@@ -17,6 +17,11 @@ type DAG struct {
 	Steps   []Step            `yaml:"steps"`
 	Workdir string            `yaml:"workdir,omitempty"`
 
+	// MaxParallel caps the number of steps that can run concurrently across
+	// the whole run. 0 means unbounded (current default). Negative values are
+	// rejected by validation.
+	MaxParallel int `yaml:"max_parallel,omitempty"`
+
 	// Ownership and annotations (Phase 8)
 	Owner       string   `yaml:"owner,omitempty"`
 	Team        string   `yaml:"team,omitempty"`

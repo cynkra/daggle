@@ -36,6 +36,10 @@ func ValidateWithChannels(d *DAG, channels map[string]bool) error {
 		errs = append(errs, "dag must have at least one step")
 	}
 
+	if d.MaxParallel < 0 {
+		errs = append(errs, fmt.Sprintf("max_parallel must be >= 0, got %d", d.MaxParallel))
+	}
+
 	errs = append(errs, validateSteps(d)...)
 	errs = append(errs, validateRVersion(d)...)
 	errs = append(errs, validateTriggers(d)...)

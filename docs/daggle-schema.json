@@ -80,6 +80,11 @@
       "type": "string",
       "description": "Working directory override for all steps"
     },
+    "max_parallel": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum number of steps allowed to run concurrently. 0 (default) means unbounded."
+    },
     "r_version": {
       "type": "string",
       "description": "R version constraint (e.g. '>=4.1.0'). Warns if not satisfied; use r_version_strict to fail."

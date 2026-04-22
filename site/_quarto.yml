@@ -101,6 +101,8 @@ website:
           href: monitoring/doctor.qmd
         - text: "Cleanup"
           href: monitoring/cleanup.qmd
+        - text: "Archiving & Integrity"
+          href: monitoring/archiving.qmd
 
     - title: "Secrets"
       style: floating

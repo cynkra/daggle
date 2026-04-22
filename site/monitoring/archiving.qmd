@@ -1,0 +1,84 @@
+---
+title: "Archiving & Integrity"
+---
+
+For compliance, audit, or long-term retention, daggle can bundle an entire run into a single tamper-evident `.tar.gz` and later verify it byte-for-byte against an embedded SHA-256 manifest.
+
+## Creating an archive
+
+```
+daggle archive <dag> <run-id> [-o <path>]
+```
+
+The command resolves the run directory the same way `daggle status` does, then writes a gzipped tarball containing a `.manifest.sha256` file (as the first entry) followed by every regular file from the run directory in sorted order.
+
+```
+$ daggle archive etl-nightly 01HK4T8A... -o /backup/etl-2026-04-21.tar.gz
+Archive: /backup/etl-2026-04-21.tar.gz
+  files: 14
+  bytes: 48293 (uncompressed)
+```
+
+With no `-o`, the archive is written to `./<dag>_<run-id>.tar.gz` in the current directory.
+
+## Verifying an archive
+
+```
+daggle verify <archive>
+```
+
+Reads the embedded manifest, re-hashes every file in the archive, and compares the two. Any file whose hash differs, is missing, or is present in the tarball without being in the manifest is reported.
+
+```
+$ daggle verify /backup/etl-2026-04-21.tar.gz
+OK: 14 files verified
+```
+
+On mismatch:
+
+```
+$ daggle verify /backup/etl-2026-04-21.tar.gz
+FAIL: /backup/etl-2026-04-21.tar.gz
+  mismatched (1):
+    events.jsonl
+```
+
+Exit code is 0 on success, non-zero on any mismatch.
+
+## What's in the archive
+
+The archive is a self-contained snapshot of the run:
+
+- `meta.json` — reproducibility metadata (DAG hash, R version, platform, params, renv library)
+- `events.jsonl` — full event log
+- `dag.yaml` — the DAG YAML as it was at run start
+- `dag_diff.patch` — unified diff vs. the prior run, if the DAG changed
+- `<step>.stdout.log`, `<step>.stderr.log` — per-step output
+- `<step>.sessioninfo.json` — R `sessionInfo()` for any failed R step
+- `<step>.inline.R` — rendered inline R source for `r_expr` steps
+
+See [File Layout](../reference/file-layout.qmd) for the full list.
+
+## Compliance framing
+
+The archive format is designed to be FDA 21 CFR Part 11 adjacent:
+
+- **Tamper evidence.** Any change to a file flips its SHA-256 hash. The manifest lists every file with its expected hash; `daggle verify` surfaces mismatches.
+- **Completeness.** Extras (files in the tarball but not the manifest) and missing files (in the manifest but not the tarball) are both reported. Neither silent addition nor silent removal passes.
+- **Self-contained.** The manifest is bundled *inside* the same tarball — no external signature store to lose or desync. Store the tarball in read-only, replicated storage of your choice (S3 Object Lock, WORM appliances, signed backups); daggle's job is detection, not enforcement.
+- **Reproducible input.** `dag.yaml` and `meta.json` (R version, renv lock hash, DAG hash, platform) are captured at run start, so the archive preserves the execution context even if the source repo later changes.
+- **Deterministic output.** Files are emitted in sorted relative-path order, so two archives of the same run directory agree bit-for-bit (modulo gzip's internal timestamp).
+
+If you need cryptographic signing on top of the manifest (so tampering requires both file modification *and* key compromise), sign the archive externally with `gpg --detach-sign` or equivalent — daggle's scope stops at content hashing.
+
+## When to archive
+
+- **End of a study / reporting period.** Archive each run that produced a deliverable and keep the tarball with the deliverable.
+- **Before cleanup.** Run `daggle archive` before `daggle clean --older-than 30d` to retain audit trails without bloating the live data directory.
+- **After each scheduled run in regulated environments.** Wrap `daggle archive` in an `on_success` hook or a downstream DAG triggered via `trigger.on_dag`.
+
+## Limitations
+
+- The archive is a point-in-time snapshot. Changes to source scripts *outside* the run directory (the DAG YAML has been captured, but `script:` files on disk have not) are not archived. Keep scripts in version control if you need their history.
+- Symlinks, devices, and other non-regular files are skipped.
+- Gzip compression is deterministic for file content, but the gzip header includes a modification time; two archives of the same directory produced at different times will differ in that byte range. The manifest itself is independent of the gzip metadata.

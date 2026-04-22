@@ -69,6 +69,10 @@ type Engine struct {
 	// Keys are namespaced: DAGGLE_OUTPUT_<STEP_ID>_<KEY>
 	mu      sync.Mutex
 	outputs map[string]string
+
+	// sem bounds concurrent step execution when DAG.MaxParallel > 0.
+	// nil means unbounded.
+	sem chan struct{}
 }
 
 // New creates an Engine from the given Config. Returns an error if any of
@@ -83,7 +87,7 @@ func New(cfg Config) (*Engine, error) {
 	if cfg.ExecFactory == nil {
 		return nil, errors.New("engine: Config.ExecFactory is required")
 	}
-	return &Engine{
+	e := &Engine{
 		dag:           cfg.DAG,
 		execFn:        cfg.ExecFactory,
 		events:        state.NewEventWriter(cfg.Run.Dir),
@@ -95,7 +99,11 @@ func New(cfg Config) (*Engine, error) {
 		notifications: cfg.Notifications,
 		logger:        slog.Default(),
 		outputs:       make(map[string]string),
-	}, nil
+	}
+	if cfg.DAG.MaxParallel > 0 {
+		e.sem = make(chan struct{}, cfg.DAG.MaxParallel)
+	}
+	return e, nil
 }
 
 // Run executes the DAG by walking tiers in topological order.
@@ -192,6 +200,10 @@ func (e *Engine) runTier(ctx context.Context, steps []dag.Step, env []string) er
 		wg.Add(1)
 		go func(s dag.Step) {
 			defer wg.Done()
+			if e.sem != nil {
+				e.sem <- struct{}{}
+				defer func() { <-e.sem }()
+			}
 			if err := e.runStep(ctx, s, env); err != nil {
 				mu.Lock()
 				errs = append(errs, fmt.Errorf("step %q failed: %w", s.ID, err))
