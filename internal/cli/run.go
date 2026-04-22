@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -26,6 +27,7 @@ import (
 var Version = "dev"
 
 var runParams []string
+var runDryRun bool
 
 var runCmd = &cobra.Command{
 	Use:   "run <dag-name>",
@@ -36,6 +38,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	runCmd.Flags().StringArrayVarP(&runParams, "param", "p", nil, "parameter override (key=value)")
+	runCmd.Flags().BoolVar(&runDryRun, "dry-run", false, "validate the DAG and report what would happen without executing or creating a run")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -74,6 +77,14 @@ func runDAG(_ *cobra.Command, args []string) error {
 	}
 	redactor := dag.NewRedactor(envMaps...)
 
+	// Dry-run: report what would happen without creating a run or executing.
+	if runDryRun {
+		return runDryRunReport(expanded, dagPath)
+	}
+
+	// Resolve prior run before creating the new one so it doesn't return self.
+	priorRun, _ := state.LatestRun(expanded.Name)
+
 	// Create run
 	run, err := state.CreateRun(expanded.Name)
 	if err != nil {
@@ -82,6 +93,29 @@ func runDAG(_ *cobra.Command, args []string) error {
 
 	fmt.Printf("Starting DAG %q (run %s)\n", expanded.Name, run.ID)
 	fmt.Printf("Run directory: %s\n\n", run.Dir)
+
+	// Snapshot the DAG YAML into the run directory. Phase 9 uses this as the
+	// stable input for cross-run diffs, independent of the source file's
+	// later state.
+	if err := copyFile(dagPath, filepath.Join(run.Dir, state.DAGYAMLName)); err != nil {
+		fmt.Printf("Warning: failed to snapshot DAG YAML: %v\n", err)
+	}
+
+	// If the DAG hash changed since the prior run, write a unified diff.
+	if priorRun != nil {
+		priorMeta, err := state.ReadMeta(priorRun.Dir)
+		if err == nil && priorMeta.DAGHash != "" {
+			currentHash, _ := dag.HashFile(dagPath)
+			if currentHash != "" && currentHash != priorMeta.DAGHash {
+				if wrote, err := state.WriteDAGDiff(run.Dir, priorRun); err != nil {
+					fmt.Printf("Warning: failed to write dag_diff.patch: %v\n", err)
+				} else if wrote {
+					fmt.Printf("DAG changed since prior run %s — diff written to %s\n",
+						priorRun.ID, state.DAGDiffName)
+				}
+			}
+		}
+	}
 
 	// Check R version constraint
 	if expanded.RVersion != "" {
@@ -226,4 +260,26 @@ func applyOverrides() {
 	if dataDir != "" {
 		_ = os.Setenv("DAGGLE_DATA_DIR", dataDir)
 	}
+}
+
+// copyFile copies src to dst preserving the source mode.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	defer func() { _ = out.Close() }()
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return nil
 }

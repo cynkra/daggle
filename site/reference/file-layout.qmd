@@ -21,6 +21,8 @@ daggle uses a fixed directory structure for configuration, DAG definitions, and 
         run_<id>/
           meta.json              # Run metadata (params, start time, status)
           events.jsonl           # Append-only event log (see Event Schema)
+          dag.yaml               # Snapshot of the DAG YAML at run start
+          dag_diff.patch         # Unified diff vs. the prior run (only if dag_hash changed)
           <step>.stdout.log      # Step stdout (includes output markers)
           <step>.stderr.log      # Step stderr
           <step>.inline.R        # Rendered inline R code (for r_expr steps)
@@ -51,6 +53,8 @@ Each run gets its own directory under `runs/<dag>/<date>/run_<id>/`.
 |------|-------------|
 | `meta.json` | Run metadata: DAG name, parameters, start/end timestamps, final status. |
 | `events.jsonl` | Append-only event log. See [Event Schema](events.qmd). |
+| `dag.yaml` | Copy of the DAG YAML taken at run start. Used by `dag_diff.patch` and by `daggle archive` to make runs self-describing and reproducible. |
+| `dag_diff.patch` | Unified diff of this run's `dag.yaml` against the previous run's. Written only when the DAG hash changed between runs. Gives a self-contained "what changed?" record without requiring git. |
 | `<step>.stdout.log` | Captured stdout for each step. Includes raw output markers. |
 | `<step>.stderr.log` | Captured stderr for each step. |
 | `<step>.inline.R` | Rendered R source for `r_expr` steps (useful for debugging). |

@@ -9,14 +9,17 @@ Complete reference for all daggle commands. See also [global flags](#global-flag
 Run a DAG immediately.
 
 ```
-daggle run <dag> [-p key=value]...
+daggle run <dag> [-p key=value]... [--dry-run]
 ```
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `-p`, `--param` | `key=value` | (none) | Set a parameter value. Repeatable. |
+| `--dry-run` | bool | false | Validate and report what would happen; do not execute or create a run |
 
 Runs the named DAG synchronously, streaming step output to the terminal. Exit code reflects the DAG outcome: 0 for success, 1 for failure.
+
+With `--dry-run`, daggle loads the DAG, resolves secrets, checks the R version constraint, detects renv, evaluates freshness rules, and verifies that referenced scripts exist — then prints a plan of which steps would run in which tiers. No run directory is created and no steps are executed. Exits non-zero if any check fails. Use `daggle plan` for cache-status analysis.
 
 ## daggle validate
 
@@ -216,6 +219,30 @@ daggle monitor <dag> [--run-id <id>] [--url <url>]
 | `--url` | string | auto-detect | Base URL of a daggle server |
 
 Subscribes to the SSE stream endpoint and renders per-step status, duration, peak RSS, and annotation count. If no server is listening on `http://localhost:8080`, `daggle monitor` spawns an embedded read-only API on a random port for the session. Press `q` or `esc` to quit.
+
+## daggle archive
+
+Bundle a run directory into a tamper-evident `.tar.gz` with an embedded SHA-256 manifest.
+
+```
+daggle archive <dag> <run-id> [-o <path>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `-o`, `--output` | path | `./<dag>_<run-id>.tar.gz` | Output archive path |
+
+The archive contains `.manifest.sha256` as its first entry (one `<sha256>  <path>` line per file), followed by every regular file in the run directory in sorted order. Pair with `daggle verify` to detect corruption, tampering, missing files, or extras. FDA 21 CFR Part 11 adjacent.
+
+## daggle verify
+
+Check the integrity of a daggle archive.
+
+```
+daggle verify <archive>
+```
+
+Re-hashes every file inside the archive and compares against the embedded manifest. Prints `OK: <N> files verified` on success; on failure lists mismatched, missing, and extra files and exits non-zero.
 
 ## daggle impact
 

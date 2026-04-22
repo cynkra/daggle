@@ -1096,3 +1096,28 @@ func TestValidate_CacheWithScriptIsValid(t *testing.T) {
 		t.Errorf("cache + script should be valid: %v", err)
 	}
 }
+
+func TestValidate_MaxParallel(t *testing.T) {
+	t.Run("zero is valid (unbounded)", func(t *testing.T) {
+		d := &DAG{Name: "t", MaxParallel: 0, Steps: []Step{{ID: "a", Command: "echo"}}}
+		if err := Validate(d); err != nil {
+			t.Errorf("max_parallel: 0 should be valid: %v", err)
+		}
+	})
+	t.Run("positive is valid", func(t *testing.T) {
+		d := &DAG{Name: "t", MaxParallel: 4, Steps: []Step{{ID: "a", Command: "echo"}}}
+		if err := Validate(d); err != nil {
+			t.Errorf("max_parallel: 4 should be valid: %v", err)
+		}
+	})
+	t.Run("negative is rejected", func(t *testing.T) {
+		d := &DAG{Name: "t", MaxParallel: -1, Steps: []Step{{ID: "a", Command: "echo"}}}
+		err := Validate(d)
+		if err == nil {
+			t.Fatal("negative max_parallel should fail validation")
+		}
+		if !strings.Contains(err.Error(), "max_parallel") {
+			t.Errorf("error should mention max_parallel, got: %s", err.Error())
+		}
+	})
+}

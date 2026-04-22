@@ -124,6 +124,49 @@ func TestEngine_ParallelTier(t *testing.T) {
 	}
 }
 
+func TestEngine_MaxParallel(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name:        "test",
+		MaxParallel: 2,
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+			{ID: "b", Command: "echo b"},
+			{ID: "c", Command: "echo c"},
+			{ID: "d", Command: "echo d"},
+			{ID: "e", Command: "echo e"},
+		},
+	}
+
+	var count atomic.Int32
+	var maxConcurrent atomic.Int32
+
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		cur := count.Add(1)
+		for {
+			old := maxConcurrent.Load()
+			if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+				break
+			}
+		}
+		time.Sleep(80 * time.Millisecond)
+		count.Add(-1)
+		return executor.Result{ExitCode: 0}
+	}}
+
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
+	if err := eng.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if got := maxConcurrent.Load(); got > 2 {
+		t.Errorf("max concurrent = %d, want <= 2 (MaxParallel=2)", got)
+	}
+	if got := maxConcurrent.Load(); got < 2 {
+		t.Errorf("max concurrent = %d, want exactly 2 (expected saturation)", got)
+	}
+}
+
 func TestEngine_FailureStopsTiers(t *testing.T) {
 	run := setupRun(t)
 	d := &dag.DAG{

@@ -124,13 +124,9 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 8 — Collaboration & Observability:** 9 features for team workflows and production observability. Named notification channels in `config.yaml` (slack, clickup, smtp, generic http) referenced from hooks via `notify: <name>`. DAG-level `owner:`, `team:`, `description:`, `tags:` with filtering in `daggle list` and `GET /dags`. Run annotations (`daggle annotate`, new `run_annotated` event). Focused failure diagnostic (`daggle why`). R `sessionInfo()` auto-capture on step failure (`{step}.sessioninfo.json`). Step-level peak RSS and CPU via `syscall.Rusage`, surfaced in `daggle stats` and the API. Live SSE stream endpoint. Interactive bubbletea TUI (`daggle monitor`). Exposure/impact tracking with `exposures:` field and `daggle impact`. Cross-DAG output dependencies deferred to a later phase.
 
-### Planned
+**Phase 9 — Safety & Compliance:** 4 features targeting compliance and predictable resource use. Immutable run archives (`daggle archive`/`daggle verify`) bundle a run directory into a `.tar.gz` with an embedded SHA-256 manifest that detects tampering, missing files, and extras. DAG change log snapshots the YAML into each run (`dag.yaml`) and writes a unified diff (`dag_diff.patch`) whenever `dag_hash` changes between runs. Dry-run validation (`daggle run --dry-run`) reports what a run would do — secrets resolved, R version, renv, freshness, script existence — without creating a run or executing steps. DAG-level `max_parallel:` caps concurrent step execution via a semaphore.
 
-**Phase 9 — Safety & Compliance:**
-- **Immutable run archives** — `daggle archive <dag> <run-id>` bundles the run directory into a tarball with a SHA-256 manifest of every file. `daggle verify <archive>` checks integrity. FDA 21 CFR Part 11 adjacent.
-- **DAG change log** — Record full YAML diff when `dag_hash` changes between runs. Store as `dag_diff.patch` in the run directory. Self-contained "what changed?" without git.
-- **Dry-run validation** — `daggle run --dry-run <dag>` resolves secrets, checks R version, verifies renv, checks freshness, and reports what *would* happen. Goes deeper than `daggle plan` (which only checks cache status).
-- **Bounded parallel execution** — `max_parallel:` at DAG level to cap concurrent step execution. Prevents 10 Rscript processes from exhausting a laptop. Small engine change, high impact.
+### Planned
 
 **Phase 10 — Developer Experience & Ecosystem:**
 - **`daggle watch`** — Monitor DAG YAML and referenced scripts for changes. On save, re-validate and optionally re-run changed steps only (using cache). Like `nodemon` but DAG-aware.
