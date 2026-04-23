@@ -129,14 +129,9 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 9 — Safety & Compliance:** 4 features targeting compliance and predictable resource use. Immutable run archives (`daggle archive`/`daggle verify`) bundle a run directory into a `.tar.gz` with an embedded SHA-256 manifest that detects tampering, missing files, and extras. DAG change log snapshots the YAML into each run (`dag.yaml`) and writes a unified diff (`dag_diff.patch`) whenever `dag_hash` changes between runs. Dry-run validation (`daggle run --dry-run`) reports what a run would do — secrets resolved, R version, renv, freshness, script existence — without creating a run or executing steps. DAG-level `max_parallel:` caps concurrent step execution via a semaphore.
 
-### Planned
+**Phase 10 — Developer Experience & Ecosystem:** 5 features shortening the authoring feedback loop and filling common ETL gaps. `daggle watch` re-validates and re-runs a DAG on YAML or referenced-script changes (nodemon-style) with step-level cache reuse. `daggle lint` adds semantic diagnostics beyond `daggle validate` (script existence, resolvable `${env:}`/`${file:}` secrets, defined `notify:` channels, optional R-package presence) with `text`/`gnu`/`json` output for editor and CI integration. `database:` runs a SQL query via R DBI and writes the result as CSV/TSV/RDS/Parquet/Feather, eliminating the DBI boilerplate step. `email:` sends rendered reports and artifacts via Go's `net/smtp` against a named notification channel — no R required. `docker:` supervises a command inside a container for isolation across R versions or system-library conflicts.
 
-**Phase 10 — Developer Experience & Ecosystem:**
-- **`daggle watch`** — Monitor DAG YAML and referenced scripts for changes. On save, re-validate and optionally re-run changed steps only (using cache). Like `nodemon` but DAG-aware.
-- **`daggle lint` with editor integration** — Semantic diagnostics beyond YAML validation: do referenced scripts exist? Are required R packages installed? Are secret references resolvable? Output in GNU/JSON format for VS Code integration.
-- **`database:` step type** — SQL query as a step. DSN from env vars, query in YAML, output as CSV/RDS artifact. Eliminates the most common R ETL boilerplate (DBI + dbGetQuery + write.csv).
-- **`email:` step type** — Send rendered reports and artifacts via email. Uses Go's `net/smtp` directly (no R needed). References notification channel config. Covers the "render and email" workflow declaratively.
-- **`docker:` step type** — Run a step inside a Docker container. Isolation for different R versions or system library conflicts (geospatial/GDAL, Bioconductor). Docker is just another subprocess to supervise.
+### Planned
 
 **Phase 11 — Deploy & Secure:**
 
