@@ -46,6 +46,30 @@ daggle validate <dag|path>
 
 Accepts a DAG name (resolved via discovery) or a direct file path. Checks YAML syntax, schema conformance, dependency cycles, and missing references. Prints the resolved execution plan on success.
 
+## daggle lint
+
+Semantic diagnostics for a DAG. Goes beyond `daggle validate` by checking that referenced resources actually exist and are resolvable.
+
+```
+daggle lint <dag|path> [--format text|gnu|json] [--check-packages]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | string | `text` | Output format: `text`, `gnu` (`path:line:col: severity: message [code]`), or `json` |
+| `--check-packages` | bool | false | Check that required R packages for R-based step types are installed (runs Rscript) |
+
+Checks performed:
+
+- Parse/schema errors (same as `daggle validate`)
+- Referenced scripts exist (`script:`, `validate:`, `quarto:`, `rmd:`, `connect.path`)
+- `${env:}` secret references resolvable against the current environment
+- `${file:}` secret references point to readable files (`${vault:}` references are reported as info — not checked)
+- `notify:` channel names are defined in `config.yaml`
+- With `--check-packages`: required R packages for step types like `rmd`, `coverage`, `pkgdown`, etc. are installed
+
+The `gnu` and `json` formats are designed for editor integration (VS Code problem matchers, CI annotations). Exits 1 if any `error`-severity diagnostic is reported.
+
 ## daggle status
 
 Show the status of the latest (or specified) run.
