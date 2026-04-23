@@ -187,6 +187,9 @@ type Step struct {
 	// Database query step (SQL via R DBI)
 	Database *DatabaseStep `yaml:"database,omitempty"`
 
+	// Email step (SMTP, no R required)
+	Email *EmailStep `yaml:"email,omitempty"`
+
 	// Output control for rendered reports
 	OutputDir  string `yaml:"output_dir,omitempty"`
 	OutputName string `yaml:"output_name,omitempty"`
@@ -294,6 +297,20 @@ type DatabaseStep struct {
 	Query     string            `yaml:"query,omitempty"`      // inline SQL; mutually exclusive with query_file
 	QueryFile string            `yaml:"query_file,omitempty"` // path to .sql file, resolved relative to workdir
 	Output    string            `yaml:"output"`               // output path; format inferred from extension
+}
+
+// EmailStep configures an email notification step. Uses Go's net/smtp
+// directly via a named SMTP channel from config.yaml — no R required.
+type EmailStep struct {
+	Channel  string   `yaml:"channel"`             // name of an smtp NotificationChannel in config.yaml (required)
+	From     string   `yaml:"from,omitempty"`      // override channel smtp_from
+	To       []string `yaml:"to,omitempty"`        // override channel smtp_to
+	Cc       []string `yaml:"cc,omitempty"`        // CC recipients
+	Bcc      []string `yaml:"bcc,omitempty"`       // BCC recipients (not printed in headers)
+	Subject  string   `yaml:"subject"`             // required
+	Body     string   `yaml:"body,omitempty"`      // inline text body; mutually exclusive with body_file
+	BodyFile string   `yaml:"body_file,omitempty"` // path to body file; mutually exclusive with body
+	Attach   []string `yaml:"attach,omitempty"`    // file paths to attach
 }
 
 // ConnectDeploy configures deployment to Posit Connect.
@@ -433,6 +450,8 @@ func StepType(s Step) string {
 		return "connect"
 	case s.Database != nil:
 		return "database"
+	case s.Email != nil:
+		return "email"
 	default:
 		return ""
 	}

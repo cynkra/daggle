@@ -285,6 +285,39 @@ Runs a SQL query via R DBI and writes the result set to disk. Replaces the commo
 
 The row count is emitted as `::daggle-output name=row_count::<n>::` for downstream steps.
 
+## Notifications
+
+### `email:` -- Send email
+
+Sends an email via a named SMTP channel defined in `config.yaml`. Uses Go's `net/smtp` directly — no R required.
+
+```yaml
+- id: send_report
+  email:
+    channel: team_smtp       # SMTP channel name in config.yaml
+    subject: "Weekly dashboard — {{.Today}}"
+    body: |
+      Hi team,
+      The weekly dashboard and summary are attached.
+    attach:
+      - reports/dashboard.html
+      - data/summary.csv
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `channel` | yes | Name of a `smtp`-type channel in `config.yaml` |
+| `subject` | yes | Email subject |
+| `body` | either | Inline plain-text body (mutually exclusive with `body_file`) |
+| `body_file` | either | Path to body file |
+| `from` | no | Sender address (overrides channel's `smtp_from`) |
+| `to` | no | List of recipients (overrides channel's `smtp_to`) |
+| `cc` | no | CC recipients |
+| `bcc` | no | BCC recipients (not shown in headers) |
+| `attach` | no | Files to attach (paths relative to workdir) |
+
+Attachments are base64-encoded with their MIME type inferred from the file extension. Output `recipients` holds the total envelope size (to + cc + bcc).
+
 ## Missing packages
 
 All R step types check for their required package at runtime. If a package is missing, the step fails with a clear message:

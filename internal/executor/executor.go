@@ -114,6 +114,8 @@ func New(step dag.Step) Executor {
 		return &ConnectExecutor{}
 	case "database":
 		return &DatabaseExecutor{}
+	case "email":
+		return &EmailExecutor{}
 	default:
 		return nil
 	}

@@ -152,6 +152,12 @@ func collectWatchPaths(dagPath string) ([]string, error) {
 		if s.Database != nil {
 			add(resolve(s.Database.QueryFile))
 		}
+		if s.Email != nil {
+			add(resolve(s.Email.BodyFile))
+			for _, a := range s.Email.Attach {
+				add(resolve(a))
+			}
+		}
 	}
 
 	sort.Strings(out)
