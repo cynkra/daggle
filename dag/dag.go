@@ -184,6 +184,9 @@ type Step struct {
 	// Posit Connect deployment
 	Connect *ConnectDeploy `yaml:"connect,omitempty"`
 
+	// Database query step (SQL via R DBI)
+	Database *DatabaseStep `yaml:"database,omitempty"`
+
 	// Output control for rendered reports
 	OutputDir  string `yaml:"output_dir,omitempty"`
 	OutputName string `yaml:"output_name,omitempty"`
@@ -280,6 +283,17 @@ func (m EnvMap) SecretValues() []string {
 		}
 	}
 	return secrets
+}
+
+// DatabaseStep configures a SQL query step. The query runs against the named
+// driver via R DBI; the result set is written to output as CSV/TSV/RDS/Parquet
+// (inferred from the extension).
+type DatabaseStep struct {
+	Driver    string            `yaml:"driver"`               // postgres | mysql | mariadb | sqlite | duckdb | odbc
+	Params    map[string]string `yaml:"params,omitempty"`     // named args passed to dbConnect()
+	Query     string            `yaml:"query,omitempty"`      // inline SQL; mutually exclusive with query_file
+	QueryFile string            `yaml:"query_file,omitempty"` // path to .sql file, resolved relative to workdir
+	Output    string            `yaml:"output"`               // output path; format inferred from extension
 }
 
 // ConnectDeploy configures deployment to Posit Connect.
@@ -417,6 +431,8 @@ func StepType(s Step) string {
 		return "revdepcheck"
 	case s.Connect != nil:
 		return "connect"
+	case s.Database != nil:
+		return "database"
 	default:
 		return ""
 	}
