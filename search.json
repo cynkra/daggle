@@ -862,6 +862,17 @@
     ]
   },
   {
+    "objectID": "writing-dags/step-types.html#notifications",
+    "href": "writing-dags/step-types.html#notifications",
+    "title": "Step Types",
+    "section": "Notifications",
+    "text": "Notifications\n\nemail: – Send email\nSends an email via a named SMTP channel defined in config.yaml. Uses Go’s net/smtp directly — no R required.\n- id: send_report\n  email:\n    channel: team_smtp       # SMTP channel name in config.yaml\n    subject: \"Weekly dashboard — {{.Today}}\"\n    body: |\n      Hi team,\n      The weekly dashboard and summary are attached.\n    attach:\n      - reports/dashboard.html\n      - data/summary.csv\n\n\n\n\n\n\n\n\nField\nRequired\nDescription\n\n\n\n\nchannel\nyes\nName of a smtp-type channel in config.yaml\n\n\nsubject\nyes\nEmail subject\n\n\nbody\neither\nInline plain-text body (mutually exclusive with body_file)\n\n\nbody_file\neither\nPath to body file\n\n\nfrom\nno\nSender address (overrides channel’s smtp_from)\n\n\nto\nno\nList of recipients (overrides channel’s smtp_to)\n\n\ncc\nno\nCC recipients\n\n\nbcc\nno\nBCC recipients (not shown in headers)\n\n\nattach\nno\nFiles to attach (paths relative to workdir)\n\n\n\nAttachments are base64-encoded with their MIME type inferred from the file extension. Output recipients holds the total envelope size (to + cc + bcc).",
+    "crumbs": [
+      "Writing DAGs",
+      "Step Types"
+    ]
+  },
+  {
     "objectID": "writing-dags/step-types.html#missing-packages",
     "href": "writing-dags/step-types.html#missing-packages",
     "title": "Step Types",

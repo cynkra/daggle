@@ -433,6 +433,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#deployment" id="toc-deployment" class="nav-link" data-scroll-target="#deployment">Deployment</a></li>
   <li><a href="#workflow" id="toc-workflow" class="nav-link" data-scroll-target="#workflow">Workflow</a></li>
   <li><a href="#data-sources" id="toc-data-sources" class="nav-link" data-scroll-target="#data-sources">Data sources</a></li>
+  <li><a href="#notifications" id="toc-notifications" class="nav-link" data-scroll-target="#notifications">Notifications</a></li>
   <li><a href="#missing-packages" id="toc-missing-packages" class="nav-link" data-scroll-target="#missing-packages">Missing packages</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -704,6 +705,85 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>The row count is emitted as <code>::daggle-output name=row_count::&lt;n&gt;::</code> for downstream steps.</p>
+</section>
+</section>
+<section id="notifications" class="level2">
+<h2 class="anchored" data-anchor-id="notifications">Notifications</h2>
+<section id="email-send-email" class="level3">
+<h3 class="anchored" data-anchor-id="email-send-email"><code>email:</code> – Send email</h3>
+<p>Sends an email via a named SMTP channel defined in <code>config.yaml</code>. Uses Go’s <code>net/smtp</code> directly — no R required.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> send_report</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">email</span><span class="kw">:</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">channel</span><span class="kw">:</span><span class="at"> team_smtp</span><span class="co">       # SMTP channel name in config.yaml</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">subject</span><span class="kw">:</span><span class="at"> </span><span class="st">"Weekly dashboard — {{.Today}}"</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="fu">    body</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>      Hi team,</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>      The weekly dashboard and summary are attached.</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">attach</span><span class="kw">:</span></span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> reports/dashboard.html</span></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> data/summary.csv</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 33%">
+<col style="width: 43%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>channel</code></td>
+<td>yes</td>
+<td>Name of a <code>smtp</code>-type channel in <code>config.yaml</code></td>
+</tr>
+<tr class="even">
+<td><code>subject</code></td>
+<td>yes</td>
+<td>Email subject</td>
+</tr>
+<tr class="odd">
+<td><code>body</code></td>
+<td>either</td>
+<td>Inline plain-text body (mutually exclusive with <code>body_file</code>)</td>
+</tr>
+<tr class="even">
+<td><code>body_file</code></td>
+<td>either</td>
+<td>Path to body file</td>
+</tr>
+<tr class="odd">
+<td><code>from</code></td>
+<td>no</td>
+<td>Sender address (overrides channel’s <code>smtp_from</code>)</td>
+</tr>
+<tr class="even">
+<td><code>to</code></td>
+<td>no</td>
+<td>List of recipients (overrides channel’s <code>smtp_to</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>cc</code></td>
+<td>no</td>
+<td>CC recipients</td>
+</tr>
+<tr class="even">
+<td><code>bcc</code></td>
+<td>no</td>
+<td>BCC recipients (not shown in headers)</td>
+</tr>
+<tr class="odd">
+<td><code>attach</code></td>
+<td>no</td>
+<td>Files to attach (paths relative to workdir)</td>
+</tr>
+</tbody>
+</table>
+<p>Attachments are base64-encoded with their MIME type inferred from the file extension. Output <code>recipients</code> holds the total envelope size (to + cc + bcc).</p>
 </section>
 </section>
 <section id="missing-packages" class="level2">
