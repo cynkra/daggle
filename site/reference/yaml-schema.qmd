@@ -173,6 +173,24 @@ Exactly one step type field must be set per step.
 | `shinytest` | string | App directory. Runs `shinytest2::test_app()` |
 | `validate` | string | Script path. Runs validation via Rscript |
 
+**Data sources:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `database` | object | SQL query via R DBI. Fields: `driver`, `params` (map), `query` or `query_file`, `output` (format inferred from extension) |
+
+**Notifications:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `email` | object | Send email via SMTP. Fields: `channel`, `subject`, `body`/`body_file`, `to`, `cc`, `bcc`, `from`, `attach` |
+
+**Isolation:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `docker` | object | Run inside a Docker container. Fields: `image`, `command`/`entrypoint`, `volumes`, `env`, `workdir`, `network`, `user`, `pull` |
+
 ## Retry config {#retry-config}
 
 | Field | Type | Default | Description |

@@ -44,3 +44,25 @@ daggle run my-dag --dags-dir /path/to/dags --data-dir /path/to/data
 ```
 
 These override the default [DAG discovery](../getting-started/project-local.qmd) and data storage locations.
+
+## Authoring loop: `daggle watch`
+
+While iterating on a DAG, run it once and re-run automatically on save:
+
+```bash
+daggle watch my-dag
+```
+
+Watches the DAG YAML plus every referenced script (`script`, `validate`, `quarto`, `rmd`, `query_file`, `body_file`, email attachments, etc.). Steps marked `cache: true` are skipped when their inputs haven't changed, so only the affected steps re-execute. `--debounce` tunes how long to wait for the editor to finish writing (default `500ms`). Press Ctrl+C to stop.
+
+## Pre-flight: `daggle lint`
+
+Beyond `daggle validate` (schema/cycle checks), `daggle lint` runs semantic checks useful in CI or an editor problem matcher:
+
+```bash
+daggle lint my-dag --format gnu        # path:line:col: severity: msg [code]
+daggle lint my-dag --format json       # for tooling
+daggle lint my-dag --check-packages    # verify required R packages are installed
+```
+
+It flags missing referenced scripts, unresolvable `${env:}` / `${file:}` secrets, and unknown `notify:` / `email.channel` references. Exits 1 if any error-severity diagnostic is produced.
