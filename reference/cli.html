@@ -368,6 +368,7 @@ ul.task-list li input[type="checkbox"] {
    
   <ul class="collapse">
   <li><a href="#daggle-run" id="toc-daggle-run" class="nav-link active" data-scroll-target="#daggle-run">daggle run</a></li>
+  <li><a href="#daggle-watch" id="toc-daggle-watch" class="nav-link" data-scroll-target="#daggle-watch">daggle watch</a></li>
   <li><a href="#daggle-validate" id="toc-daggle-validate" class="nav-link" data-scroll-target="#daggle-validate">daggle validate</a></li>
   <li><a href="#daggle-status" id="toc-daggle-status" class="nav-link" data-scroll-target="#daggle-status">daggle status</a></li>
   <li><a href="#daggle-list" id="toc-daggle-list" class="nav-link" data-scroll-target="#daggle-list">daggle list</a></li>
@@ -455,6 +456,42 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <p>Runs the named DAG synchronously, streaming step output to the terminal. Exit code reflects the DAG outcome: 0 for success, 1 for failure.</p>
 <p>With <code>--dry-run</code>, daggle loads the DAG, resolves secrets, checks the R version constraint, detects renv, evaluates freshness rules, and verifies that referenced scripts exist — then prints a plan of which steps would run in which tiers. No run directory is created and no steps are executed. Exits non-zero if any check fails. Use <code>daggle plan</code> for cache-status analysis.</p>
+</section>
+<section id="daggle-watch" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-watch">daggle watch</h2>
+<p>Run a DAG and re-run it whenever its YAML or any referenced script changes. Useful while authoring a DAG.</p>
+<pre><code>daggle watch &lt;dag&gt; [-p key=value]... [--debounce &lt;duration&gt;]</code></pre>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 17%">
+<col style="width: 26%">
+<col style="width: 38%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>-p</code>, <code>--param</code></td>
+<td><code>key=value</code></td>
+<td>(none)</td>
+<td>Set a parameter value. Repeatable.</td>
+</tr>
+<tr class="even">
+<td><code>--debounce</code></td>
+<td>duration</td>
+<td><code>500ms</code></td>
+<td>Delay after the last change before re-running</td>
+</tr>
+</tbody>
+</table>
+<p>The initial run executes immediately, then daggle watches the DAG YAML, its <code>base.yaml</code> (if present), and every file referenced by a <code>script:</code>, <code>validate:</code>, <code>quarto:</code>, or <code>rmd:</code> step. On save, the DAG is re-validated and re-run. Steps marked <code>cache: true</code> skip automatically when their inputs haven’t changed, so only the affected steps re-execute. Press Ctrl+C to stop.</p>
 </section>
 <section id="daggle-validate" class="level2">
 <h2 class="anchored" data-anchor-id="daggle-validate">daggle validate</h2>

@@ -1638,6 +1638,17 @@
     ]
   },
   {
+    "objectID": "reference/cli.html#daggle-watch",
+    "href": "reference/cli.html#daggle-watch",
+    "title": "CLI Reference",
+    "section": "daggle watch",
+    "text": "daggle watch\nRun a DAG and re-run it whenever its YAML or any referenced script changes. Useful while authoring a DAG.\ndaggle watch &lt;dag&gt; [-p key=value]... [--debounce &lt;duration&gt;]\n\n\n\n\n\n\n\n\n\nFlag\nType\nDefault\nDescription\n\n\n\n\n-p, --param\nkey=value\n(none)\nSet a parameter value. Repeatable.\n\n\n--debounce\nduration\n500ms\nDelay after the last change before re-running\n\n\n\nThe initial run executes immediately, then daggle watches the DAG YAML, its base.yaml (if present), and every file referenced by a script:, validate:, quarto:, or rmd: step. On save, the DAG is re-validated and re-run. Steps marked cache: true skip automatically when their inputs haven’t changed, so only the affected steps re-execute. Press Ctrl+C to stop.",
+    "crumbs": [
+      "Reference",
+      "CLI"
+    ]
+  },
+  {
     "objectID": "reference/cli.html#daggle-validate",
     "href": "reference/cli.html#daggle-validate",
     "title": "CLI Reference",
