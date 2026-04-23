@@ -84,6 +84,7 @@ func validateSteps(d *DAG) []string {
 		errs = append(errs, validateStepConnect(s)...)
 		errs = append(errs, validateStepDatabase(s)...)
 		errs = append(errs, validateStepEmail(s)...)
+		errs = append(errs, validateStepDocker(s)...)
 		errs = append(errs, validateStepDependencies(s, allIDs)...)
 		errs = append(errs, validateStepTimeout(s)...)
 		errs = append(errs, validateStepErrorOn(s)...)
@@ -105,13 +106,13 @@ func validateStepType(s Step) []string {
 		s.Approve != nil, s.Call != nil, s.Pin != nil, s.Vetiver != nil,
 		s.Shinytest != "", s.Pkgdown != "", s.Install != "", s.Targets != "",
 		s.Benchmark != "", s.Revdepcheck != "",
-		s.Connect != nil, s.Database != nil, s.Email != nil,
+		s.Connect != nil, s.Database != nil, s.Email != nil, s.Docker != nil,
 	} {
 		if set {
 			typeCount++
 		}
 	}
-	stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect, database, email"
+	stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect, database, email, docker"
 	var errs []string
 	if typeCount == 0 {
 		errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
@@ -193,6 +194,32 @@ func validateStepEmail(s Step) []string {
 	}
 	if e.Body != "" && e.BodyFile != "" {
 		errs = append(errs, fmt.Sprintf("step %q email must not set both body and body_file", s.ID))
+	}
+	return errs
+}
+
+func validateStepDocker(s Step) []string {
+	if s.Docker == nil {
+		return nil
+	}
+	var errs []string
+	d := s.Docker
+	if d.Image == "" {
+		errs = append(errs, fmt.Sprintf("step %q docker.image is required", s.ID))
+	}
+	if d.Command == "" && d.Entrypoint == "" {
+		errs = append(errs, fmt.Sprintf("step %q docker requires either command or entrypoint", s.ID))
+	}
+	switch d.Pull {
+	case "", "always", "missing", "never":
+		// valid
+	default:
+		errs = append(errs, fmt.Sprintf("step %q docker.pull %q is invalid; must be one of: always, missing, never", s.ID, d.Pull))
+	}
+	for i, v := range d.Volumes {
+		if !strings.Contains(v, ":") {
+			errs = append(errs, fmt.Sprintf("step %q docker.volumes[%d] %q must be of the form host:container[:ro]", s.ID, i, v))
+		}
 	}
 	return errs
 }

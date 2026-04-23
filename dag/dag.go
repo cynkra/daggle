@@ -190,6 +190,9 @@ type Step struct {
 	// Email step (SMTP, no R required)
 	Email *EmailStep `yaml:"email,omitempty"`
 
+	// Docker step (runs a command inside a Docker container)
+	Docker *DockerStep `yaml:"docker,omitempty"`
+
 	// Output control for rendered reports
 	OutputDir  string `yaml:"output_dir,omitempty"`
 	OutputName string `yaml:"output_name,omitempty"`
@@ -297,6 +300,21 @@ type DatabaseStep struct {
 	Query     string            `yaml:"query,omitempty"`      // inline SQL; mutually exclusive with query_file
 	QueryFile string            `yaml:"query_file,omitempty"` // path to .sql file, resolved relative to workdir
 	Output    string            `yaml:"output"`               // output path; format inferred from extension
+}
+
+// DockerStep runs a command inside a Docker container. Useful when a step
+// needs a different R version, Bioconductor stack, or system libraries
+// (e.g. GDAL, PROJ) that aren't installed on the host.
+type DockerStep struct {
+	Image      string            `yaml:"image"`                // required; container image to run
+	Command    string            `yaml:"command,omitempty"`    // shell command to run inside the container (passed as `sh -c`)
+	Entrypoint string            `yaml:"entrypoint,omitempty"` // override the image entrypoint
+	Volumes    []string          `yaml:"volumes,omitempty"`    // list of host:container[:ro] mount specs
+	Env        map[string]string `yaml:"env,omitempty"`        // env vars passed via -e
+	Workdir    string            `yaml:"workdir,omitempty"`    // working directory inside the container
+	Network    string            `yaml:"network,omitempty"`    // docker network (e.g. host, bridge, none)
+	User       string            `yaml:"user,omitempty"`       // uid[:gid] to run as
+	Pull       string            `yaml:"pull,omitempty"`       // always | missing | never (default: missing)
 }
 
 // EmailStep configures an email notification step. Uses Go's net/smtp
@@ -452,6 +470,8 @@ func StepType(s Step) string {
 		return "database"
 	case s.Email != nil:
 		return "email"
+	case s.Docker != nil:
+		return "docker"
 	default:
 		return ""
 	}

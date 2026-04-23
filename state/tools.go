@@ -16,6 +16,7 @@ var knownTools = map[string]string{
 	"quarto":  "quarto",
 	"git":     "git",
 	"sh":      "sh",
+	"docker":  "docker",
 }
 
 var (

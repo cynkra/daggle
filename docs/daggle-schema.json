@@ -199,6 +199,31 @@
         "attach": { "type": "array", "items": { "type": "string" }, "description": "File paths to attach" }
       }
     },
+    "docker": {
+      "type": "object",
+      "description": "Run a step inside a Docker container",
+      "required": ["image"],
+      "additionalProperties": false,
+      "properties": {
+        "image": { "type": "string", "description": "Container image to run (e.g. 'alpine:3.20', 'rocker/r-ver:4.4.0')" },
+        "command": { "type": "string", "description": "Shell command to run inside the container (passed as 'sh -c')" },
+        "entrypoint": { "type": "string", "description": "Override the image entrypoint" },
+        "volumes": {
+          "type": "array",
+          "description": "Bind mounts in 'host:container[:ro]' form",
+          "items": { "type": "string" }
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables passed into the container via -e",
+          "additionalProperties": { "type": "string" }
+        },
+        "workdir": { "type": "string", "description": "Working directory inside the container" },
+        "network": { "type": "string", "description": "Docker network (e.g. host, bridge, none)" },
+        "user": { "type": "string", "description": "uid[:gid] to run the container as" },
+        "pull": { "type": "string", "enum": ["always", "missing", "never"], "description": "Image pull policy (default: missing)" }
+      }
+    },
     "approve": {
       "type": "object",
       "description": "Approval gate — pauses execution until a human approves or rejects",
@@ -290,6 +315,7 @@
         "connect": { "$ref": "#/$defs/connect" },
         "database": { "$ref": "#/$defs/database" },
         "email": { "$ref": "#/$defs/email" },
+        "docker": { "$ref": "#/$defs/docker" },
         "args": {
           "type": "array",
           "items": { "type": "string" },
