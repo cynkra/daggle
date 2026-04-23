@@ -136,11 +136,29 @@ R-specific steps check for their required packages at runtime and fail with a cl
 - **`email:` step type** — Send rendered reports and artifacts via email. Uses Go's `net/smtp` directly (no R needed). References notification channel config. Covers the "render and email" workflow declaratively.
 - **`docker:` step type** — Run a step inside a Docker container. Isolation for different R versions or system library conflicts (geospatial/GDAL, Bioconductor). Docker is just another subprocess to supervise.
 
-**Phase 11 — Scale:**
+**Phase 11 — Deploy & Secure:**
+
+Today daggle supports exactly one deployment shape: the on-prem PWB sidecar, where daggle runs as a supervisord process inside the PWB container, binds to `127.0.0.1` only (hardcoded), and runs unauthenticated because the port is never exposed outside the container. Phase 11 adds a second supported posture — a small-scale, single-node, self-hosted daggle brought up with `docker compose up` and reachable from a browser with TLS and a login — while leaving the on-prem defaults untouched (loopback, no auth). Inspired by [dagu](https://github.com/dagu-org/dagu)'s deployment model (loopback-by-default, explicit `DAGU_HOST=0.0.0.0`, `DAGU_AUTH_MODE=basic|builtin|oidc`, single-volume file-backed state, published image, minimal + prod compose files).
+
+Scope is deliberately narrow: static bearer token + HTTP basic auth only — no user accounts, no JWT sessions, no `/setup` flow, no OIDC. Multi-user RBAC, SSO, and distributed workers stay in Phase 12. daggle is pre-release, so internal rewrites (pulling transport concerns out of `api/server.go` into an `internal/httpserve/` package, adding an `internal/auth/` middleware layer) are on the table.
+
+- **Configurable bind address** — `--bind` / `DAGGLE_BIND_ADDR`, default `127.0.0.1` (on-prem posture preserved). Opt in to `0.0.0.0` for public bind.
+- **Auth modes** — `DAGGLE_AUTH_MODE=none|basic|token`. Basic uses `DAGGLE_AUTH_BASIC_USERNAME/PASSWORD` (or `_PASSWORD_FILE` for Docker secrets). Token uses `DAGGLE_AUTH_TOKEN` / `DAGGLE_AUTH_TOKEN_FILE`, auto-generated and persisted to `$DAGGLE_DATA_DIR/auth/token` (0600) if unset, printed once on first start.
+- **TLS termination in daggle** — `DAGGLE_TLS_CERT_FILE` + `DAGGLE_TLS_KEY_FILE` for the no-reverse-proxy case.
+- **Reverse-proxy awareness** — `DAGGLE_BASE_PATH` for subpath mounting behind Caddy/nginx; `--trust-proxy` to honor `X-Forwarded-*` headers.
+- **Safety guardrails** — daggle refuses to start if bind is non-loopback and auth is `none` (prevents accidental open API); refuses if TLS cert/key are asymmetric; refuses basic mode with missing credentials.
+- **First-class Docker** — published `ghcr.io/cynkra/daggle` (~50 MB, HTTP/shell/quarto DAGs) and `ghcr.io/cynkra/daggle-r` (rocker/r-ver + renv, full R step support). GoReleaser publishes both on tag.
+- **Compose templates** — `deploy/docker/compose.minimal.yaml` (loopback, no auth, matches on-prem posture) and `deploy/docker/compose.selfhost.yaml` (daggle + Caddy auto-TLS via Let's Encrypt, token auth by default).
+- **`daggle token generate`** — print a new secure random token (32 bytes, base64url).
+- **`daggle doctor` deploy section** — reports bind, auth mode, TLS state, base path; warns on near-misses of the guardrails.
+- **daggleR auth** — companion R package honors `DAGGLE_API_TOKEN` (Authorization: Bearer) and `DAGGLE_API_BASIC_USER`/`DAGGLE_API_BASIC_PASSWORD`. Tracked separately in the daggleR repo.
+- **Docs** — new `docs/deploy.md` covers both on-prem PWB sidecar and self-hosted compose. Existing webhook HMAC in `scheduler/webhook.go` is already correct and just needs to be documented.
+
+**Phase 12 — Scale:**
 - **State compaction** — `daggle compact <dag>` merges old `events.jsonl` files into summary records. Keep full detail for recent N runs, compress historical data. Prevents slowdown on hourly DAGs running for months.
 - **Distributed workers** — Coordinator/worker model for running steps across machines.
 - **Queue system** — Concurrency limits with queue overlap policy.
-- **RBAC** — File-based role-based access control.
+- **RBAC** — File-based role-based access control. Builds on the Phase 11 auth middleware, whose `Validator` interface attaches a principal to the request context so authorization checks layer on without touching transport code.
 - **Prometheus metrics** — Expose scheduler and run metrics for monitoring.
 - **SSH remote execution** — Run steps on remote machines via SSH.
 - **R session pooling** — Keep warm Rscript processes for fast inline expressions.
