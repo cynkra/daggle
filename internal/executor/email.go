@@ -22,7 +22,7 @@ type EmailExecutor struct{}
 
 // Run builds a multipart MIME message and sends it via the configured SMTP
 // channel. Attachment paths are resolved relative to the step's workdir.
-func (e *EmailExecutor) Run(ctx context.Context, step dag.Step, logDir, workdir string, _ []string) Result {
+func (e *EmailExecutor) Run(_ context.Context, step dag.Step, logDir, workdir string, _ []string) Result {
 	start := time.Now()
 
 	email := step.Email
