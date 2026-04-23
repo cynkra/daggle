@@ -130,7 +130,6 @@ R-specific steps check for their required packages at runtime and fail with a cl
 
 **Phase 10 — Developer Experience & Ecosystem:**
 - **`daggle watch`** — Monitor DAG YAML and referenced scripts for changes. On save, re-validate and optionally re-run changed steps only (using cache). Like `nodemon` but DAG-aware.
-- **`daggle explain`** — Human-readable prose summary of a DAG: "5 steps, runs weekdays at 6:30am, sends Slack on failure." Useful for onboarding and reviewing unfamiliar DAGs.
 - **`daggle lint` with editor integration** — Semantic diagnostics beyond YAML validation: do referenced scripts exist? Are required R packages installed? Are secret references resolvable? Output in GNU/JSON format for VS Code integration.
 - **`database:` step type** — SQL query as a step. DSN from env vars, query in YAML, output as CSV/RDS artifact. Eliminates the most common R ETL boilerplate (DBI + dbGetQuery + write.csv).
 - **`email:` step type** — Send rendered reports and artifacts via email. Uses Go's `net/smtp` directly (no R needed). References notification channel config. Covers the "render and email" workflow declaratively.
@@ -168,3 +167,9 @@ Scope is deliberately narrow: static bearer token + HTTP basic auth only — no 
 These are topics where the design is not yet settled:
 
 - **R version change detection** — R version is recorded in `meta.json`, but if the system R is upgraded between runs, renv library paths may break silently (the platform-specific path like `renv/library/R-4.4/aarch64-apple-darwin20/` changes with R minor version bumps). daggle currently does not warn about this. Suggested direction: add a `daggle doctor` check that compares the current R version against the last recorded version in recent runs. Warn if the R minor version changed and renv is in use.
+
+## Possible Features
+
+Ideas we may want to consider at some point. Not on the roadmap; no commitment to implement.
+
+- **`daggle explain`** — Human-readable prose summary of a DAG: "5 steps, runs weekdays at 6:30am, sends Slack on failure." Useful for onboarding and reviewing unfamiliar DAGs.
