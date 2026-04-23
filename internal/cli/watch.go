@@ -149,6 +149,9 @@ func collectWatchPaths(dagPath string) ([]string, error) {
 		add(resolve(s.Validate))
 		add(resolve(s.Quarto))
 		add(resolve(s.Rmd))
+		if s.Database != nil {
+			add(resolve(s.Database.QueryFile))
+		}
 	}
 
 	sort.Strings(out)

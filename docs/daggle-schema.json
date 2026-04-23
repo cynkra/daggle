@@ -165,6 +165,23 @@
         "force_update": { "type": "boolean", "description": "Overwrite existing content (default: true)" }
       }
     },
+    "database": {
+      "type": "object",
+      "description": "Run a SQL query via R DBI and write the result set to disk",
+      "required": ["driver", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "driver": { "type": "string", "enum": ["postgres", "mysql", "mariadb", "sqlite", "duckdb", "odbc"], "description": "Database driver (maps to RPostgres, RMariaDB, RSQLite, duckdb, or odbc)" },
+        "params": {
+          "type": "object",
+          "description": "Named args passed to dbConnect() (e.g. dbname, host, user, password, dsn)",
+          "additionalProperties": { "type": "string" }
+        },
+        "query": { "type": "string", "description": "Inline SQL query (mutually exclusive with query_file)" },
+        "query_file": { "type": "string", "description": "Path to a .sql file, relative to workdir (mutually exclusive with query)" },
+        "output": { "type": "string", "description": "Output path; format inferred from extension (.csv, .tsv, .rds, .parquet, .feather)" }
+      }
+    },
     "approve": {
       "type": "object",
       "description": "Approval gate — pauses execution until a human approves or rejects",
@@ -254,6 +271,7 @@
         "benchmark": { "type": "string", "description": "Run bench scripts from a directory. Value is path to benchmark directory" },
         "revdepcheck": { "type": "string", "description": "Run reverse dependency checks via revdepcheck::revdep_check(). Value is package path or '.' for current directory" },
         "connect": { "$ref": "#/$defs/connect" },
+        "database": { "$ref": "#/$defs/database" },
         "args": {
           "type": "array",
           "items": { "type": "string" },

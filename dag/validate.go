@@ -82,6 +82,7 @@ func validateSteps(d *DAG) []string {
 
 		errs = append(errs, validateStepType(s)...)
 		errs = append(errs, validateStepConnect(s)...)
+		errs = append(errs, validateStepDatabase(s)...)
 		errs = append(errs, validateStepDependencies(s, allIDs)...)
 		errs = append(errs, validateStepTimeout(s)...)
 		errs = append(errs, validateStepErrorOn(s)...)
@@ -103,13 +104,13 @@ func validateStepType(s Step) []string {
 		s.Approve != nil, s.Call != nil, s.Pin != nil, s.Vetiver != nil,
 		s.Shinytest != "", s.Pkgdown != "", s.Install != "", s.Targets != "",
 		s.Benchmark != "", s.Revdepcheck != "",
-		s.Connect != nil,
+		s.Connect != nil, s.Database != nil,
 	} {
 		if set {
 			typeCount++
 		}
 	}
-	stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect"
+	stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect, database"
 	var errs []string
 	if typeCount == 0 {
 		errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
@@ -133,6 +134,43 @@ func validateStepConnect(s Step) []string {
 	}
 	if s.Connect.Path == "" {
 		errs = append(errs, fmt.Sprintf("step %q connect.path is required", s.ID))
+	}
+	return errs
+}
+
+func validateStepDatabase(s Step) []string {
+	if s.Database == nil {
+		return nil
+	}
+	var errs []string
+	db := s.Database
+
+	validDrivers := map[string]bool{
+		"postgres": true, "mysql": true, "mariadb": true,
+		"sqlite": true, "duckdb": true, "odbc": true,
+	}
+	if db.Driver == "" {
+		errs = append(errs, fmt.Sprintf("step %q database.driver is required", s.ID))
+	} else if !validDrivers[db.Driver] {
+		errs = append(errs, fmt.Sprintf("step %q database.driver %q is invalid; must be one of: postgres, mysql, mariadb, sqlite, duckdb, odbc", s.ID, db.Driver))
+	}
+
+	if db.Query == "" && db.QueryFile == "" {
+		errs = append(errs, fmt.Sprintf("step %q database requires one of: query, query_file", s.ID))
+	}
+	if db.Query != "" && db.QueryFile != "" {
+		errs = append(errs, fmt.Sprintf("step %q database must not set both query and query_file", s.ID))
+	}
+
+	if db.Output == "" {
+		errs = append(errs, fmt.Sprintf("step %q database.output is required", s.ID))
+	} else {
+		ext := strings.ToLower(filepath.Ext(db.Output))
+		switch ext {
+		case ".csv", ".tsv", ".rds", ".parquet", ".feather":
+		default:
+			errs = append(errs, fmt.Sprintf("step %q database.output %q has unsupported extension %q; expected one of: .csv, .tsv, .rds, .parquet, .feather", s.ID, db.Output, ext))
+		}
 	}
 	return errs
 }

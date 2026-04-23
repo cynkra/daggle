@@ -145,6 +145,9 @@ func lintMissingScripts(d *dag.DAG, dagPath string) []lintDiagnostic {
 		if s.Connect != nil {
 			check("connect.path", s.Connect.Path)
 		}
+		if s.Database != nil {
+			check("database.query_file", s.Database.QueryFile)
+		}
 	}
 	return out
 }

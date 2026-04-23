@@ -131,6 +131,9 @@ func scriptPathsFor(s dag.Step) []string {
 	if s.Connect != nil {
 		add(s.Connect.Path)
 	}
+	if s.Database != nil {
+		add(s.Database.QueryFile)
+	}
 	return out
 }
 

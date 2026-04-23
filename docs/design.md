@@ -99,6 +99,7 @@ Behavior:
 | Coverage | `coverage:` | `covr::package_coverage()` with percentage output |
 | Validate | `validate:` | Run a data validation R script via Rscript |
 | Deploy | `connect:` | Deploy to Posit Connect (Shiny, Quarto, Plumber) |
+| Database | `database:` | SQL query via R DBI, result written to CSV/TSV/RDS/Parquet/Feather |
 
 R-specific steps check for their required packages at runtime and fail with a clear install instruction if missing.
 

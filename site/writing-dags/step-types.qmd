@@ -254,6 +254,37 @@ Runs a validation R script via Rscript.
   validate: scripts/validate_data.R
 ```
 
+## Data sources
+
+### `database:` -- SQL query
+
+Runs a SQL query via R DBI and writes the result set to disk. Replaces the common `DBI + dbGetQuery + write.csv` boilerplate.
+
+```yaml
+- id: pull_orders
+  database:
+    driver: postgres        # postgres | mysql | mariadb | sqlite | duckdb | odbc
+    params:
+      dbname: analytics
+      host: ${env:PGHOST}
+      user: ${env:PGUSER}
+      password: ${env:PGPASSWORD}
+    query: |
+      SELECT * FROM orders
+      WHERE created_at >= now() - interval '7 days'
+    output: data/orders.csv
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `driver` | yes | Database driver. Maps to `RPostgres`, `RMariaDB`, `RSQLite`, `duckdb`, or `odbc` |
+| `params` | no | Named args passed to `DBI::dbConnect()` (e.g. `dbname`, `host`, `user`, `password`) |
+| `query` | either | Inline SQL query. Mutually exclusive with `query_file` |
+| `query_file` | either | Path to a `.sql` file, relative to workdir |
+| `output` | yes | Output path. Format inferred from the extension: `.csv`, `.tsv`, `.rds`, `.parquet`, `.feather` |
+
+The row count is emitted as `::daggle-output name=row_count::<n>::` for downstream steps.
+
 ## Missing packages
 
 All R step types check for their required package at runtime. If a package is missing, the step fails with a clear message:

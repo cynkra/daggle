@@ -112,6 +112,8 @@ func New(step dag.Step) Executor {
 		return &VetiverExecutor{}
 	case "connect":
 		return &ConnectExecutor{}
+	case "database":
+		return &DatabaseExecutor{}
 	default:
 		return nil
 	}
