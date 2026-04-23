@@ -80,9 +80,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-cad2a2f8a56dfe71ee895a68e79c9b9a.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-f0c985fc569c130b817995465fd94936.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-71c2c73956a50c1dea9220a477d61d03.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-f0c985fc569c130b817995465fd94936.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-8032fdaff60d9edb6975f8f3445510b7.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -432,6 +432,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#environment" id="toc-environment" class="nav-link" data-scroll-target="#environment">Environment</a></li>
   <li><a href="#deployment" id="toc-deployment" class="nav-link" data-scroll-target="#deployment">Deployment</a></li>
   <li><a href="#workflow" id="toc-workflow" class="nav-link" data-scroll-target="#workflow">Workflow</a></li>
+  <li><a href="#data-sources" id="toc-data-sources" class="nav-link" data-scroll-target="#data-sources">Data sources</a></li>
   <li><a href="#missing-packages" id="toc-missing-packages" class="nav-link" data-scroll-target="#missing-packages">Missing packages</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -642,6 +643,67 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Runs a validation R script via Rscript.</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb24"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> validate</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">validate</span><span class="kw">:</span><span class="at"> scripts/validate_data.R</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="data-sources" class="level2">
+<h2 class="anchored" data-anchor-id="data-sources">Data sources</h2>
+<section id="database-sql-query" class="level3">
+<h3 class="anchored" data-anchor-id="database-sql-query"><code>database:</code> – SQL query</h3>
+<p>Runs a SQL query via R DBI and writes the result set to disk. Replaces the common <code>DBI + dbGetQuery + write.csv</code> boilerplate.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> pull_orders</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">database</span><span class="kw">:</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">driver</span><span class="kw">:</span><span class="at"> postgres</span><span class="co">        # postgres | mysql | mariadb | sqlite | duckdb | odbc</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">params</span><span class="kw">:</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">dbname</span><span class="kw">:</span><span class="at"> analytics</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">host</span><span class="kw">:</span><span class="at"> ${env:PGHOST}</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">user</span><span class="kw">:</span><span class="at"> ${env:PGUSER}</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">password</span><span class="kw">:</span><span class="at"> ${env:PGPASSWORD}</span></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a><span class="fu">    query</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>      SELECT * FROM orders</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>      WHERE created_at &gt;= now() - interval '7 days'</span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">output</span><span class="kw">:</span><span class="at"> data/orders.csv</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 33%">
+<col style="width: 43%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>driver</code></td>
+<td>yes</td>
+<td>Database driver. Maps to <code>RPostgres</code>, <code>RMariaDB</code>, <code>RSQLite</code>, <code>duckdb</code>, or <code>odbc</code></td>
+</tr>
+<tr class="even">
+<td><code>params</code></td>
+<td>no</td>
+<td>Named args passed to <code>DBI::dbConnect()</code> (e.g.&nbsp;<code>dbname</code>, <code>host</code>, <code>user</code>, <code>password</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>query</code></td>
+<td>either</td>
+<td>Inline SQL query. Mutually exclusive with <code>query_file</code></td>
+</tr>
+<tr class="even">
+<td><code>query_file</code></td>
+<td>either</td>
+<td>Path to a <code>.sql</code> file, relative to workdir</td>
+</tr>
+<tr class="odd">
+<td><code>output</code></td>
+<td>yes</td>
+<td>Output path. Format inferred from the extension: <code>.csv</code>, <code>.tsv</code>, <code>.rds</code>, <code>.parquet</code>, <code>.feather</code></td>
+</tr>
+</tbody>
+</table>
+<p>The row count is emitted as <code>::daggle-output name=row_count::&lt;n&gt;::</code> for downstream steps.</p>
 </section>
 </section>
 <section id="missing-packages" class="level2">
