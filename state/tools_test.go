@@ -163,6 +163,7 @@ func TestInitTools_SkipsPersistWhenAllConfigured(t *testing.T) {
 			"quarto":  "/custom/quarto",
 			"git":     "/custom/git",
 			"sh":      "/custom/sh",
+			"docker":  "/custom/docker",
 		},
 	}
 	InitTools(cfg)

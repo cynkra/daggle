@@ -116,6 +116,8 @@ func New(step dag.Step) Executor {
 		return &DatabaseExecutor{}
 	case "email":
 		return &EmailExecutor{}
+	case "docker":
+		return &DockerExecutor{}
 	default:
 		return nil
 	}

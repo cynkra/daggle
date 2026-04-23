@@ -318,6 +318,40 @@ Sends an email via a named SMTP channel defined in `config.yaml`. Uses Go's `net
 
 Attachments are base64-encoded with their MIME type inferred from the file extension. Output `recipients` holds the total envelope size (to + cc + bcc).
 
+## Isolation
+
+### `docker:` -- Containerized step
+
+Runs a command inside a Docker container. Useful for isolating different R versions, Bioconductor dependencies, or system libraries (GDAL, PROJ, CUDA).
+
+```yaml
+- id: bio_pipeline
+  docker:
+    image: bioconductor/bioconductor_docker:3.18
+    command: Rscript /work/scripts/analyze.R
+    volumes:
+      - ./scripts:/work/scripts:ro
+      - ./data:/work/data
+    env:
+      PROJECT_ID: "{{.Params.project_id}}"
+    workdir: /work
+    pull: missing     # always | missing | never
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `image` | yes | Container image to run |
+| `command` | either | Shell command inside the container (run via `sh -c`). One of `command` or `entrypoint` must be set |
+| `entrypoint` | either | Override the image entrypoint |
+| `volumes` | no | Bind mounts in `host:container[:ro]` form |
+| `env` | no | Environment variables passed via `-e` |
+| `workdir` | no | Working directory inside the container |
+| `network` | no | Docker network (`host`, `bridge`, `none`, or a named network) |
+| `user` | no | `uid[:gid]` to run as |
+| `pull` | no | Pull policy: `always`, `missing` (default), `never` |
+
+The `docker run --rm ...` subprocess is supervised like any other step — timeouts, retries, and signal handling apply uniformly. Logs are captured to the run directory exactly like `command:` steps.
+
 ## Missing packages
 
 All R step types check for their required package at runtime. If a package is missing, the step fails with a clear message:
