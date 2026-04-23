@@ -52,13 +52,36 @@ func runDAG(_ *cobra.Command, args []string) error {
 	// Parse param overrides
 	params := parseParams(runParams)
 
-	// Load, apply defaults, and expand templates
-	expanded, err := dag.LoadAndExpand(dagPath, params)
-	if err != nil {
-		return fmt.Errorf("DAG %q: %w", dagName, err)
+	// Dry-run: report what would happen without creating a run or executing.
+	if runDryRun {
+		expanded, err := dag.LoadAndExpand(dagPath, params)
+		if err != nil {
+			return fmt.Errorf("DAG %q: %w", dagName, err)
+		}
+		if err := dag.ResolveEnv(expanded.Env); err != nil {
+			return fmt.Errorf("resolve env: %w", err)
+		}
+		for i := range expanded.Steps {
+			if err := dag.ResolveEnv(expanded.Steps[i].Env); err != nil {
+				return fmt.Errorf("resolve step %q env: %w", expanded.Steps[i].ID, err)
+			}
+		}
+		return runDryRunReport(expanded, dagPath)
 	}
 
-	// Resolve secret references in env vars (${env:}, ${file:}, ${vault:})
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+	return executeRun(ctx, dagPath, params)
+}
+
+// executeRun loads and runs a DAG, honoring the given context for cancellation.
+// Shared by `daggle run` and `daggle watch`.
+func executeRun(ctx context.Context, dagPath string, params map[string]string) error {
+	expanded, err := dag.LoadAndExpand(dagPath, params)
+	if err != nil {
+		return fmt.Errorf("DAG at %s: %w", dagPath, err)
+	}
+
 	if err := dag.ResolveEnv(expanded.Env); err != nil {
 		return fmt.Errorf("resolve env: %w", err)
 	}
@@ -68,7 +91,6 @@ func runDAG(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// Build redactor from all secret values
 	envMaps := []dag.EnvMap{expanded.Env}
 	for _, s := range expanded.Steps {
 		if len(s.Env) > 0 {
@@ -77,15 +99,8 @@ func runDAG(_ *cobra.Command, args []string) error {
 	}
 	redactor := dag.NewRedactor(envMaps...)
 
-	// Dry-run: report what would happen without creating a run or executing.
-	if runDryRun {
-		return runDryRunReport(expanded, dagPath)
-	}
-
-	// Resolve prior run before creating the new one so it doesn't return self.
 	priorRun, _ := state.LatestRun(expanded.Name)
 
-	// Create run
 	run, err := state.CreateRun(expanded.Name)
 	if err != nil {
 		return fmt.Errorf("create run: %w", err)
@@ -94,14 +109,10 @@ func runDAG(_ *cobra.Command, args []string) error {
 	fmt.Printf("Starting DAG %q (run %s)\n", expanded.Name, run.ID)
 	fmt.Printf("Run directory: %s\n\n", run.Dir)
 
-	// Snapshot the DAG YAML into the run directory. Phase 9 uses this as the
-	// stable input for cross-run diffs, independent of the source file's
-	// later state.
 	if err := copyFile(dagPath, filepath.Join(run.Dir, state.DAGYAMLName)); err != nil {
 		fmt.Printf("Warning: failed to snapshot DAG YAML: %v\n", err)
 	}
 
-	// If the DAG hash changed since the prior run, write a unified diff.
 	if priorRun != nil {
 		priorMeta, err := state.ReadMeta(priorRun.Dir)
 		if err == nil && priorMeta.DAGHash != "" {
@@ -117,7 +128,6 @@ func runDAG(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// Check R version constraint
 	if expanded.RVersion != "" {
 		rVersion := detectRVersion()
 		msg, ok := dag.CheckRVersion(expanded.RVersion, rVersion)
@@ -129,11 +139,6 @@ func runDAG(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// Set up context with signal handling
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
-
-	// Build reproducibility metadata
 	dagHash, _ := dag.HashFile(dagPath)
 	rVersion := detectRVersion()
 	rPlatform := renv.DetectRPlatform()
@@ -150,13 +155,11 @@ func runDAG(_ *cobra.Command, args []string) error {
 		DaggleVersion: Version,
 	}
 
-	// Detect renv
 	projectDir := resolveProjectDir(expanded)
 	renvInfo := renv.Detect(projectDir, rVersion, rPlatform)
 	if renvInfo.Detected {
 		meta.RenvDetected = true
 		meta.RenvLibrary = renvInfo.LibraryPath
-		// Hash renv.lock for reproducibility
 		renvLockPath := filepath.Join(projectDir, "renv.lock")
 		if renvLockHash, err := dag.HashFile(renvLockPath); err == nil {
 			meta.RenvLockHash = renvLockHash

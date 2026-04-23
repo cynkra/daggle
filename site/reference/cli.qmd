@@ -21,6 +21,21 @@ Runs the named DAG synchronously, streaming step output to the terminal. Exit co
 
 With `--dry-run`, daggle loads the DAG, resolves secrets, checks the R version constraint, detects renv, evaluates freshness rules, and verifies that referenced scripts exist — then prints a plan of which steps would run in which tiers. No run directory is created and no steps are executed. Exits non-zero if any check fails. Use `daggle plan` for cache-status analysis.
 
+## daggle watch
+
+Run a DAG and re-run it whenever its YAML or any referenced script changes. Useful while authoring a DAG.
+
+```
+daggle watch <dag> [-p key=value]... [--debounce <duration>]
+```
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `-p`, `--param` | `key=value` | (none) | Set a parameter value. Repeatable. |
+| `--debounce` | duration | `500ms` | Delay after the last change before re-running |
+
+The initial run executes immediately, then daggle watches the DAG YAML, its `base.yaml` (if present), and every file referenced by a `script:`, `validate:`, `quarto:`, or `rmd:` step. On save, the DAG is re-validated and re-run. Steps marked `cache: true` skip automatically when their inputs haven't changed, so only the affected steps re-execute. Press Ctrl+C to stop.
+
 ## daggle validate
 
 Validate a DAG definition and display the execution plan.
