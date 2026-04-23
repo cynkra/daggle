@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -46,16 +45,6 @@ func init() {
 	rootCmd.AddCommand(lintCmd)
 }
 
-// lintDiagnostic is a single lint finding. Line/Col are 1-based; 0 means unknown.
-type lintDiagnostic struct {
-	Path     string `json:"path"`
-	Line     int    `json:"line,omitempty"`
-	Col      int    `json:"col,omitempty"`
-	Severity string `json:"severity"` // "error" | "warning" | "info"
-	Code     string `json:"code"`
-	Message  string `json:"message"`
-}
-
 func runLint(_ *cobra.Command, args []string) error {
 	applyOverrides()
 	dagPath := resolveDAGPath(args[0])
@@ -64,10 +53,7 @@ func runLint(_ *cobra.Command, args []string) error {
 		absDAG = dagPath
 	}
 
-	diags := collectLintDiagnostics(absDAG)
-	if lintCheckPackages {
-		diags = append(diags, checkRequiredRPackages(absDAG)...)
-	}
+	diags := lintDAG(absDAG)
 
 	sort.Slice(diags, func(i, j int) bool {
 		if diags[i].Path != diags[j].Path {
@@ -91,170 +77,40 @@ func runLint(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// collectLintDiagnostics gathers all lint findings for a DAG file.
-func collectLintDiagnostics(dagPath string) []lintDiagnostic {
-	var out []lintDiagnostic
-
+// lintDAG parses the DAG and runs every available lint check: the pure
+// structural checks in dag.Lint, notify-channel resolution against the loaded
+// config.yaml, and (when requested) the --check-packages Rscript probe.
+func lintDAG(dagPath string) []dag.Diagnostic {
 	d, err := dag.ParseFile(dagPath)
 	if err != nil {
-		// Parse/validation failure — report each line of the error as a diagnostic.
-		for _, line := range splitErr(err.Error()) {
-			out = append(out, lintDiagnostic{
-				Path: dagPath, Severity: "error", Code: "parse", Message: line,
-			})
-		}
-		return out
+		return dag.DiagnoseParseError(dagPath, err)
 	}
-
-	out = append(out, lintMissingScripts(d, dagPath)...)
-	out = append(out, lintSecretRefs(d, dagPath)...)
-	out = append(out, lintNotifyChannels(d, dagPath)...)
-
-	return out
+	diags := dag.Lint(d, dagPath, loadNotifyChannels())
+	if lintCheckPackages {
+		diags = append(diags, checkRequiredRPackages(d, dagPath)...)
+	}
+	return diags
 }
 
-func lintMissingScripts(d *dag.DAG, dagPath string) []lintDiagnostic {
-	var out []lintDiagnostic
-	for _, s := range d.Steps {
-		workdir := d.ResolveWorkdir(s)
-		resolve := func(p string) string {
-			if p == "" {
-				return ""
-			}
-			if filepath.IsAbs(p) {
-				return p
-			}
-			return filepath.Join(workdir, p)
-		}
-		check := func(field, p string) {
-			if p == "" {
-				return
-			}
-			abs := resolve(p)
-			if _, err := os.Stat(abs); err != nil {
-				out = append(out, lintDiagnostic{
-					Path: dagPath, Severity: "error", Code: "missing-script",
-					Message: fmt.Sprintf("step %q: %s %q does not exist (resolved to %s)", s.ID, field, p, abs),
-				})
-			}
-		}
-		check("script", s.Script)
-		check("validate", s.Validate)
-		check("quarto", s.Quarto)
-		check("rmd", s.Rmd)
-		if s.Connect != nil {
-			check("connect.path", s.Connect.Path)
-		}
-		if s.Database != nil {
-			check("database.query_file", s.Database.QueryFile)
-		}
-		if s.Email != nil {
-			check("email.body_file", s.Email.BodyFile)
-			for i, a := range s.Email.Attach {
-				check(fmt.Sprintf("email.attach[%d]", i), a)
-			}
-		}
-	}
-	return out
-}
-
-var lintSecretRe = regexp.MustCompile(`\$\{(env|file|vault):([^}]+)\}`)
-
-func lintSecretRefs(d *dag.DAG, dagPath string) []lintDiagnostic {
-	var out []lintDiagnostic
-	check := func(scope string, envMap dag.EnvMap) {
-		for k, v := range envMap {
-			matches := lintSecretRe.FindAllStringSubmatch(v.Value, -1)
-			for _, m := range matches {
-				source, ref := m[1], m[2]
-				switch source {
-				case "env":
-					if os.Getenv(ref) == "" {
-						out = append(out, lintDiagnostic{
-							Path: dagPath, Severity: "error", Code: "unresolved-secret",
-							Message: fmt.Sprintf("%s.%s references ${env:%s}, but %s is not set in the environment", scope, k, ref, ref),
-						})
-					}
-				case "file":
-					if _, err := os.Stat(ref); err != nil {
-						out = append(out, lintDiagnostic{
-							Path: dagPath, Severity: "error", Code: "unresolved-secret",
-							Message: fmt.Sprintf("%s.%s references ${file:%s}, but the file does not exist", scope, k, ref),
-						})
-					}
-				case "vault":
-					// Not checked — would require network + token. Leave as info.
-					out = append(out, lintDiagnostic{
-						Path: dagPath, Severity: "info", Code: "vault-ref",
-						Message: fmt.Sprintf("%s.%s references ${vault:%s} — not checked by lint", scope, k, ref),
-					})
-				}
-			}
-		}
-	}
-	check("env", d.Env)
-	for _, s := range d.Steps {
-		check(fmt.Sprintf("step[%s].env", s.ID), s.Env)
-	}
-	return out
-}
-
-func lintNotifyChannels(d *dag.DAG, dagPath string) []lintDiagnostic {
+// loadNotifyChannels builds a dag.NotifyChannels from the loaded config.
+// Returns nil when config.yaml is missing or defines no channels, so callers
+// know to skip the notify-channel check rather than flagging every reference.
+func loadNotifyChannels() *dag.NotifyChannels {
 	cfg, err := state.LoadConfig()
-	if err != nil {
+	if err != nil || len(cfg.Notifications) == 0 {
 		return nil
 	}
-	if len(cfg.Notifications) == 0 {
-		// No config.yaml or no channels — silently skip rather than flagging every reference.
-		return nil
+	nc := &dag.NotifyChannels{
+		All:  make(map[string]bool, len(cfg.Notifications)),
+		SMTP: make(map[string]bool, len(cfg.Notifications)),
 	}
-	channels := make(map[string]bool, len(cfg.Notifications))
-	smtpChannels := make(map[string]bool, len(cfg.Notifications))
 	for name, ch := range cfg.Notifications {
-		channels[name] = true
+		nc.All[name] = true
 		if ch.Type == "smtp" {
-			smtpChannels[name] = true
+			nc.SMTP[name] = true
 		}
 	}
-
-	var out []lintDiagnostic
-	check := func(h *dag.Hook, where string) {
-		if h == nil || h.Notify == "" {
-			return
-		}
-		if !channels[h.Notify] {
-			out = append(out, lintDiagnostic{
-				Path: dagPath, Severity: "error", Code: "unknown-channel",
-				Message: fmt.Sprintf("%s: notify channel %q is not defined in config.yaml", where, h.Notify),
-			})
-		}
-	}
-	check(d.OnSuccess, "on_success")
-	check(d.OnFailure, "on_failure")
-	check(d.OnExit, "on_exit")
-	if d.Trigger != nil {
-		check(d.Trigger.OnDeadline, "trigger.on_deadline")
-	}
-	for _, s := range d.Steps {
-		if s.Approve != nil {
-			check(s.Approve.Notify, fmt.Sprintf("step %q approve.notify", s.ID))
-		}
-		if s.Email != nil && s.Email.Channel != "" {
-			switch {
-			case !channels[s.Email.Channel]:
-				out = append(out, lintDiagnostic{
-					Path: dagPath, Severity: "error", Code: "unknown-channel",
-					Message: fmt.Sprintf("step %q email.channel %q is not defined in config.yaml", s.ID, s.Email.Channel),
-				})
-			case !smtpChannels[s.Email.Channel]:
-				out = append(out, lintDiagnostic{
-					Path: dagPath, Severity: "error", Code: "wrong-channel-type",
-					Message: fmt.Sprintf("step %q email.channel %q is not an smtp channel", s.ID, s.Email.Channel),
-				})
-			}
-		}
-	}
-	return out
+	return nc
 }
 
 // requiredRPackagesByStepType maps step types to R packages that must be
@@ -280,11 +136,7 @@ var requiredRPackagesByStepType = map[string]string{
 // checkRequiredRPackages runs one Rscript call to check whether all packages
 // needed by this DAG's steps are installed. Skips entirely if no steps need R
 // packages or if Rscript cannot be located.
-func checkRequiredRPackages(dagPath string) []lintDiagnostic {
-	d, err := dag.ParseFile(dagPath)
-	if err != nil {
-		return nil // parse errors already reported by collectLintDiagnostics
-	}
+func checkRequiredRPackages(d *dag.DAG, dagPath string) []dag.Diagnostic {
 	needed := make(map[string][]string) // pkg -> step IDs
 	for _, s := range d.Steps {
 		if pkg := requiredRPackagesByStepType[dag.StepType(s)]; pkg != "" {
@@ -297,7 +149,7 @@ func checkRequiredRPackages(dagPath string) []lintDiagnostic {
 
 	rscript := state.ToolPath("rscript")
 	if _, err := exec.LookPath(rscript); err != nil {
-		return []lintDiagnostic{{
+		return []dag.Diagnostic{{
 			Path: dagPath, Severity: "warning", Code: "r-not-found",
 			Message: fmt.Sprintf("--check-packages requested but Rscript not found: %v", err),
 		}}
@@ -319,7 +171,7 @@ func checkRequiredRPackages(dagPath string) []lintDiagnostic {
 	cmd := exec.Command(rscript, "--no-save", "--no-restore", "-e", rCode)
 	out, err := cmd.Output()
 	if err != nil {
-		return []lintDiagnostic{{
+		return []dag.Diagnostic{{
 			Path: dagPath, Severity: "warning", Code: "r-check-failed",
 			Message: fmt.Sprintf("--check-packages: Rscript invocation failed: %v", err),
 		}}
@@ -333,14 +185,14 @@ func checkRequiredRPackages(dagPath string) []lintDiagnostic {
 		}
 	}
 
-	var diags []lintDiagnostic
+	var diags []dag.Diagnostic
 	for _, p := range pkgs {
 		if installed[p] {
 			continue
 		}
 		steps := needed[p]
 		sort.Strings(steps)
-		diags = append(diags, lintDiagnostic{
+		diags = append(diags, dag.Diagnostic{
 			Path: dagPath, Severity: "error", Code: "missing-r-package",
 			Message: fmt.Sprintf("R package %q is not installed (needed by step(s): %s) — install with: install.packages(%q)",
 				p, strings.Join(steps, ", "), p),
@@ -350,7 +202,7 @@ func checkRequiredRPackages(dagPath string) []lintDiagnostic {
 }
 
 // emitLintDiagnostics prints diagnostics in the requested format.
-func emitLintDiagnostics(format string, diags []lintDiagnostic) error {
+func emitLintDiagnostics(format string, diags []dag.Diagnostic) error {
 	switch format {
 	case "", "text":
 		return emitLintText(diags)
@@ -363,7 +215,7 @@ func emitLintDiagnostics(format string, diags []lintDiagnostic) error {
 	}
 }
 
-func emitLintText(diags []lintDiagnostic) error {
+func emitLintText(diags []dag.Diagnostic) error {
 	if len(diags) == 0 {
 		fmt.Println("No issues found.")
 		return nil
@@ -382,7 +234,7 @@ func emitLintText(diags []lintDiagnostic) error {
 	return nil
 }
 
-func emitLintGNU(diags []lintDiagnostic) error {
+func emitLintGNU(diags []dag.Diagnostic) error {
 	for _, d := range diags {
 		line, col := d.Line, d.Col
 		if line <= 0 {
@@ -396,16 +248,16 @@ func emitLintGNU(diags []lintDiagnostic) error {
 	return nil
 }
 
-func emitLintJSON(diags []lintDiagnostic) error {
+func emitLintJSON(diags []dag.Diagnostic) error {
 	if diags == nil {
-		diags = []lintDiagnostic{}
+		diags = []dag.Diagnostic{}
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(diags)
 }
 
-func countSeverity(diags []lintDiagnostic, sev string) int {
+func countSeverity(diags []dag.Diagnostic, sev string) int {
 	n := 0
 	for _, d := range diags {
 		if d.Severity == sev {
@@ -413,20 +265,4 @@ func countSeverity(diags []lintDiagnostic, sev string) int {
 		}
 	}
 	return n
-}
-
-func splitErr(s string) []string {
-	var out []string
-	for _, line := range strings.Split(s, "\n") {
-		line = strings.TrimSpace(line)
-		line = strings.TrimPrefix(line, "- ")
-		if line == "" {
-			continue
-		}
-		out = append(out, line)
-	}
-	if len(out) == 0 {
-		out = []string{s}
-	}
-	return out
 }

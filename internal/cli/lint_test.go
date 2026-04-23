@@ -3,99 +3,18 @@ package cli
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/cynkra/daggle/dag"
 )
 
-func TestLint_MissingScript(t *testing.T) {
-	dir := t.TempDir()
-	dagPath := filepath.Join(dir, "pipe.yaml")
-	yaml := "name: t\nsteps:\n  - id: s\n    script: analysis.R\n"
-	if err := os.WriteFile(dagPath, []byte(yaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	abs, _ := filepath.Abs(dagPath)
-	diags := collectLintDiagnostics(abs)
-
-	if len(diags) == 0 {
-		t.Fatal("expected a missing-script diagnostic, got none")
-	}
-	got := diags[0]
-	if got.Code != "missing-script" || got.Severity != "error" {
-		t.Errorf("got %+v, want code=missing-script severity=error", got)
-	}
-}
-
-func TestLint_AllClean(t *testing.T) {
-	dir := t.TempDir()
-	dagPath := filepath.Join(dir, "pipe.yaml")
-	yaml := "name: t\nsteps:\n  - id: s\n    command: echo hi\n"
-	if err := os.WriteFile(dagPath, []byte(yaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	abs, _ := filepath.Abs(dagPath)
-	diags := collectLintDiagnostics(abs)
-	if len(diags) != 0 {
-		t.Errorf("expected no diagnostics, got %+v", diags)
-	}
-}
-
-func TestLint_UnresolvedEnvSecret(t *testing.T) {
-	// Ensure the env var is NOT set. t.Setenv restores at test end.
-	t.Setenv("DAGGLE_LINT_TEST_MISSING", "")
-	if err := os.Unsetenv("DAGGLE_LINT_TEST_MISSING"); err != nil {
-		t.Fatal(err)
-	}
-
-	dir := t.TempDir()
-	dagPath := filepath.Join(dir, "pipe.yaml")
-	yaml := "name: t\n" +
-		"env:\n  API_KEY: ${env:DAGGLE_LINT_TEST_MISSING}\n" +
-		"steps:\n  - id: s\n    command: echo hi\n"
-	if err := os.WriteFile(dagPath, []byte(yaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	abs, _ := filepath.Abs(dagPath)
-	diags := collectLintDiagnostics(abs)
-
-	found := false
-	for _, d := range diags {
-		if d.Code == "unresolved-secret" && strings.Contains(d.Message, "DAGGLE_LINT_TEST_MISSING") {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected unresolved-secret diagnostic, got %+v", diags)
-	}
-}
-
-func TestLint_ResolvedEnvSecretNoError(t *testing.T) {
-	t.Setenv("DAGGLE_LINT_TEST_SET", "value")
-
-	dir := t.TempDir()
-	dagPath := filepath.Join(dir, "pipe.yaml")
-	yaml := "name: t\n" +
-		"env:\n  API_KEY: ${env:DAGGLE_LINT_TEST_SET}\n" +
-		"steps:\n  - id: s\n    command: echo hi\n"
-	if err := os.WriteFile(dagPath, []byte(yaml), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	abs, _ := filepath.Abs(dagPath)
-	diags := collectLintDiagnostics(abs)
-	for _, d := range diags {
-		if d.Code == "unresolved-secret" {
-			t.Errorf("did not expect unresolved-secret for resolved env, got %+v", d)
-		}
-	}
-}
+// Tests for the pure lint logic live in dag/lint_test.go. The tests here cover
+// the CLI-layer output formatters (emitLintJSON, emitLintGNU) that turn
+// dag.Diagnostic values into text for terminals and editor integrations.
 
 func TestLint_JSONFormat(t *testing.T) {
-	diags := []lintDiagnostic{
+	diags := []dag.Diagnostic{
 		{Path: "/tmp/a.yaml", Line: 1, Severity: "error", Code: "x", Message: "y"},
 	}
 
@@ -104,7 +23,7 @@ func TestLint_JSONFormat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var got []lintDiagnostic
+	var got []dag.Diagnostic
 	if err := json.Unmarshal([]byte(buf), &got); err != nil {
 		t.Fatalf("invalid JSON: %v\nbuf=%s", err, buf)
 	}
@@ -114,7 +33,7 @@ func TestLint_JSONFormat(t *testing.T) {
 }
 
 func TestLint_GNUFormat(t *testing.T) {
-	diags := []lintDiagnostic{
+	diags := []dag.Diagnostic{
 		{Path: "/tmp/a.yaml", Severity: "error", Code: "x", Message: "y"},
 	}
 
