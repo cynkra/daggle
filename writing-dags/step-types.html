@@ -434,6 +434,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#workflow" id="toc-workflow" class="nav-link" data-scroll-target="#workflow">Workflow</a></li>
   <li><a href="#data-sources" id="toc-data-sources" class="nav-link" data-scroll-target="#data-sources">Data sources</a></li>
   <li><a href="#notifications" id="toc-notifications" class="nav-link" data-scroll-target="#notifications">Notifications</a></li>
+  <li><a href="#isolation" id="toc-isolation" class="nav-link" data-scroll-target="#isolation">Isolation</a></li>
   <li><a href="#missing-packages" id="toc-missing-packages" class="nav-link" data-scroll-target="#missing-packages">Missing packages</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -784,6 +785,86 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>Attachments are base64-encoded with their MIME type inferred from the file extension. Output <code>recipients</code> holds the total envelope size (to + cc + bcc).</p>
+</section>
+</section>
+<section id="isolation" class="level2">
+<h2 class="anchored" data-anchor-id="isolation">Isolation</h2>
+<section id="docker-containerized-step" class="level3">
+<h3 class="anchored" data-anchor-id="docker-containerized-step"><code>docker:</code> – Containerized step</h3>
+<p>Runs a command inside a Docker container. Useful for isolating different R versions, Bioconductor dependencies, or system libraries (GDAL, PROJ, CUDA).</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb27"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> bio_pipeline</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">docker</span><span class="kw">:</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">image</span><span class="kw">:</span><span class="at"> bioconductor/bioconductor_docker:3.18</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">command</span><span class="kw">:</span><span class="at"> Rscript /work/scripts/analyze.R</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">volumes</span><span class="kw">:</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> ./scripts:/work/scripts:ro</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> ./data:/work/data</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">env</span><span class="kw">:</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">PROJECT_ID</span><span class="kw">:</span><span class="at"> </span><span class="st">"{{.Params.project_id}}"</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">workdir</span><span class="kw">:</span><span class="at"> /work</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">pull</span><span class="kw">:</span><span class="at"> missing</span><span class="co">     # always | missing | never</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 33%">
+<col style="width: 43%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>image</code></td>
+<td>yes</td>
+<td>Container image to run</td>
+</tr>
+<tr class="even">
+<td><code>command</code></td>
+<td>either</td>
+<td>Shell command inside the container (run via <code>sh -c</code>). One of <code>command</code> or <code>entrypoint</code> must be set</td>
+</tr>
+<tr class="odd">
+<td><code>entrypoint</code></td>
+<td>either</td>
+<td>Override the image entrypoint</td>
+</tr>
+<tr class="even">
+<td><code>volumes</code></td>
+<td>no</td>
+<td>Bind mounts in <code>host:container[:ro]</code> form</td>
+</tr>
+<tr class="odd">
+<td><code>env</code></td>
+<td>no</td>
+<td>Environment variables passed via <code>-e</code></td>
+</tr>
+<tr class="even">
+<td><code>workdir</code></td>
+<td>no</td>
+<td>Working directory inside the container</td>
+</tr>
+<tr class="odd">
+<td><code>network</code></td>
+<td>no</td>
+<td>Docker network (<code>host</code>, <code>bridge</code>, <code>none</code>, or a named network)</td>
+</tr>
+<tr class="even">
+<td><code>user</code></td>
+<td>no</td>
+<td><code>uid[:gid]</code> to run as</td>
+</tr>
+<tr class="odd">
+<td><code>pull</code></td>
+<td>no</td>
+<td>Pull policy: <code>always</code>, <code>missing</code> (default), <code>never</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>docker run --rm ...</code> subprocess is supervised like any other step — timeouts, retries, and signal handling apply uniformly. Logs are captured to the run directory exactly like <code>command:</code> steps.</p>
 </section>
 </section>
 <section id="missing-packages" class="level2">

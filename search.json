@@ -873,6 +873,17 @@
     ]
   },
   {
+    "objectID": "writing-dags/step-types.html#isolation",
+    "href": "writing-dags/step-types.html#isolation",
+    "title": "Step Types",
+    "section": "Isolation",
+    "text": "Isolation\n\ndocker: – Containerized step\nRuns a command inside a Docker container. Useful for isolating different R versions, Bioconductor dependencies, or system libraries (GDAL, PROJ, CUDA).\n- id: bio_pipeline\n  docker:\n    image: bioconductor/bioconductor_docker:3.18\n    command: Rscript /work/scripts/analyze.R\n    volumes:\n      - ./scripts:/work/scripts:ro\n      - ./data:/work/data\n    env:\n      PROJECT_ID: \"{{.Params.project_id}}\"\n    workdir: /work\n    pull: missing     # always | missing | never\n\n\n\n\n\n\n\n\nField\nRequired\nDescription\n\n\n\n\nimage\nyes\nContainer image to run\n\n\ncommand\neither\nShell command inside the container (run via sh -c). One of command or entrypoint must be set\n\n\nentrypoint\neither\nOverride the image entrypoint\n\n\nvolumes\nno\nBind mounts in host:container[:ro] form\n\n\nenv\nno\nEnvironment variables passed via -e\n\n\nworkdir\nno\nWorking directory inside the container\n\n\nnetwork\nno\nDocker network (host, bridge, none, or a named network)\n\n\nuser\nno\nuid[:gid] to run as\n\n\npull\nno\nPull policy: always, missing (default), never\n\n\n\nThe docker run --rm ... subprocess is supervised like any other step — timeouts, retries, and signal handling apply uniformly. Logs are captured to the run directory exactly like command: steps.",
+    "crumbs": [
+      "Writing DAGs",
+      "Step Types"
+    ]
+  },
+  {
     "objectID": "writing-dags/step-types.html#missing-packages",
     "href": "writing-dags/step-types.html#missing-packages",
     "title": "Step Types",
