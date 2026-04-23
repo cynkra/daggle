@@ -44,9 +44,11 @@ func TestLint_AllClean(t *testing.T) {
 }
 
 func TestLint_UnresolvedEnvSecret(t *testing.T) {
-	// Ensure the env var is NOT set.
+	// Ensure the env var is NOT set. t.Setenv restores at test end.
 	t.Setenv("DAGGLE_LINT_TEST_MISSING", "")
-	os.Unsetenv("DAGGLE_LINT_TEST_MISSING")
+	if err := os.Unsetenv("DAGGLE_LINT_TEST_MISSING"); err != nil {
+		t.Fatal(err)
+	}
 
 	dir := t.TempDir()
 	dagPath := filepath.Join(dir, "pipe.yaml")
