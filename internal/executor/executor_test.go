@@ -132,8 +132,31 @@ func TestShellExecutor_OutputMarkers(t *testing.T) {
 	}
 }
 
+// TestNew_AllStepTypes enforces the invariant that every step type declared
+// in dag.stepTypeRegistry has a corresponding case in executor.New. Without
+// this test, adding a new entry to the registry and forgetting the executor
+// case would silently return a nil executor at runtime.
 func TestNew_AllStepTypes(t *testing.T) {
-	tests := []struct {
+	// Empty step → no executor.
+	if ex := New(dag.Step{}); ex != nil {
+		t.Errorf("New(empty Step) = %T, want nil", ex)
+	}
+
+	// Every registered step type must resolve to a non-nil executor.
+	for _, name := range dag.AllStepTypes() {
+		step := dag.MinimalStepOfType(name)
+		if got := dag.StepType(step); got != name {
+			t.Errorf("MinimalStepOfType(%q) has StepType=%q; registry is inconsistent", name, got)
+			continue
+		}
+		if ex := New(step); ex == nil {
+			t.Errorf("New(%q) returned nil — executor.New is missing a case for this step type", name)
+		}
+	}
+
+	// Pin a handful of specific type mappings so a regression that swaps
+	// executors (e.g. Test → ScriptExecutor) is caught, not just absence.
+	specifics := []struct {
 		step dag.Step
 		want string
 	}{
@@ -142,18 +165,12 @@ func TestNew_AllStepTypes(t *testing.T) {
 		{dag.Step{Command: "echo"}, "*executor.ShellExecutor"},
 		{dag.Step{Quarto: "report.qmd"}, "*executor.QuartoExecutor"},
 		{dag.Step{Test: "."}, "*executor.RPkgExecutor"},
-		{dag.Step{Check: "."}, "*executor.RPkgExecutor"},
-		{dag.Step{Document: "."}, "*executor.RPkgExecutor"},
 		{dag.Step{Lint: "."}, "*executor.RPkgExecutor"},
-		{dag.Step{Style: "."}, "*executor.RPkgExecutor"},
 		{dag.Step{Connect: &dag.ConnectDeploy{Type: "shiny", Path: "app/"}}, "*executor.ConnectExecutor"},
-		{dag.Step{}, "<nil>"},
 	}
-	for _, tt := range tests {
-		ex := New(tt.step)
-		got := fmt.Sprintf("%T", ex)
-		if got != tt.want {
-			t.Errorf("New(%v) = %s, want %s", dag.StepType(tt.step), got, tt.want)
+	for _, tt := range specifics {
+		if got := fmt.Sprintf("%T", New(tt.step)); got != tt.want {
+			t.Errorf("New(%s) = %s, want %s", dag.StepType(tt.step), got, tt.want)
 		}
 	}
 }
