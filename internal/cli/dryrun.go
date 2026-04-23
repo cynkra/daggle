@@ -134,6 +134,12 @@ func scriptPathsFor(s dag.Step) []string {
 	if s.Database != nil {
 		add(s.Database.QueryFile)
 	}
+	if s.Email != nil {
+		add(s.Email.BodyFile)
+		for _, a := range s.Email.Attach {
+			add(a)
+		}
+	}
 	return out
 }
 

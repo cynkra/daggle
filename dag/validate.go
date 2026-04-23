@@ -83,6 +83,7 @@ func validateSteps(d *DAG) []string {
 		errs = append(errs, validateStepType(s)...)
 		errs = append(errs, validateStepConnect(s)...)
 		errs = append(errs, validateStepDatabase(s)...)
+		errs = append(errs, validateStepEmail(s)...)
 		errs = append(errs, validateStepDependencies(s, allIDs)...)
 		errs = append(errs, validateStepTimeout(s)...)
 		errs = append(errs, validateStepErrorOn(s)...)
@@ -104,13 +105,13 @@ func validateStepType(s Step) []string {
 		s.Approve != nil, s.Call != nil, s.Pin != nil, s.Vetiver != nil,
 		s.Shinytest != "", s.Pkgdown != "", s.Install != "", s.Targets != "",
 		s.Benchmark != "", s.Revdepcheck != "",
-		s.Connect != nil, s.Database != nil,
+		s.Connect != nil, s.Database != nil, s.Email != nil,
 	} {
 		if set {
 			typeCount++
 		}
 	}
-	stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect, database"
+	stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect, database, email"
 	var errs []string
 	if typeCount == 0 {
 		errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
@@ -171,6 +172,27 @@ func validateStepDatabase(s Step) []string {
 		default:
 			errs = append(errs, fmt.Sprintf("step %q database.output %q has unsupported extension %q; expected one of: .csv, .tsv, .rds, .parquet, .feather", s.ID, db.Output, ext))
 		}
+	}
+	return errs
+}
+
+func validateStepEmail(s Step) []string {
+	if s.Email == nil {
+		return nil
+	}
+	var errs []string
+	e := s.Email
+	if e.Channel == "" {
+		errs = append(errs, fmt.Sprintf("step %q email.channel is required", s.ID))
+	}
+	if e.Subject == "" {
+		errs = append(errs, fmt.Sprintf("step %q email.subject is required", s.ID))
+	}
+	if e.Body == "" && e.BodyFile == "" {
+		errs = append(errs, fmt.Sprintf("step %q email requires one of: body, body_file", s.ID))
+	}
+	if e.Body != "" && e.BodyFile != "" {
+		errs = append(errs, fmt.Sprintf("step %q email must not set both body and body_file", s.ID))
 	}
 	return errs
 }

@@ -106,6 +106,14 @@ func expandStep(s Step, ctx TemplateContext) (Step, error) {
 		es.Connect = ec
 	}
 
+	if s.Email != nil {
+		ee, err := expandEmail(s.Email, ctx, s.ID)
+		if err != nil {
+			return Step{}, err
+		}
+		es.Email = ee
+	}
+
 	if len(s.Env) > 0 {
 		env, err := expandEnvMap(s.Env, ctx, fmt.Sprintf("step %q env", s.ID))
 		if err != nil {
@@ -169,6 +177,32 @@ func expandOptional(field *string, ctx TemplateContext, location string) error {
 	}
 	*field = v
 	return nil
+}
+
+// expandEmail returns a deep copy of e with subject, body, body_file, and
+// attachment paths template-expanded. Caller has already verified e != nil.
+func expandEmail(e *EmailStep, ctx TemplateContext, stepID string) (*EmailStep, error) {
+	ee := *e
+	if err := expandOptional(&ee.Subject, ctx, fmt.Sprintf("step %q email.subject", stepID)); err != nil {
+		return nil, err
+	}
+	if err := expandOptional(&ee.Body, ctx, fmt.Sprintf("step %q email.body", stepID)); err != nil {
+		return nil, err
+	}
+	if err := expandOptional(&ee.BodyFile, ctx, fmt.Sprintf("step %q email.body_file", stepID)); err != nil {
+		return nil, err
+	}
+	if len(e.Attach) > 0 {
+		ee.Attach = make([]string, len(e.Attach))
+		for i, a := range e.Attach {
+			v, err := expandString(a, ctx, fmt.Sprintf("step %q email.attach[%d]", stepID, i))
+			if err != nil {
+				return nil, err
+			}
+			ee.Attach[i] = v
+		}
+	}
+	return &ee, nil
 }
 
 // expandConnect returns a deep copy of c with Path and Name template-expanded.

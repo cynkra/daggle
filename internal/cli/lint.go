@@ -148,6 +148,12 @@ func lintMissingScripts(d *dag.DAG, dagPath string) []lintDiagnostic {
 		if s.Database != nil {
 			check("database.query_file", s.Database.QueryFile)
 		}
+		if s.Email != nil {
+			check("email.body_file", s.Email.BodyFile)
+			for i, a := range s.Email.Attach {
+				check(fmt.Sprintf("email.attach[%d]", i), a)
+			}
+		}
 	}
 	return out
 }
@@ -203,8 +209,12 @@ func lintNotifyChannels(d *dag.DAG, dagPath string) []lintDiagnostic {
 		return nil
 	}
 	channels := make(map[string]bool, len(cfg.Notifications))
-	for name := range cfg.Notifications {
+	smtpChannels := make(map[string]bool, len(cfg.Notifications))
+	for name, ch := range cfg.Notifications {
 		channels[name] = true
+		if ch.Type == "smtp" {
+			smtpChannels[name] = true
+		}
 	}
 
 	var out []lintDiagnostic
@@ -228,6 +238,20 @@ func lintNotifyChannels(d *dag.DAG, dagPath string) []lintDiagnostic {
 	for _, s := range d.Steps {
 		if s.Approve != nil {
 			check(s.Approve.Notify, fmt.Sprintf("step %q approve.notify", s.ID))
+		}
+		if s.Email != nil && s.Email.Channel != "" {
+			switch {
+			case !channels[s.Email.Channel]:
+				out = append(out, lintDiagnostic{
+					Path: dagPath, Severity: "error", Code: "unknown-channel",
+					Message: fmt.Sprintf("step %q email.channel %q is not defined in config.yaml", s.ID, s.Email.Channel),
+				})
+			case !smtpChannels[s.Email.Channel]:
+				out = append(out, lintDiagnostic{
+					Path: dagPath, Severity: "error", Code: "wrong-channel-type",
+					Message: fmt.Sprintf("step %q email.channel %q is not an smtp channel", s.ID, s.Email.Channel),
+				})
+			}
 		}
 	}
 	return out

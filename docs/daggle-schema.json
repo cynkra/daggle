@@ -182,6 +182,23 @@
         "output": { "type": "string", "description": "Output path; format inferred from extension (.csv, .tsv, .rds, .parquet, .feather)" }
       }
     },
+    "email": {
+      "type": "object",
+      "description": "Send an email via a named SMTP channel from config.yaml",
+      "required": ["channel", "subject"],
+      "additionalProperties": false,
+      "properties": {
+        "channel": { "type": "string", "description": "Name of an SMTP notification channel defined in config.yaml" },
+        "from": { "type": "string", "description": "Sender address (overrides channel smtp_from)" },
+        "to": { "type": "array", "items": { "type": "string" }, "description": "Recipient addresses (overrides channel smtp_to)" },
+        "cc": { "type": "array", "items": { "type": "string" }, "description": "CC addresses" },
+        "bcc": { "type": "array", "items": { "type": "string" }, "description": "BCC addresses (not shown in headers)" },
+        "subject": { "type": "string", "description": "Email subject" },
+        "body": { "type": "string", "description": "Inline plain-text body (mutually exclusive with body_file)" },
+        "body_file": { "type": "string", "description": "Path to body file (mutually exclusive with body)" },
+        "attach": { "type": "array", "items": { "type": "string" }, "description": "File paths to attach" }
+      }
+    },
     "approve": {
       "type": "object",
       "description": "Approval gate — pauses execution until a human approves or rejects",
@@ -272,6 +289,7 @@
         "revdepcheck": { "type": "string", "description": "Run reverse dependency checks via revdepcheck::revdep_check(). Value is package path or '.' for current directory" },
         "connect": { "$ref": "#/$defs/connect" },
         "database": { "$ref": "#/$defs/database" },
+        "email": { "$ref": "#/$defs/email" },
         "args": {
           "type": "array",
           "items": { "type": "string" },
