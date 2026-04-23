@@ -1160,6 +1160,72 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
+<p><strong>Data sources:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>database</code></td>
+<td>object</td>
+<td>SQL query via R DBI. Fields: <code>driver</code>, <code>params</code> (map), <code>query</code> or <code>query_file</code>, <code>output</code> (format inferred from extension)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Notifications:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>email</code></td>
+<td>object</td>
+<td>Send email via SMTP. Fields: <code>channel</code>, <code>subject</code>, <code>body</code>/<code>body_file</code>, <code>to</code>, <code>cc</code>, <code>bcc</code>, <code>from</code>, <code>attach</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Isolation:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>docker</code></td>
+<td>object</td>
+<td>Run inside a Docker container. Fields: <code>image</code>, <code>command</code>/<code>entrypoint</code>, <code>volumes</code>, <code>env</code>, <code>workdir</code>, <code>network</code>, <code>user</code>, <code>pull</code></td>
+</tr>
+</tbody>
+</table>
 </section>
 </section>
 <section id="retry-config" class="level2">

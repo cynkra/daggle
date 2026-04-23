@@ -401,6 +401,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#what-happens" id="toc-what-happens" class="nav-link" data-scroll-target="#what-happens">What happens</a></li>
   <li><a href="#signal-handling" id="toc-signal-handling" class="nav-link" data-scroll-target="#signal-handling">Signal handling</a></li>
   <li><a href="#directory-overrides" id="toc-directory-overrides" class="nav-link" data-scroll-target="#directory-overrides">Directory overrides</a></li>
+  <li><a href="#authoring-loop-daggle-watch" id="toc-authoring-loop-daggle-watch" class="nav-link" data-scroll-target="#authoring-loop-daggle-watch">Authoring loop: <code>daggle watch</code></a></li>
+  <li><a href="#pre-flight-daggle-lint" id="toc-pre-flight-daggle-lint" class="nav-link" data-scroll-target="#pre-flight-daggle-lint">Pre-flight: <code>daggle lint</code></a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -464,6 +466,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="directory-overrides">Directory overrides</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> run my-dag <span class="at">--dags-dir</span> /path/to/dags <span class="at">--data-dir</span> /path/to/data</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>These override the default <a href="../getting-started/project-local.html">DAG discovery</a> and data storage locations.</p>
+</section>
+<section id="authoring-loop-daggle-watch" class="level2">
+<h2 class="anchored" data-anchor-id="authoring-loop-daggle-watch">Authoring loop: <code>daggle watch</code></h2>
+<p>While iterating on a DAG, run it once and re-run automatically on save:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> watch my-dag</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Watches the DAG YAML plus every referenced script (<code>script</code>, <code>validate</code>, <code>quarto</code>, <code>rmd</code>, <code>query_file</code>, <code>body_file</code>, email attachments, etc.). Steps marked <code>cache: true</code> are skipped when their inputs haven’t changed, so only the affected steps re-execute. <code>--debounce</code> tunes how long to wait for the editor to finish writing (default <code>500ms</code>). Press Ctrl+C to stop.</p>
+</section>
+<section id="pre-flight-daggle-lint" class="level2">
+<h2 class="anchored" data-anchor-id="pre-flight-daggle-lint">Pre-flight: <code>daggle lint</code></h2>
+<p>Beyond <code>daggle validate</code> (schema/cycle checks), <code>daggle lint</code> runs semantic checks useful in CI or an editor problem matcher:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> lint my-dag <span class="at">--format</span> gnu        <span class="co"># path:line:col: severity: msg [code]</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> lint my-dag <span class="at">--format</span> json       <span class="co"># for tooling</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> lint my-dag <span class="at">--check-packages</span>    <span class="co"># verify required R packages are installed</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>It flags missing referenced scripts, unresolvable <code>${env:}</code> / <code>${file:}</code> secrets, and unknown <code>notify:</code> / <code>email.channel</code> references. Exits 1 if any error-severity diagnostic is produced.</p>
 
 
 </section>
