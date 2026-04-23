@@ -45,9 +45,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-cad2a2f8a56dfe71ee895a68e79c9b9a.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-8032fdaff60d9edb6975f8f3445510b7.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-25881833b139d9a101ec7b177f21ec8e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-f0c985fc569c130b817995465fd94936.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-71c2c73956a50c1dea9220a477d61d03.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-f0c985fc569c130b817995465fd94936.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -370,6 +370,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#daggle-run" id="toc-daggle-run" class="nav-link active" data-scroll-target="#daggle-run">daggle run</a></li>
   <li><a href="#daggle-watch" id="toc-daggle-watch" class="nav-link" data-scroll-target="#daggle-watch">daggle watch</a></li>
   <li><a href="#daggle-validate" id="toc-daggle-validate" class="nav-link" data-scroll-target="#daggle-validate">daggle validate</a></li>
+  <li><a href="#daggle-lint" id="toc-daggle-lint" class="nav-link" data-scroll-target="#daggle-lint">daggle lint</a></li>
   <li><a href="#daggle-status" id="toc-daggle-status" class="nav-link" data-scroll-target="#daggle-status">daggle status</a></li>
   <li><a href="#daggle-list" id="toc-daggle-list" class="nav-link" data-scroll-target="#daggle-list">daggle list</a></li>
   <li><a href="#daggle-serve" id="toc-daggle-serve" class="nav-link" data-scroll-target="#daggle-serve">daggle serve</a></li>
@@ -498,6 +499,51 @@ ul.task-list li input[type="checkbox"] {
 <p>Validate a DAG definition and display the execution plan.</p>
 <pre><code>daggle validate &lt;dag|path&gt;</code></pre>
 <p>Accepts a DAG name (resolved via discovery) or a direct file path. Checks YAML syntax, schema conformance, dependency cycles, and missing references. Prints the resolved execution plan on success.</p>
+</section>
+<section id="daggle-lint" class="level2">
+<h2 class="anchored" data-anchor-id="daggle-lint">daggle lint</h2>
+<p>Semantic diagnostics for a DAG. Goes beyond <code>daggle validate</code> by checking that referenced resources actually exist and are resolvable.</p>
+<pre><code>daggle lint &lt;dag|path&gt; [--format text|gnu|json] [--check-packages]</code></pre>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 17%">
+<col style="width: 26%">
+<col style="width: 38%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--format</code></td>
+<td>string</td>
+<td><code>text</code></td>
+<td>Output format: <code>text</code>, <code>gnu</code> (<code>path:line:col: severity: message [code]</code>), or <code>json</code></td>
+</tr>
+<tr class="even">
+<td><code>--check-packages</code></td>
+<td>bool</td>
+<td>false</td>
+<td>Check that required R packages for R-based step types are installed (runs Rscript)</td>
+</tr>
+</tbody>
+</table>
+<p>Checks performed:</p>
+<ul>
+<li>Parse/schema errors (same as <code>daggle validate</code>)</li>
+<li>Referenced scripts exist (<code>script:</code>, <code>validate:</code>, <code>quarto:</code>, <code>rmd:</code>, <code>connect.path</code>)</li>
+<li><code>${env:}</code> secret references resolvable against the current environment</li>
+<li><code>${file:}</code> secret references point to readable files (<code>${vault:}</code> references are reported as info — not checked)</li>
+<li><code>notify:</code> channel names are defined in <code>config.yaml</code></li>
+<li>With <code>--check-packages</code>: required R packages for step types like <code>rmd</code>, <code>coverage</code>, <code>pkgdown</code>, etc. are installed</li>
+</ul>
+<p>The <code>gnu</code> and <code>json</code> formats are designed for editor integration (VS Code problem matchers, CI annotations). Exits 1 if any <code>error</code>-severity diagnostic is reported.</p>
 </section>
 <section id="daggle-status" class="level2">
 <h2 class="anchored" data-anchor-id="daggle-status">daggle status</h2>
