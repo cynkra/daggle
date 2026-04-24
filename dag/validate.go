@@ -98,29 +98,15 @@ func validateSteps(d *DAG) []string {
 }
 
 func validateStepType(s Step) []string {
-	typeCount := 0
-	for _, set := range []bool{
-		s.Script != "", s.RExpr != "", s.Command != "", s.Quarto != "",
-		s.Test != "", s.Check != "", s.Document != "", s.Lint != "", s.Style != "",
-		s.Rmd != "", s.RenvRestore != "", s.Coverage != "", s.Validate != "",
-		s.Approve != nil, s.Call != nil, s.Pin != nil, s.Vetiver != nil,
-		s.Shinytest != "", s.Pkgdown != "", s.Install != "", s.Targets != "",
-		s.Benchmark != "", s.Revdepcheck != "",
-		s.Connect != nil, s.Database != nil, s.Email != nil, s.Docker != nil,
-	} {
-		if set {
-			typeCount++
-		}
+	n := CountStepTypes(s)
+	if n == 1 {
+		return nil
 	}
-	stepTypes := "script, r_expr, command, quarto, test, check, document, lint, style, rmd, renv_restore, coverage, validate, approve, call, pin, vetiver, shinytest, pkgdown, install, targets, benchmark, revdepcheck, connect, database, email, docker"
-	var errs []string
-	if typeCount == 0 {
-		errs = append(errs, fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes))
+	stepTypes := strings.Join(AllStepTypes(), ", ")
+	if n == 0 {
+		return []string{fmt.Sprintf("step %q must have one of: %s", s.ID, stepTypes)}
 	}
-	if typeCount > 1 {
-		errs = append(errs, fmt.Sprintf("step %q has multiple types; use exactly one of: %s", s.ID, stepTypes))
-	}
-	return errs
+	return []string{fmt.Sprintf("step %q has multiple types; use exactly one of: %s", s.ID, stepTypes)}
 }
 
 func validateStepConnect(s Step) []string {

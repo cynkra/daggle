@@ -416,65 +416,15 @@ func (d *DAG) ResolveWorkdir(s Step) string {
 }
 
 // StepType returns the type of the step based on which field is set.
+// Drives off stepTypeRegistry in step_types.go, which is also the source of
+// truth for validation and for listing valid types in error messages.
 func StepType(s Step) string {
-	switch {
-	case s.Script != "":
-		return "script"
-	case s.RExpr != "":
-		return "r_expr"
-	case s.Command != "":
-		return "command"
-	case s.Quarto != "":
-		return "quarto"
-	case s.Test != "":
-		return "test"
-	case s.Check != "":
-		return "check"
-	case s.Document != "":
-		return "document"
-	case s.Lint != "":
-		return "lint"
-	case s.Style != "":
-		return "style"
-	case s.Rmd != "":
-		return "rmd"
-	case s.RenvRestore != "":
-		return "renv_restore"
-	case s.Coverage != "":
-		return "coverage"
-	case s.Validate != "":
-		return "validate"
-	case s.Approve != nil:
-		return "approve"
-	case s.Call != nil:
-		return "call"
-	case s.Pin != nil:
-		return "pin"
-	case s.Vetiver != nil:
-		return "vetiver"
-	case s.Shinytest != "":
-		return "shinytest"
-	case s.Pkgdown != "":
-		return "pkgdown"
-	case s.Install != "":
-		return "install"
-	case s.Targets != "":
-		return "targets"
-	case s.Benchmark != "":
-		return "benchmark"
-	case s.Revdepcheck != "":
-		return "revdepcheck"
-	case s.Connect != nil:
-		return "connect"
-	case s.Database != nil:
-		return "database"
-	case s.Email != nil:
-		return "email"
-	case s.Docker != nil:
-		return "docker"
-	default:
-		return ""
+	for _, e := range stepTypeRegistry {
+		if e.set(s) {
+			return e.name
+		}
 	}
+	return ""
 }
 
 // ParseTimeout parses the step's timeout string into a time.Duration.
