@@ -45,6 +45,9 @@ func (s *Server) handleGetValidations(w http.ResponseWriter, r *http.Request) {
 			Message string `json:"message"`
 		}
 		if err := json.Unmarshal(data, &items); err != nil {
+			// Malformed validation file: log so the operator sees a concrete
+			// failure instead of silent "no validations recorded".
+			slog.Warn("failed to parse validation file", "file", entry.Name(), "step", stepID, "error", err)
 			continue
 		}
 		for _, item := range items {
