@@ -9,7 +9,7 @@
 
 A lightweight DAG scheduler for R. Define multi-step R workflows in YAML, run them with dependency resolution, parallel execution, retries, timeouts, and cron scheduling — all from a single binary.
 
-daggle sits between "cron + Rscript" and heavy workflow engines. No database, no message broker, no code changes to your existing scripts. The only prerequisite is R.
+daggle sits between "cron + Rscript" and heavy workflow engines. No server, no message broker, no changes to your existing R scripts. The only prerequisite is R.
 
 ## Install
 
@@ -106,6 +106,9 @@ Every step is assumed to be R unless stated otherwise. The following step types 
 | Benchmark | `benchmark:` | Runs bench scripts from a directory |
 | Revdepcheck | `revdepcheck:` | Runs `revdepcheck::revdep_check()` |
 | Deploy | `connect:` | Deploys to Posit Connect (Shiny, Quarto, Plumber) |
+| Database | `database:` | SQL query via R DBI, result written to CSV/TSV/RDS/Parquet/Feather |
+| Email | `email:` | Sends email via a named SMTP channel (Go net/smtp, no R required) |
+| Docker | `docker:` | Runs a command inside a Docker container (isolation for different R versions or system libs) |
 
 ### Full YAML reference
 
@@ -284,52 +287,22 @@ The [`daggleR`](https://github.com/cynkra/daggleR) package provides in-step help
 
 ## CLI reference
 
+Most-used commands:
+
 ```
-daggle run <dag-name> [flags]     Run a DAG immediately
-  -p, --param key=value           Override a parameter (repeatable)
-
-daggle validate <dag-name|path>   Validate a DAG definition and show execution plan
-
-daggle status <dag-name> [flags]  Show status of the latest run
-  --run-id <id>                   Show a specific run instead
-
-daggle list                       List all available DAGs with last run status
-
-daggle serve                      Start the scheduler daemon
-daggle stop                       Stop the scheduler daemon
-
-daggle doctor                     Check system health (R, renv, scheduler, DAGs)
-
-daggle history <dag-name> [flags] Show run history for a DAG
-  --last <N>                      Number of recent runs (default: 10)
-
-daggle stats <dag-name> [flags]   Show duration trends and success rate
-  --last <N>                      Number of recent runs to analyze (default: 20)
-
-daggle cancel <dag-name> [flags]  Cancel an in-flight DAG run
-  --run-id <id>                   Specific run ID (default: latest)
-
-daggle clean [flags]              Remove old run directories and logs
-  --older-than <duration>         Required: e.g. 30d, 24h
-
-daggle approve <dag-name> [flags] Approve a waiting DAG run to continue
-  --run-id <id>                   Specific run ID (default: latest)
-
-daggle reject <dag-name> [flags]  Reject a waiting DAG run
-  --run-id <id>                   Specific run ID (default: latest)
-
-daggle init <template>            Generate a DAG from a built-in template
-                                  Templates: pkg-check, pkg-release, data-pipeline
-
-daggle register [path] [flags]   Register a project for scheduled execution
-  --name <name>                   Project name (default: directory basename)
-
-daggle unregister <name|path>    Remove a project from the registry
-
-daggle projects                  List registered projects with DAG counts
-
-daggle version                    Print the daggle version
+daggle run <dag> [-p key=val]... [--dry-run]   Run a DAG now
+daggle watch <dag>                             Re-run on file changes (authoring)
+daggle validate <dag|path>                     Parse + static checks
+daggle lint <dag|path>                         Semantic diagnostics (scripts, secrets, notify channels)
+daggle status <dag> [--run-id <id>]            Latest (or specific) run status
+daggle why <dag> [run-id]                      Collapse status + stderr + dag_hash drift for a failure
+daggle list [--tag/--team/--owner <x>]         List DAGs with last run status
+daggle serve [--port <n>]                      Scheduler daemon (and REST API with --port)
 ```
+
+Other commands: `stop`, `doctor`, `history`, `stats`, `plan`, `logs`, `diff`, `monitor`, `impact`, `annotate`, `archive`, `verify`, `cancel`, `clean`, `approve`, `reject`, `init`, `register`, `unregister`, `projects`, `version`.
+
+Run `daggle <command> --help` for per-command flags, or see the full [CLI reference](https://cynkra.github.io/daggle/reference/cli.html).
 
 Global flags:
 
