@@ -16,13 +16,15 @@ func PIDPath() string {
 	return filepath.Join(state.DataDir(), "proc", "scheduler.pid")
 }
 
-// WritePID writes the current process PID to the PID file.
+// WritePID writes the current process PID to the PID file. Mode 0o600 —
+// the PID itself isn't sensitive, but the proc/ dir lives alongside other
+// daggle state that should be owner-only, so we keep permissions uniform.
 func WritePID() error {
 	path := PIDPath()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create proc dir: %w", err)
 	}
-	return os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o644)
+	return os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600)
 }
 
 // ReadPID reads the PID from the PID file.
