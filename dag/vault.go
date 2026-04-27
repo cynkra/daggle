@@ -11,6 +11,27 @@ import (
 	"time"
 )
 
+// readVaultTokenFile reads ~/.vault-token but refuses to use the contents
+// if the file's mode allows group or world access. Missing file returns
+// ("", nil) so callers can fall through to the "no auth available" branch.
+func readVaultTokenFile(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("stat %s: %w", path, err)
+	}
+	if mode := info.Mode().Perm(); mode&0o077 != 0 {
+		return "", fmt.Errorf("%s has insecure permissions %#o; expected 0600 (run: chmod 600 %s)", path, mode, path)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read %s: %w", path, err)
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
 // readVaultSecret reads a secret from HashiCorp Vault KV v2.
 // The ref format is "path#field", e.g. "secret/data/myapp#api_key".
 // Auth uses VAULT_ADDR and VAULT_TOKEN env vars (or ~/.vault-token).
@@ -29,13 +50,17 @@ func readVaultSecret(ref string) (string, error) {
 
 	token := os.Getenv("VAULT_TOKEN")
 	if token == "" {
-		// Fall back to ~/.vault-token
+		// Fall back to ~/.vault-token. Refuse to read if the file is
+		// world- or group-readable — treat it like an SSH private key
+		// since it grants the same level of access to vault secrets.
 		home, err := os.UserHomeDir()
 		if err == nil {
-			data, err := os.ReadFile(filepath.Join(home, ".vault-token"))
-			if err == nil {
-				token = strings.TrimSpace(string(data))
+			tokenPath := filepath.Join(home, ".vault-token")
+			t, err := readVaultTokenFile(tokenPath)
+			if err != nil {
+				return "", err
 			}
+			token = t
 		}
 	}
 	if token == "" {
