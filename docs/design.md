@@ -105,6 +105,29 @@ Behavior:
 
 R-specific steps check for their required packages at runtime and fail with a clear install instruction if missing.
 
+## Security posture
+
+daggle's threat model is **trusted multi-user, not adversarial tenancy**: anyone authoring a DAG file is trusted to run arbitrary code on the host (DAG step types include `script:`, `r_expr:`, `command:`, `docker:` — they're meant to). The current security boundary is the host: we protect the daggle process and on-disk state from a malicious DAG-authoring mistake or an accidental over-share, not from a hostile co-tenant.
+
+What that means in practice today (as of v0.3.1):
+
+- **Loopback-only by default.** `daggle serve` binds to `127.0.0.1`. Reachable only from the host or via SSH tunnel.
+- **No authentication on state-changing endpoints.** `/run`, `/cancel`, `/approve`, `/reject`, `/projects`, `/cleanup`, `/annotations`, `/schedules` all accept anyone who can reach the loopback port. Phase 11 adds basic + token auth and a guardrail that refuses to start with a non-loopback bind under `DAGGLE_AUTH_MODE=none`.
+- **No CORS headers.** No browser-origin validation; the read-only UI is served from the same origin and there's no expectation of cross-origin calls today. Will be added with Phase 11 auth.
+- **No webhook replay protection beyond HMAC.** `scheduler/webhook.go` validates `X-Daggle-Signature` against a per-DAG secret, but there's no nonce or timestamp window — a captured signed request can be replayed. Acceptable for the current "trusted CI hits this" posture; revisit if webhooks ever face a public surface.
+- **No rate limiting.** The same posture argument applies — loopback or trusted SSH tunnels mean bursty clients are not currently a threat. Phase 11 may add a basic global limiter alongside auth.
+
+What the codebase does enforce today (the high/medium audit items shipped in 0.3.1):
+
+- Subprocess output (`.stdout.log`, `.stderr.log`), structured error logs, the SSE event stream, the HTTP step-log endpoint, and `daggle why` all run their output through the DAG's `Redactor` so resolved-secret values from `${env:}`/`${file:}`/`${vault:}` are masked.
+- Every JSON POST body is capped at 1 MB via `http.MaxBytesReader`; annotation `note` is capped at 4 KB.
+- Path containment is enforced where the network or DAG params can influence a path: `api.dagPath` (DAG file lookup), `state.ValidateDAGName` (run dir), Quarto's `output_dir` (must resolve under `workdir`).
+- Webhook handler always drains the request body, never leaves a slow client tying up a goroutine.
+- HMAC validation is constant-time (`hmac.Equal`).
+- `~/.vault-token` is refused if its mode permits group/world access; the scheduler PID file is written 0600.
+
+If you're operating daggle in a less-trusted environment than the on-prem PWB sidecar, wait for Phase 11 (or stand it up behind your own auth proxy + non-loopback bind on a VPN-only network).
+
 ## Roadmap
 
 ### Completed
