@@ -154,7 +154,7 @@ func (e *Engine) Run(ctx context.Context) error {
 				Type:  state.EventRunFailed,
 				Error: err.Error(),
 			})
-			e.logger.Error("run failed", "dag", e.dag.Name, "error", err)
+			e.logger.Error("run failed", "dag", e.dag.Name, "error", e.redactErr(err))
 			runErr = err
 			break
 		}
@@ -270,13 +270,36 @@ func (e *Engine) writeEvent(ev state.Event) {
 		ev.ErrorDetail = e.redactor.Redact(ev.ErrorDetail)
 	}
 	if err := e.events.Write(ev); err != nil {
-		e.logger.Warn("failed to write event", "type", ev.Type, "error", err)
+		e.logger.Warn("failed to write event", "type", ev.Type, "error", e.redactErr(err))
 	}
+}
+
+// redactErr returns err.Error() with any known secret values masked. Use this
+// in place of passing the raw err to slog so secrets in error messages (e.g.
+// from a failing `psql` invocation that echoes the connection string) don't
+// land in stderr/journald unredacted.
+func (e *Engine) redactErr(err error) string {
+	if err == nil {
+		return ""
+	}
+	if e.redactor == nil {
+		return err.Error()
+	}
+	return e.redactor.Redact(err.Error())
+}
+
+// redact returns s with any known secret values masked. Safe to call when
+// the engine has no redactor configured.
+func (e *Engine) redact(s string) string {
+	if e.redactor == nil {
+		return s
+	}
+	return e.redactor.Redact(s)
 }
 
 func (e *Engine) writeMeta(dir string, meta *state.RunMeta) {
 	if err := state.WriteMeta(dir, meta); err != nil {
-		e.logger.Warn("failed to write metadata", "error", err)
+		e.logger.Warn("failed to write metadata", "error", e.redactErr(err))
 	}
 }
 

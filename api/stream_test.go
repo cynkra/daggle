@@ -71,7 +71,7 @@ func TestStreamNewLines_DisconnectReturnsAdvancedOffset(t *testing.T) {
 		return calls < 2
 	}
 
-	got, done, err := streamNewLines(path, 0, fail)
+	got, done, err := streamNewLines(path, 0, nil, fail)
 	if err != nil {
 		t.Fatalf("streamNewLines: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestStreamNewLines_DisconnectReturnsAdvancedOffset(t *testing.T) {
 		seen = append(seen, data)
 		return true
 	}
-	if _, _, err := streamNewLines(path, got, ok); err != nil {
+	if _, _, err := streamNewLines(path, got, nil, ok); err != nil {
 		t.Fatalf("second streamNewLines: %v", err)
 	}
 	if len(seen) == 0 {
@@ -128,7 +128,7 @@ func TestStreamNewLines_SkipsOversizeLine(t *testing.T) {
 
 	// First pass should read the first line, then hit the oversize and emit a
 	// truncated marker, advancing past the bad line.
-	off, done, err := streamNewLines(path, 0, emit)
+	off, done, err := streamNewLines(path, 0, nil, emit)
 	if err != nil {
 		t.Fatalf("streamNewLines: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestStreamNewLines_SkipsOversizeLine(t *testing.T) {
 
 	// Second pass from the advanced offset must see the terminal event.
 	frames = nil
-	_, done, err = streamNewLines(path, off, emit)
+	_, done, err = streamNewLines(path, off, nil, emit)
 	if err != nil {
 		t.Fatalf("second streamNewLines: %v", err)
 	}

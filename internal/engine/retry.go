@@ -51,7 +51,7 @@ func (e *Engine) executeWithRetries(ctx context.Context, step dag.Step, workdir 
 				Error:   lastResult.Err.Error(),
 				Attempt: attempt,
 			})
-			e.logger.Warn("step failed, retrying", "step", step.ID, "attempt", attempt, "error", lastResult.Err)
+			e.logger.Warn("step failed, retrying", "step", step.ID, "attempt", attempt, "error", e.redactErr(lastResult.Err))
 			time.Sleep(retryDelay(attempt, step.Retry))
 		}
 	}
@@ -96,7 +96,7 @@ func (e *Engine) onStepSuccess(ctx context.Context, step dag.Step, result execut
 				Duration: result.Duration.String(),
 				Attempt:  attempt,
 			})
-			e.logger.Error("step failed due to validation", "step", step.ID, "error", err)
+			e.logger.Error("step failed due to validation", "step", step.ID, "error", e.redactErr(err))
 			if step.OnFailure != nil {
 				e.runHook(ctx, step.OnFailure, "step "+step.ID+" on_failure")
 			}
@@ -117,7 +117,7 @@ func (e *Engine) onStepSuccess(ctx context.Context, step dag.Step, result execut
 			Outputs: result.Outputs,
 		}
 		if err := e.cacheStore.Save(e.dag.Name, step.ID, cacheKey, entry); err != nil {
-			e.logger.Warn("failed to save cache", "step", step.ID, "error", err)
+			e.logger.Warn("failed to save cache", "step", step.ID, "error", e.redactErr(err))
 		}
 	}
 
@@ -141,7 +141,7 @@ func (e *Engine) onStepFailure(ctx context.Context, step dag.Step, result execut
 		Duration:    result.Duration.String(),
 		Attempt:     maxAttempts,
 	})
-	e.logger.Error("step failed", "step", step.ID, "error", result.Err)
+	e.logger.Error("step failed", "step", step.ID, "error", e.redactErr(result.Err))
 
 	// Run step-level on_failure hook
 	if step.OnFailure != nil {

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/state"
 )
 
@@ -186,6 +187,23 @@ func readJSON(r *http.Request, v interface{}) error {
 	}
 	defer func() { _ = r.Body.Close() }()
 	return json.NewDecoder(r.Body).Decode(v)
+}
+
+// runRedactor returns a Redactor for the DAG with the given name. Used by
+// view-time handlers (step log, SSE stream) that need to mask secret values
+// in subprocess output before serving. Falls back to a no-op redactor if the
+// DAG can't be loaded or its env can't be resolved (e.g. vault unreachable);
+// the resolution error is logged at warn level but does not fail the response.
+func (s *Server) runRedactor(name string) *dag.Redactor {
+	path := s.dagPath(name)
+	if path == "" {
+		return &dag.Redactor{}
+	}
+	r, err := dag.LoadRedactor(path)
+	if err != nil {
+		s.logger.Warn("redactor load failed; serving unredacted", "dag", name, "error", err)
+	}
+	return r
 }
 
 // dagPath resolves a DAG YAML file path from a name, searching all sources.
