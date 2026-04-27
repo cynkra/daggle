@@ -57,7 +57,7 @@ func (s *Server) handleCreateSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateScheduleRequest
-	if err := readJSON(r, &req); err != nil {
+	if err := readJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
 		return
 	}
@@ -106,7 +106,7 @@ func (s *Server) handlePatchSchedule(w http.ResponseWriter, r *http.Request) {
 	scheduleID := r.PathValue("schedule_id")
 
 	var req UpdateScheduleRequest
-	if err := readJSON(r, &req); err != nil {
+	if err := readJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
 		return
 	}

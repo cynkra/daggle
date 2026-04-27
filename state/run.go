@@ -19,8 +19,35 @@ type RunInfo struct {
 	Dir       string // absolute path to run directory
 }
 
+// ValidateDAGName rejects names that could escape directories joined with
+// them. A DAG name is meant to be a single path component (matching a YAML
+// file basename); anything containing a separator, drive letter, leading
+// "..", or absolute marker is treated as a traversal attempt. Empty names
+// are also rejected so callers can rely on a non-empty result.
+func ValidateDAGName(name string) error {
+	if name == "" {
+		return fmt.Errorf("DAG name is empty")
+	}
+	if name == "." || name == ".." {
+		return fmt.Errorf("invalid DAG name %q", name)
+	}
+	if strings.ContainsAny(name, "/\\") || strings.Contains(name, string(filepath.Separator)) {
+		return fmt.Errorf("invalid DAG name %q: must not contain path separators", name)
+	}
+	if filepath.IsAbs(name) {
+		return fmt.Errorf("invalid DAG name %q: must not be an absolute path", name)
+	}
+	if name != filepath.Base(name) {
+		return fmt.Errorf("invalid DAG name %q: must be a single path component", name)
+	}
+	return nil
+}
+
 // CreateRun initializes a new run directory and returns its RunInfo.
 func CreateRun(dagName string) (*RunInfo, error) {
+	if err := ValidateDAGName(dagName); err != nil {
+		return nil, err
+	}
 	now := time.Now()
 	id := xid.New().String()
 
@@ -45,6 +72,9 @@ func CreateRun(dagName string) (*RunInfo, error) {
 
 // ListRuns returns all runs for a DAG, sorted by time descending.
 func ListRuns(dagName string) ([]RunInfo, error) {
+	if err := ValidateDAGName(dagName); err != nil {
+		return nil, err
+	}
 	dagRunsDir := filepath.Join(RunsDir(), dagName)
 	if _, err := os.Stat(dagRunsDir); os.IsNotExist(err) {
 		return nil, nil

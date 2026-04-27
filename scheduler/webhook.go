@@ -33,17 +33,25 @@ func (s *Scheduler) startWebhookServer(_ map[string]webhookEntry) (addr string, 
 		s.mu.Unlock()
 
 		if !ok {
+			// Drain whatever the client is sending so the connection
+			// doesn't hang on a slow body. Bounded by maxWebhookBodySize
+			// and the server's ReadTimeout.
+			_, _ = io.Copy(io.Discard, io.LimitReader(r.Body, maxWebhookBodySize))
 			http.Error(w, "unknown DAG", http.StatusNotFound)
 			return
 		}
 
-		// Validate HMAC if secret is configured
+		// Always read the body up to the size limit, even when no secret is
+		// configured. Without this, a no-secret webhook leaves the goroutine
+		// blocked on the slow client until the server's ReadTimeout fires.
+		body, err := io.ReadAll(io.LimitReader(r.Body, maxWebhookBodySize))
+		if err != nil {
+			http.Error(w, "failed to read body", http.StatusBadRequest)
+			return
+		}
+
+		// Validate HMAC if secret is configured.
 		if entry.secret != "" {
-			body, err := io.ReadAll(io.LimitReader(r.Body, maxWebhookBodySize))
-			if err != nil {
-				http.Error(w, "failed to read body", http.StatusBadRequest)
-				return
-			}
 			sig := r.Header.Get("X-Daggle-Signature")
 			if !validateHMAC(body, sig, entry.secret) {
 				http.Error(w, "invalid signature", http.StatusForbidden)
