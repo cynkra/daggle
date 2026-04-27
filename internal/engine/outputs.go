@@ -20,7 +20,7 @@ func (e *Engine) collectOutputs(stepID string, outputs map[string]string) {
 	for k, v := range outputs {
 		key := prefix + strings.ToUpper(k)
 		e.outputs[key] = v
-		e.logger.Info("captured output", "step", stepID, "key", k, "value", v)
+		e.logger.Info("captured output", "step", stepID, "key", k, "value", e.redact(v))
 	}
 }
 
@@ -35,7 +35,7 @@ func (e *Engine) writeSummaryFile(stepID string, summaries []executor.Summary) {
 	}
 	path := filepath.Join(e.runInfo.Dir, stepID+".summary.md")
 	if err := os.WriteFile(path, []byte(strings.Join(parts, "\n")), 0o644); err != nil {
-		e.logger.Warn("failed to write summary file", "step", stepID, "error", err)
+		e.logger.Warn("failed to write summary file", "step", stepID, "error", e.redactErr(err))
 	}
 }
 
@@ -55,12 +55,12 @@ func (e *Engine) writeMetadataFile(stepID string, metadata []executor.MetaEntry)
 	}
 	data, err := json.Marshal(entries)
 	if err != nil {
-		e.logger.Warn("failed to marshal metadata", "step", stepID, "error", err)
+		e.logger.Warn("failed to marshal metadata", "step", stepID, "error", e.redactErr(err))
 		return
 	}
 	path := filepath.Join(e.runInfo.Dir, stepID+".meta.json")
 	if err := os.WriteFile(path, data, 0o644); err != nil {
-		e.logger.Warn("failed to write metadata file", "step", stepID, "error", err)
+		e.logger.Warn("failed to write metadata file", "step", stepID, "error", e.redactErr(err))
 	}
 }
 
@@ -80,12 +80,12 @@ func (e *Engine) writeValidationFile(stepID string, validations []executor.Valid
 	}
 	data, err := json.Marshal(entries)
 	if err != nil {
-		e.logger.Warn("failed to marshal validations", "step", stepID, "error", err)
+		e.logger.Warn("failed to marshal validations", "step", stepID, "error", e.redactErr(err))
 		return
 	}
 	path := filepath.Join(e.runInfo.Dir, stepID+".validations.json")
 	if err := os.WriteFile(path, data, 0o644); err != nil {
-		e.logger.Warn("failed to write validations file", "step", stepID, "error", err)
+		e.logger.Warn("failed to write validations file", "step", stepID, "error", e.redactErr(err))
 	}
 }
 

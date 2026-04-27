@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/state"
 )
 
@@ -59,6 +60,13 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	from := r.URL.Query().Get("from")
 	path := filepath.Join(run.Dir, "events.jsonl")
 
+	// Defense in depth: the engine already redacts Error/ErrorDetail when
+	// writing events.jsonl, but other event-writers (annotations, approvals)
+	// don't go through the engine and could carry user-supplied content.
+	// Loading the current redactor here ensures the SSE stream applies the
+	// same masking as on-disk reads.
+	redactor := s.runRedactor(name)
+
 	var offset int64
 	if from == "end" {
 		if fi, err := os.Stat(path); err == nil {
@@ -85,7 +93,7 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for {
-		newOffset, done, err := streamNewLines(path, offset, writeSSE)
+		newOffset, done, err := streamNewLines(path, offset, redactor, writeSSE)
 		if err != nil {
 			writeSSE("error", fmt.Sprintf(`{"error":%q}`, err.Error()))
 			return
@@ -112,8 +120,10 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 
 // streamNewLines reads events from path starting at offset, emits each via
 // writeSSE, and returns the new offset. The bool return is true when a
-// terminal event (run_completed or run_failed) has been seen.
-func streamNewLines(path string, offset int64, write func(event, data string) bool) (int64, bool, error) {
+// terminal event (run_completed or run_failed) has been seen. The redactor
+// is applied to each line before emission; pass a nil/empty Redactor to
+// disable.
+func streamNewLines(path string, offset int64, redactor *dag.Redactor, write func(event, data string) bool) (int64, bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -144,6 +154,7 @@ func streamNewLines(path string, offset int64, write func(event, data string) bo
 			}
 		}
 		consumed += int64(len(scanner.Bytes())) + 1 // +1 for the '\n'
+		line = redactor.Redact(line)
 		if !write("", line) {
 			// Client disconnected mid-write. Return the consumed offset so
 			// a retry resumes past the line that was just emitted. The

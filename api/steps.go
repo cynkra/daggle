@@ -50,10 +50,16 @@ func (s *Server) handleStepLog(w http.ResponseWriter, r *http.Request) {
 	stdout, _ := os.ReadFile(filepath.Join(run.Dir, stepID+".stdout.log"))
 	stderr, _ := os.ReadFile(filepath.Join(run.Dir, stepID+".stderr.log"))
 
+	// Subprocess output is written to disk verbatim — apply the DAG's
+	// redactor before serving so any secrets that appear in stdout/stderr
+	// (e.g. a connection string echoed by a failing psql) don't leak over
+	// the API. dag.LoadRedactor returns a no-op redactor on resolution
+	// failure (e.g. vault unreachable); we log but still serve.
+	redactor := s.runRedactor(name)
 	writeJSON(w, http.StatusOK, StepLog{
 		StepID: stepID,
-		Stdout: string(stdout),
-		Stderr: string(stderr),
+		Stdout: redactor.Redact(string(stdout)),
+		Stderr: redactor.Redact(string(stderr)),
 	})
 }
 

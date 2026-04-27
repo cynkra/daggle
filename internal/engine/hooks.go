@@ -75,7 +75,7 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 		// Write to temp file and run via Rscript
 		tmpFile := filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".R")
 		if err := os.WriteFile(tmpFile, []byte(hook.RExpr), 0o644); err != nil {
-			e.logger.Error("hook write failed", "hook", name, "error", err)
+			e.logger.Error("hook write failed", "hook", name, "error", e.redactErr(err))
 			return
 		}
 		defer func() { _ = os.Remove(tmpFile) }()
@@ -97,13 +97,13 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	// Route hook output through log files so secrets can be redacted
 	hookStdout, err := os.Create(filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".stdout.log"))
 	if err != nil {
-		e.logger.Error("hook log create failed", "hook", name, "error", err)
+		e.logger.Error("hook log create failed", "hook", name, "error", e.redactErr(err))
 		return
 	}
 	defer func() { _ = hookStdout.Close() }()
 	hookStderr, err := os.Create(filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".stderr.log"))
 	if err != nil {
-		e.logger.Error("hook log create failed", "hook", name, "error", err)
+		e.logger.Error("hook log create failed", "hook", name, "error", e.redactErr(err))
 		return
 	}
 	defer func() { _ = hookStderr.Close() }()
@@ -111,7 +111,7 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	cmd.Stderr = hookStderr
 
 	if err := cmd.Run(); err != nil {
-		e.logger.Error("hook failed", "hook", name, "error", err)
+		e.logger.Error("hook failed", "hook", name, "error", e.redactErr(err))
 	}
 }
 
@@ -133,7 +133,7 @@ func (e *Engine) dispatchNotify(hook *dag.Hook, hookName string) {
 	}
 	cfg := state.Config{Notifications: map[string]state.NotificationChannel{hook.Notify: ch}}
 	if err := notify.Send(cfg, hook.Notify, msg); err != nil {
-		e.logger.Error("notify hook failed", "hook", hookName, "channel", hook.Notify, "error", err)
+		e.logger.Error("notify hook failed", "hook", hookName, "channel", hook.Notify, "error", e.redactErr(err))
 		return
 	}
 	e.logger.Info("notify hook sent", "hook", hookName, "channel", hook.Notify)

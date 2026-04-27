@@ -91,13 +91,7 @@ func executeRun(ctx context.Context, dagPath string, params map[string]string) e
 		}
 	}
 
-	envMaps := []dag.EnvMap{expanded.Env}
-	for _, s := range expanded.Steps {
-		if len(s.Env) > 0 {
-			envMaps = append(envMaps, s.Env)
-		}
-	}
-	redactor := dag.NewRedactor(envMaps...)
+	redactor := dag.NewRedactor(dag.AllEnvMaps(expanded)...)
 
 	priorRun, _ := state.LatestRun(expanded.Name)
 

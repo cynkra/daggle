@@ -188,10 +188,19 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve secrets
+	// Resolve secrets at DAG and step level. Step-level env vars also need
+	// resolution so secret values feed into the Redactor below — without
+	// this, secrets referenced only on a step would leak into events and
+	// step logs.
 	if err := dag.ResolveEnv(expanded.Env); err != nil {
 		writeError(w, http.StatusInternalServerError, "resolve env: "+err.Error())
 		return
+	}
+	for i := range expanded.Steps {
+		if err := dag.ResolveEnv(expanded.Steps[i].Env); err != nil {
+			writeError(w, http.StatusInternalServerError, "resolve step env: "+err.Error())
+			return
+		}
 	}
 
 	// Create run
@@ -223,7 +232,7 @@ func (s *Server) handleTriggerRun(w http.ResponseWriter, r *http.Request) {
 			Run:         run,
 			ExecFactory: executor.New,
 			Meta:        meta,
-			Redactor:    dag.NewRedactor(expanded.Env),
+			Redactor:    dag.NewRedactor(dag.AllEnvMaps(expanded)...),
 		}
 		if cfg, err := state.LoadConfig(); err == nil && cfg.Notifications != nil {
 			engCfg.Notifications = cfg.Notifications

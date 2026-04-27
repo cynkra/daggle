@@ -435,19 +435,12 @@ func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params m
 			return
 		}
 
-		envMaps := []dag.EnvMap{expanded.Env}
-		for _, st := range expanded.Steps {
-			if len(st.Env) > 0 {
-				envMaps = append(envMaps, st.Env)
-			}
-		}
-
 		cacheDir := filepath.Join(state.DataDir(), "cache")
 		engCfg := engine.Config{
 			DAG:         expanded,
 			Run:         run,
 			ExecFactory: executor.New,
-			Redactor:    dag.NewRedactor(envMaps...),
+			Redactor:    dag.NewRedactor(dag.AllEnvMaps(expanded)...),
 			CacheStore:  cache.NewStore(cacheDir),
 		}
 		if cfg, err := state.LoadConfig(); err == nil && cfg.Notifications != nil {

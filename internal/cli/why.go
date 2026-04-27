@@ -3,10 +3,12 @@ package cli
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/state"
 	"github.com/spf13/cobra"
 )
@@ -50,6 +52,12 @@ func whyRun(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("read events: %w", err)
 	}
 
+	// Build a redactor so resolved-secret values don't leak through error
+	// strings or stderr tails. Prefer the path the run was launched from
+	// (recorded in meta) so we redact against the same env it used; fall
+	// back to resolveDAGPath if meta is missing or stale.
+	redactor := buildWhyRedactor(dagName, run.Dir)
+
 	fmt.Printf("DAG: %s\n", dagName)
 	fmt.Printf("Run: %s\n", run.ID)
 	fmt.Printf("Started: %s\n", run.StartTime.Format("2006-01-02 15:04:05"))
@@ -64,15 +72,15 @@ func whyRun(_ *cobra.Command, args []string) error {
 
 	fmt.Printf("Failed step: %s\n", failed.StepID)
 	if failed.Error != "" {
-		fmt.Printf("Error: %s\n", failed.Error)
+		fmt.Printf("Error: %s\n", redactor.Redact(failed.Error))
 	}
 	if failed.ErrorDetail != "" {
-		fmt.Printf("Error detail:\n  %s\n", strings.ReplaceAll(failed.ErrorDetail, "\n", "\n  "))
+		fmt.Printf("Error detail:\n  %s\n", strings.ReplaceAll(redactor.Redact(failed.ErrorDetail), "\n", "\n  "))
 	}
 
 	stderr := tailStderr(run.Dir, failed.StepID, whyStderrLines)
 	if stderr != "" {
-		fmt.Printf("\nLast %d lines of stderr:\n%s\n", whyStderrLines, indent(stderr, "  "))
+		fmt.Printf("\nLast %d lines of stderr:\n%s\n", whyStderrLines, indent(redactor.Redact(stderr), "  "))
 	}
 
 	// Upstream step states
@@ -119,6 +127,28 @@ func whyRun(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// buildWhyRedactor returns a Redactor for the given DAG. It tries the
+// DAGPath recorded in run metadata first (so we redact against the env the
+// run actually used), then falls back to the current path resolved by name.
+// On any failure to load/resolve, returns a no-op Redactor so `why` still
+// prints — secrets that can't be re-resolved simply pass through.
+func buildWhyRedactor(dagName, runDir string) *dag.Redactor {
+	var path string
+	if meta, _ := state.ReadMeta(runDir); meta != nil && meta.DAGPath != "" {
+		if _, err := os.Stat(meta.DAGPath); err == nil {
+			path = meta.DAGPath
+		}
+	}
+	if path == "" {
+		path = resolveDAGPath(dagName)
+	}
+	r, err := dag.LoadRedactor(path)
+	if err != nil {
+		slog.Debug("redactor load failed in why; output may include unredacted secrets", "dag", dagName, "error", err)
+	}
+	return r
 }
 
 func firstFailedStep(summaries []state.StepState) *state.StepState {
