@@ -168,6 +168,103 @@ These are topics where the design is not yet settled:
 
 ## Possible Features
 
-Ideas we may want to consider at some point. Not on the roadmap; no commitment to implement.
+Ideas we may want to consider at some point. Not on the roadmap; no commitment to implement. Grouped by theme; ordering within a group is not significant.
+
+### Authoring & developer experience
 
 - **`daggle explain`** — Human-readable prose summary of a DAG: "5 steps, runs weekdays at 6:30am, sends Slack on failure." Useful for onboarding and reviewing unfamiliar DAGs.
+- **`daggle viz` / `daggle graph`** — Render a DAG as Mermaid, Graphviz DOT, or ASCII art. Pipe into `pbcopy` to drop into a PR description; embed in pkgdown.
+- **`daggle docs <dag>`** — Auto-generate Markdown documentation for a DAG: step list, dependency graph, env/params, exposures. Drop into a project's `README.md` or pkgdown site.
+- **`daggle fmt`** — Opinionated YAML formatter (consistent indentation, key ordering, comment preservation). Pre-commit hook material.
+- **`daggle check-deps`** — Walk all referenced R scripts, infer R package dependencies via static parsing, compare against `renv.lock`. Flag missing and unused packages.
+- **`daggle migrate`** — Apply schema rewrites to old DAGs when daggle changes a YAML rule. Saves users from updating many DAGs by hand.
+- **`daggle scaffold`** — Interactive DAG creation (TUI prompts for steps, deps, schedule). Different from `daggle init` which uses fixed templates.
+- **DAG includes / partials** — `include: shared-steps.yaml` to reuse step blocks across DAGs, beyond what `base.yaml`'s shallow merge can do.
+- **Step library** — Named, parameterized step templates referenced by name. Useful when an organization has 10 DAGs all running the same "extract from postgres" pattern.
+- **VS Code extension** — DAG YAML language server (hover docs, go-to-definition on `depends:`, inline lint diagnostics, click-to-run).
+- **RStudio addin** — Companion R-side helper to scaffold/run/watch a DAG without leaving RStudio.
+
+### Step types
+
+- **`http:`** — Make an HTTP request, capture response status/body/headers as outputs. Common ETL primitive currently requiring `command: curl`.
+- **`assert:`** — Pass/fail on an R expression with a clear error message. Lighter than `validate:`, which expects a script and writes a `.validations.json` file.
+- **`wait:`** — Pause for a duration or until a condition holds. Different from `approve:`, which requires human action.
+- **`s3:` / `gcs:` / `azure:`** — Upload/download files to/from cloud object stores without an R wrapper. Or one generic `cloud_storage:` step.
+- **`sql:`** — Execute side-effecting SQL (INSERT/UPDATE/CREATE) against a `database:` connection, no result file. Currently `database:` is read-only.
+- **`git:`** — Commit + push outputs to a repository. Useful for docs-as-code or for promoting an artifact into a tracked location.
+- **`http_check:`** — Health-probe an endpoint, fail if status ≠ 200. Lighter than a full `http:` step.
+- **`compact_parquet:`** and similar data-engineering primitives common in ETL.
+
+### Triggers
+
+- **Webhook payload capture** — Currently a webhook fires the DAG with no payload. Capture the JSON body and surface it to steps via `DAGGLE_WEBHOOK_BODY` (or per-key env vars).
+- **Object-store event triggers** — `s3:`, `gcs:`, `azure:` event subscriptions (vs polling).
+- **Message queue triggers** — `sqs:`, `pubsub:`, `amqp:`, `nats:` for teams that already have these.
+- **HTTP poll trigger** — Poll a URL on an interval, fire when response or response-hash changes. Generalizes the `condition:` trigger.
+- **Time-window guard** — Wrap any other trigger in a "only fire during business hours" window.
+- **Cooldown** — Minimum gap between consecutive runs for noisy triggers.
+
+### Observability & operations
+
+- **`daggle resume <run-id>`** — Restart a failed run from the failed step, using prior step outputs from the cached run dir. Different from `cache: true`, which only kicks in if inputs are unchanged.
+- **`daggle replay <run-id>`** — Re-run with the exact same params and env as a historical run. For "reproduce that bug from yesterday".
+- **Run pinning** — `daggle pin <run-id>` protects a run from `clean` / `cleanup`. Useful when "this is the run that produced the official Q1 report".
+- **Run tags** — Searchable, multi-valued tags on runs (different from a single annotation note). `daggle list-runs --tag prod`.
+- **`daggle disk`** — Per-DAG / per-run disk usage report with growth trend. Helps decide what to clean.
+- **`daggle inspect <run-id>`** — Print the run dir as a tree, with file sizes and a summary of each artifact's role.
+- **Scheduler dry-run** — `daggle serve --dry-run`: print what triggers would fire over the next N hours, without actually firing.
+- **Drift detection** — Flag runs where step duration or success-rate breaks recent trend. Statistical, not threshold-based.
+- **SLO budgets** — Extend `deadline:` to a multi-run SLO ("95% of runs must complete within 10m over 30 days") with budget burn alerts.
+- **OpenTelemetry traces** — One trace per run, one span per step, exportable to Jaeger/Honeycomb/Tempo. Phase 12 already plans Prometheus; OTel is the trace counterpart.
+- **Web UI write actions** — Current UI is read-only. Trigger-from-UI, approve-from-UI, cancel-from-UI. Phase 11 is adding auth, which makes this safer to ship.
+- **Web UI search & filter** — Filter DAG list by `tags:` / `team:` / `owner:`; search runs by error message substring.
+- **Audit log endpoint** — Append-only log of admin actions (register/unregister/cancel/approve/reject) for compliance.
+
+### Notifications
+
+- **More channels** — PagerDuty, Opsgenie, Microsoft Teams, Discord, Telegram. The infrastructure (`config.yaml` `notifications:`) already exists; this is just adapters.
+- **Notification templates** — Markdown/HTML body templates with placeholders for run metadata, instead of plain-text strings.
+- **Severity-based routing** — `notify: ops-pagerduty` for critical hooks, `notify: ops-slack` for info, configured per hook.
+- **Rate limiting** — Group N consecutive failures of the same DAG into one notification. Avoids alert storms.
+- **Quiet hours** — Suppress notifications during a configured window (default off, opt-in).
+- **On-call rotation** — Route to whoever is on call this week, sourced from a YAML rotation file.
+
+### Data & artifacts
+
+- **Object-store artifact backends** — Write artifacts to S3/GCS/Azure instead of (or in addition to) the local run dir. Required for distributed workers (Phase 12).
+- **Artifact promotion** — `daggle promote <run-id> <artifact>` copies an artifact to a "blessed" location after approval. Useful for model-publishing workflows.
+- **Artifact lineage** — Track artifact provenance (which run, which step) even after run cleanup, in a separate small DB.
+- **Artifact preview in UI/status** — Show first N rows of CSV, Parquet schema, PNG thumbnail. Currently you only see the file name and hash.
+- **Artifact-level diff** — Extend `daggle diff` to compare artifacts: row-count delta for CSV, schema diff for Parquet, image diff for PNG.
+
+### Collaboration & governance
+
+- **Multi-stage approvals** — `approve:` step requiring N-of-M sign-offs, or sequential approval gates (data-science-lead → compliance-officer).
+- **Auto-approval policies** — Auto-approve if conditions hold (tests pass, within budget). Reduces approval-fatigue on safe changes.
+- **Pending-DAG state** — When a DAG YAML changes, hold the new version in a "pending" state until an admin promotes it. Today the scheduler hot-reloads silently.
+- **Threaded comments per step** — Beyond `annotate`, threaded discussion attached to a step within a run.
+
+### Reproducibility & compliance
+
+- **Project provenance** — Record the git commit hash of the project (where the DAG lives) at run time, alongside the existing DAG-file hash.
+- **`daggle audit <run-id>`** — Generate a compliance audit report: who triggered, when, what DAG hash, what code (project commit), what data inputs (file hashes), what artifacts (hashes).
+- **PDF audit reports** — Render the audit as a PDF for archival in regulated environments.
+- **Input hash-pinning** — Record content hashes of declared input files, fail the run if a file's hash drifts unexpectedly between runs.
+
+### Performance & scale (gaps in Phase 12)
+
+- **Shared cache backends** — Current cache is local. Allow team-shared cache via S3/GCS so a teammate's "I already ran this" speeds up your run.
+- **Cache invalidation rules** — Beyond content-hashing: time-based ("invalidate every 24h") or "always invalidate when file X changes".
+- **Resource limits** — Per-step memory and CPU caps via cgroups (Linux). Prevents one runaway step from starving others.
+
+### Backup, restore, portability
+
+- **`daggle export <dag>`** — Bundle DAG YAML + recent runs + artifacts into a portable tarball.
+- **`daggle import <archive>`** — Inverse of export, for moving DAGs between machines or handing off projects.
+- **`daggle sync`** — Bidirectional sync of DAG definitions across machines, optionally git-backed.
+
+### Misc
+
+- **`daggle profile <run-id>`** — Flame graph / step-level CPU+memory profile of a completed run.
+- **i18n** — Error messages and UI in non-English locales.
+- **Mobile-friendly status UI** — Current UI is desktop-only.
