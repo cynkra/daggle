@@ -180,11 +180,21 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, ErrorResponse{Error: msg})
 }
 
-// readJSON decodes a JSON request body into v.
-func readJSON(r *http.Request, v interface{}) error {
+// maxRequestBodyBytes caps the size of any JSON request body the API will
+// accept. 1 MB comfortably covers all current request shapes (trigger params,
+// project register, schedule create/patch, annotations, cancel reason) while
+// preventing a single multi-GB POST from exhausting memory on a loopback
+// attacker. Bumped per-handler if a future endpoint genuinely needs more.
+const maxRequestBodyBytes int64 = 1 << 20
+
+// readJSON decodes a JSON request body into v, refusing requests larger
+// than maxRequestBodyBytes. Callers must pass the http.ResponseWriter so
+// http.MaxBytesReader can return a 413 cleanly when the limit is hit.
+func readJSON(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	if r.Body == nil {
 		return nil
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	defer func() { _ = r.Body.Close() }()
 	return json.NewDecoder(r.Body).Decode(v)
 }

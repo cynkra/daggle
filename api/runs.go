@@ -89,7 +89,7 @@ func (s *Server) handleCancelRun(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCleanup(w http.ResponseWriter, r *http.Request) {
 	var req CleanupRequest
-	if err := readJSON(r, &req); err != nil {
+	if err := readJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
 		return
 	}
