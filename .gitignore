@@ -3,3 +3,6 @@ dist/
 .env
 tmp
 slides/
+
+/.quarto/
+**/*.quarto_ipynb
