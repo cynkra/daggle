@@ -43,10 +43,29 @@ func TestParseFile_Invalid(t *testing.T) {
 		t.Fatal("expected validation error, got nil")
 	}
 	errMsg := err.Error()
-	for _, want := range []string{"name is required", "must have one of", "multiple types", "invalid timeout", "unknown step"} {
+	// "name is required" is intentionally absent: ParseFile fills an empty
+	// name from the file basename. The remaining errors must still surface.
+	for _, want := range []string{"must have one of", "multiple types", "invalid timeout", "unknown step"} {
 		if !strings.Contains(errMsg, want) {
 			t.Errorf("error missing %q, got: %s", want, errMsg)
 		}
+	}
+}
+
+func TestParseFile_FillsNameFromFilename(t *testing.T) {
+	dir := t.TempDir()
+	content := []byte("steps:\n  - id: a\n    command: echo\n")
+	dagPath := filepath.Join(dir, "no-name.yaml")
+	if err := os.WriteFile(dagPath, content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	d, err := ParseFile(dagPath)
+	if err != nil {
+		t.Fatalf("ParseFile: %v", err)
+	}
+	if d.Name != "no-name" {
+		t.Errorf("Name = %q, want %q (filled from filename)", d.Name, "no-name")
 	}
 }
 

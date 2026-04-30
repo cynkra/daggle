@@ -32,9 +32,8 @@ func (s *Server) handleListDAGs(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 
-		dagName := state.DAGNameFromFile(path)
 		summary := DAGSummary{
-			Name:        dagName,
+			Name:        d.Name,
 			Steps:       len(d.Steps),
 			Project:     src.Name,
 			Owner:       d.Owner,
@@ -46,7 +45,7 @@ func (s *Server) handleListDAGs(w http.ResponseWriter, r *http.Request) {
 			summary.Schedule = d.Trigger.Schedule
 		}
 
-		if run, err := state.LatestRun(dagName); err == nil && run != nil {
+		if run, err := state.LatestRun(d.Name); err == nil && run != nil {
 			summary.LastStatus = state.RunStatus(run.Dir)
 			summary.LastRun = formatTime(run.StartTime)
 		}
@@ -81,7 +80,7 @@ func (s *Server) handleGetDAG(w http.ResponseWriter, r *http.Request) {
 	}
 
 	detail := DAGDetail{
-		Name:        name,
+		Name:        d.Name,
 		Steps:       len(d.Steps),
 		StepIDs:     stepIDs,
 		Workdir:     d.Workdir,
@@ -98,7 +97,7 @@ func (s *Server) handleGetDAG(w http.ResponseWriter, r *http.Request) {
 		detail.Schedule = d.Trigger.Schedule
 	}
 
-	if run, err := state.LatestRun(name); err == nil && run != nil {
+	if run, err := state.LatestRun(d.Name); err == nil && run != nil {
 		detail.LastStatus = state.RunStatus(run.Dir)
 		detail.LastRunID = run.ID
 		detail.LastRun = formatTime(run.StartTime)

@@ -20,7 +20,7 @@ steps:
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `name` | string | yes | -- | Unique DAG identifier |
+| `name` | string | no | (filename without extension) | Unique DAG identifier; falls back to the YAML filename when omitted |
 | `version` | string | no | `"1"` | Schema version |
 | `steps` | array | yes | -- | List of step objects |
 | `trigger` | object | no | (none) | Automated execution triggers. See [trigger fields](#trigger-fields) |

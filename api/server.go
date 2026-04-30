@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -216,19 +215,41 @@ func (s *Server) runRedactor(name string) *dag.Redactor {
 	return r
 }
 
-// dagPath resolves a DAG YAML file path from a name, searching all sources.
+// dagPath resolves a DAG YAML file path by matching the parsed `name:` field.
+// Returns the empty string when no source contains a DAG with that name.
+//
+// This walks every YAML file in every source and parses it via the DAG parse
+// cache. After the first call the cache makes this O(sources) on the hot
+// path; the canonical run-dir key (d.Name) drives all routing so we cannot
+// fall back to filename-based lookup.
 func (s *Server) dagPath(name string) string {
-	for _, src := range s.sources() {
-		cleanSrc := filepath.Clean(src.Dir) + string(filepath.Separator)
-		for _, ext := range []string{".yaml", ".yml"} {
-			p := filepath.Join(src.Dir, name+ext)
-			if !strings.HasPrefix(filepath.Clean(p), cleanSrc) {
-				continue // path traversal attempt
-			}
-			if _, err := os.Stat(p); err == nil {
-				return p
-			}
-		}
+	if name == "" {
+		return ""
 	}
-	return ""
+	var found string
+	stop := errFoundDAG
+	_ = state.WalkDAGFiles(s.sources(), func(src state.DAGSource, path string) error {
+		cleanSrc := filepath.Clean(src.Dir) + string(filepath.Separator)
+		if !strings.HasPrefix(filepath.Clean(path), cleanSrc) {
+			return nil // path traversal guard
+		}
+		d, err := dag.ParseFileCached(path)
+		if err != nil {
+			return nil
+		}
+		if d.Name == name {
+			found = path
+			return stop
+		}
+		return nil
+	})
+	return found
 }
+
+// errFoundDAG is a sentinel passed to WalkDAGFiles to short-circuit the walk
+// once a matching DAG is located.
+var errFoundDAG = stopWalk{}
+
+type stopWalk struct{}
+
+func (stopWalk) Error() string { return "stop" }

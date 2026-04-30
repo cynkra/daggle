@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/internal/executor"
 	"github.com/cynkra/daggle/state"
 )
@@ -173,18 +174,24 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 		resp.Scheduler = s.schedulerStatus()
 	}
 
-	// Find most recent run across all DAGs
-	dagNames := state.CollectDAGNames(sources)
+	// Find most recent run across all DAGs. Walk files and use the parsed
+	// d.Name (which is what the scheduler uses when creating run dirs), not
+	// the file basename.
 	var latestRun *state.RunInfo
-	for dagName := range dagNames {
-		run, err := state.LatestRun(dagName)
+	_ = state.WalkDAGFiles(sources, func(_ state.DAGSource, path string) error {
+		d, err := dag.ParseFileCached(path)
+		if err != nil {
+			return nil
+		}
+		run, err := state.LatestRun(d.Name)
 		if err != nil || run == nil {
-			continue
+			return nil
 		}
 		if latestRun == nil || run.StartTime.After(latestRun.StartTime) {
 			latestRun = run
 		}
-	}
+		return nil
+	})
 	if latestRun != nil {
 		resp.LastRun = &LastRunInfo{
 			DAGName: latestRun.DAGName,

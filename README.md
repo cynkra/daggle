@@ -113,7 +113,7 @@ Every step is assumed to be R unless stated otherwise. The following step types 
 ### Full YAML reference
 
 ```yaml
-name: my-pipeline               # required
+name: my-pipeline               # optional; defaults to the YAML filename (without extension)
 trigger:                        # optional: automated execution triggers
   schedule: "30 6 * * MON-FRI" # cron schedule for daggle serve
 workdir: /opt/projects/etl      # optional; defaults to project root (parent of .daggle/)

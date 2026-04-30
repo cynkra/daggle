@@ -937,6 +937,90 @@ steps:
 	time.Sleep(200 * time.Millisecond)
 }
 
+func TestScheduler_RecordsPreLaunchEnvResolveFailure(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0o755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// DAG references an env var that does not exist. Parse succeeds, but
+	// dag.ResolveEnv fails inside triggerRunWithParams before the engine
+	// takes over.
+	writeDAG(t, dagDir, "broken.yaml", `
+name: broken-env
+trigger:
+  schedule: "@every 1h"
+env:
+  TOKEN: ${env:DAGGLE_TEST_DOES_NOT_EXIST}
+steps:
+  - id: noop
+    command: echo hi
+`)
+
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
+	sched.triggerRun(filepath.Join(dagDir, "broken.yaml"), "test")
+
+	deadline := time.Now().Add(2 * time.Second)
+	var run *state.RunInfo
+	for time.Now().Before(deadline) {
+		r, err := state.LatestRun("broken-env")
+		if err == nil && r != nil {
+			run = r
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if run == nil {
+		t.Fatal("expected a recorded run for broken-env after env-resolve failure, got none")
+	}
+
+	if got := state.RunStatus(run.Dir); got != "failed" {
+		t.Errorf("RunStatus = %q, want %q", got, "failed")
+	}
+
+	events, err := state.ReadEvents(run.Dir)
+	if err != nil {
+		t.Fatalf("ReadEvents: %v", err)
+	}
+	if len(events) == 0 || events[len(events)-1].Type != state.EventRunFailed {
+		t.Fatalf("expected last event to be %q, got events=%+v", state.EventRunFailed, events)
+	}
+	if !strings.Contains(events[len(events)-1].Error, "DAGGLE_TEST_DOES_NOT_EXIST") {
+		t.Errorf("error = %q, want it to mention the missing env var", events[len(events)-1].Error)
+	}
+}
+
+func TestScheduler_RecordsPreLaunchParseFailure(t *testing.T) {
+	tmpDir := t.TempDir()
+	dagDir := filepath.Join(tmpDir, "dags")
+	_ = os.MkdirAll(dagDir, 0o755)
+	t.Setenv("DAGGLE_DATA_DIR", tmpDir)
+
+	// Invalid YAML: parse fails at the very top of triggerRunWithParams.
+	writeDAG(t, dagDir, "syntax.yaml", "name: syntax\nsteps:\n  - id: a\n    command: [unbalanced\n")
+
+	sched := New([]state.DAGSource{{Name: "test", Dir: dagDir}})
+	sched.triggerRun(filepath.Join(dagDir, "syntax.yaml"), "test")
+
+	// Parse failure path runs synchronously, so a single short wait is enough.
+	deadline := time.Now().Add(2 * time.Second)
+	var run *state.RunInfo
+	for time.Now().Before(deadline) {
+		r, err := state.LatestRun("syntax")
+		if err == nil && r != nil {
+			run = r
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if run == nil {
+		t.Fatal("expected a recorded run for syntax after parse failure, got none")
+	}
+	if got := state.RunStatus(run.Dir); got != "failed" {
+		t.Errorf("RunStatus = %q, want %q", got, "failed")
+	}
+}
+
 func writeDAG(t *testing.T, dir, name, content string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {

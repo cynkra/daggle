@@ -136,7 +136,6 @@ func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
 				continue
 			}
 
-			dagName := strings.TrimSuffix(strings.TrimSuffix(name, ".yaml"), ".yml")
 			path := filepath.Join(src.Dir, name)
 
 			d, err := dag.ParseFileCached(path)
@@ -145,7 +144,7 @@ func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
 			}
 
 			item := dagListItem{
-				Name:    dagName,
+				Name:    d.Name,
 				Steps:   len(d.Steps),
 				Project: src.Name,
 			}
@@ -153,7 +152,7 @@ func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
 				item.Schedule = d.Trigger.Schedule
 			}
 
-			if run, err := state.LatestRun(dagName); err == nil && run != nil {
+			if run, err := state.LatestRun(d.Name); err == nil && run != nil {
 				item.LastStatus = state.RunStatus(run.Dir)
 				item.LastRun = formatTime(run.StartTime)
 				item.LastRunFmt = timeAgo(run.StartTime)
