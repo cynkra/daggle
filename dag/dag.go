@@ -58,6 +58,7 @@ type Trigger struct {
 	Condition  *ConditionTrigger `yaml:"condition,omitempty"`
 	Git        *GitTrigger       `yaml:"git,omitempty"`
 	Overlap    string            `yaml:"overlap,omitempty"`  // "skip" (default) or "cancel"
+	Catchup    string            `yaml:"catchup,omitempty"`  // "off" (default), "once", or "all"; only meaningful with schedule
 	Deadline   string            `yaml:"deadline,omitempty"` // HH:MM format
 	OnDeadline *Hook             `yaml:"on_deadline,omitempty"`
 }

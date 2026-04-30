@@ -184,6 +184,28 @@ func FindRun(dagName, runID string) (*RunInfo, error) {
 	return nil, fmt.Errorf("run %q not found for DAG %q", runID, dagName)
 }
 
+// LastRunEndTime returns the end timestamp of the most recent run that
+// reached a terminal state (completed or failed). The bool result is false
+// when no terminal-state run exists for the DAG. Used by the catchup policy
+// to anchor the missed-tick calculation.
+func LastRunEndTime(dagName string) (time.Time, bool, error) {
+	runs, err := ListRuns(dagName)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	for i := range runs {
+		events, err := ReadEvents(runs[i].Dir)
+		if err != nil || len(events) == 0 {
+			continue
+		}
+		last := events[len(events)-1]
+		if last.Type == EventRunCompleted || last.Type == EventRunFailed {
+			return last.Timestamp, true, nil
+		}
+	}
+	return time.Time{}, false, nil
+}
+
 // RunStatus determines the final status of a run by reading its events.
 func RunStatus(runDir string) string {
 	events, err := ReadEvents(runDir)

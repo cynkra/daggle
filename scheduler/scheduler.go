@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	defaultPollInterval  = 30 * time.Second
-	defaultMaxConcurrent = 4
-	shutdownGracePeriod  = 5 * time.Minute
-	defaultDebounce      = 500 * time.Millisecond
+	defaultPollInterval   = 30 * time.Second
+	defaultMaxConcurrent  = 4
+	shutdownGracePeriod   = 5 * time.Minute
+	defaultDebounce       = 500 * time.Millisecond
+	defaultMaxCatchupRuns = 100
 )
 
 // runEntry tracks an active DAG run.
@@ -69,6 +70,12 @@ type Scheduler struct {
 	deadlineFired  map[string]string       // dagName -> date string (YYYY-MM-DD) of last fired deadline
 	pollInterval   time.Duration
 	watchDebounce  time.Duration
+	maxCatchupRuns int
+	// catchupDone records DAG names for which a catchup pass has already
+	// fired in this scheduler process. Initialised once and never cleared,
+	// so a DAG file edit (which re-registers the DAG) does not re-fire
+	// catchup — only a fresh process start does. Guarded by s.mu.
+	catchupDone map[string]bool
 	// syncCache short-circuits syncSource when a DAG file's mtime hasn't
 	// changed since the last tick. Keyed by absolute file path. Guarded by
 	// s.mu along with the rest of the registration state.
@@ -112,6 +119,10 @@ func NewWithConfig(sources []state.DAGSource, cfg state.SchedulerConfig) *Schedu
 			debounce = d
 		}
 	}
+	maxCatchup := defaultMaxCatchupRuns
+	if cfg.MaxCatchupRuns > 0 {
+		maxCatchup = cfg.MaxCatchupRuns
+	}
 	return &Scheduler{
 		cron:             cron.New(),
 		sources:          sources,
@@ -125,6 +136,8 @@ func NewWithConfig(sources []state.DAGSource, cfg state.SchedulerConfig) *Schedu
 		deadlineFired:    make(map[string]string),
 		pollInterval:     pollInt,
 		watchDebounce:    debounce,
+		maxCatchupRuns:   maxCatchup,
+		catchupDone:      make(map[string]bool),
 		syncCache:        make(map[string]syncCacheEntry),
 		runtimeSchedules: make(map[string]*runtimeSchedule),
 	}

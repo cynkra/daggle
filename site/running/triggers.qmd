@@ -114,3 +114,27 @@ trigger:
 |--------|----------|
 | `skip` (default) | Ignore trigger while DAG is running |
 | `cancel` | Cancel the running DAG, start a new run |
+
+## Catchup policy
+
+If daggle is offline when a scheduled tick should fire, the tick is normally lost — the cron library only fires future ticks after registration. Opt in with `catchup` to have daggle reconcile missed ticks on startup:
+
+```yaml
+trigger:
+  schedule: "0 9 * * *"
+  catchup: once               # default is off
+```
+
+| Mode | Behavior |
+|------|----------|
+| `off` (default) | Missed ticks are dropped; only future ticks fire |
+| `once` | If one or more ticks were missed, fire **one** catch-up run on startup, then resume the normal schedule |
+| `all` | Fire one run for every missed tick (Airflow-style backfill), serially. Capped at `scheduler.max_catchup_runs` (default 100) so a long outage cannot trigger an unbounded run storm — when truncated, a warning is logged |
+
+Catchup is anchored to the end timestamp of the most recent terminal run (completed or failed). For DAGs with no run history, catchup is skipped — there is nothing to anchor against.
+
+Catchup fires only once per DAG per scheduler process: a cold start triggers it, but a hot reload (e.g. editing the DAG file while daggle is running) does not. Caught-up runs appear in logs with `source=catchup` so they are distinguishable from normal cron firings.
+
+::: {.callout-note}
+Catchup currently applies to YAML-declared `trigger.schedule` only. Schedules created via the REST API (runtime schedules) do not honour `catchup` in v1.
+:::

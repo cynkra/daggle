@@ -355,6 +355,15 @@ func validateTriggers(d *DAG) []string {
 	if t.Overlap != "" && t.Overlap != "skip" && t.Overlap != "cancel" {
 		errs = append(errs, fmt.Sprintf("trigger.overlap %q is invalid; must be one of: skip, cancel", t.Overlap))
 	}
+	switch t.Catchup {
+	case "", "off", "once", "all":
+		// valid
+	default:
+		errs = append(errs, fmt.Sprintf("trigger.catchup %q is invalid; must be one of: off, once, all", t.Catchup))
+	}
+	if (t.Catchup == "once" || t.Catchup == "all") && t.Schedule == "" {
+		errs = append(errs, "trigger.catchup requires trigger.schedule to be set")
+	}
 	if t.Watch != nil {
 		if t.Watch.Path == "" {
 			errs = append(errs, "trigger.watch.path is required")

@@ -41,6 +41,7 @@ The `trigger` object controls when the scheduler automatically starts a DAG. Mul
 |-------|------|-------------|
 | `schedule` | string | Cron expression (e.g. `"30 6 * * MON-FRI"`, `"@every 5m"`) |
 | `overlap` | enum | `"skip"` (default) or `"cancel"` -- what to do if DAG is already running |
+| `catchup` | enum | `"off"` (default), `"once"`, or `"all"` -- reconcile cron ticks missed while daggle was offline. Requires `schedule`. See [catchup policy](../running/triggers.qmd#catchup-policy) |
 | `deadline` | string | Time-of-day deadline in `HH:MM` format. Used with `on_deadline` hook |
 | `on_deadline` | hook | Hook executed when the deadline is reached and the DAG is still running |
 | `watch` | object | File watcher trigger |

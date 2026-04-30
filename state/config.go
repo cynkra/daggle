@@ -43,9 +43,10 @@ type EngineConfig struct {
 
 // SchedulerConfig controls scheduler behavior.
 type SchedulerConfig struct {
-	PollInterval  string `yaml:"poll_interval,omitempty"`  // default "30s"
-	MaxConcurrent int    `yaml:"max_concurrent,omitempty"` // default 4
-	WatchDebounce string `yaml:"watch_debounce,omitempty"` // default "500ms"
+	PollInterval   string `yaml:"poll_interval,omitempty"`    // default "30s"
+	MaxConcurrent  int    `yaml:"max_concurrent,omitempty"`   // default 4
+	WatchDebounce  string `yaml:"watch_debounce,omitempty"`   // default "500ms"
+	MaxCatchupRuns int    `yaml:"max_catchup_runs,omitempty"` // default 100; cap on catchup: all
 }
 
 // CleanupConfig controls automatic run cleanup in the scheduler.
