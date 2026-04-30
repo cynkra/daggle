@@ -192,6 +192,11 @@ func (s *Scheduler) syncSource(ctx context.Context, src state.DAGSource, seen ma
 			} else {
 				newEntry.cronID = entryID
 				newEntry.schedule = sched
+				if mode := d.Trigger.Catchup; mode == "once" || mode == "all" {
+					if s.catchupOnce(d.Name) {
+						go s.runCatchup(d.Name, dagPath, sched, mode)
+					}
+				}
 			}
 		}
 

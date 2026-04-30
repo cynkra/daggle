@@ -94,6 +94,50 @@ func TestValidate_TriggerBlock(t *testing.T) {
 	}
 }
 
+func TestValidate_Catchup(t *testing.T) {
+	base := func() *DAG {
+		return &DAG{
+			Name:  "test",
+			Steps: []Step{{ID: "a", Command: "echo a"}},
+		}
+	}
+
+	// Valid catchup values when paired with schedule.
+	for _, v := range []string{"once", "all", "off", ""} {
+		d := base()
+		d.Trigger = &Trigger{Schedule: "@every 1h", Catchup: v}
+		if err := Validate(d); err != nil {
+			t.Errorf("catchup=%q with schedule should be valid: %v", v, err)
+		}
+	}
+
+	// Invalid: bogus catchup value.
+	d := base()
+	d.Trigger = &Trigger{Schedule: "@every 1h", Catchup: "bogus"}
+	if err := Validate(d); err == nil {
+		t.Error("catchup=bogus should fail")
+	}
+
+	// Invalid: catchup without schedule.
+	d = base()
+	d.Trigger = &Trigger{Catchup: "once"}
+	if err := Validate(d); err == nil {
+		t.Error("catchup without schedule should fail")
+	}
+	d = base()
+	d.Trigger = &Trigger{Catchup: "all"}
+	if err := Validate(d); err == nil {
+		t.Error("catchup=all without schedule should fail")
+	}
+
+	// Valid: catchup=off without schedule (off is just the default).
+	d = base()
+	d.Trigger = &Trigger{Catchup: "off"}
+	if err := Validate(d); err != nil {
+		t.Errorf("catchup=off without schedule should be valid: %v", err)
+	}
+}
+
 func TestValidate_Deadline(t *testing.T) {
 	base := func() *DAG {
 		return &DAG{
