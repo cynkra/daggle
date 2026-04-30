@@ -105,6 +105,18 @@ func New(cfg Config) (*Engine, error) {
 // remaining tiers are skipped and the run is marked as failed.
 func (e *Engine) Run(ctx context.Context) error {
 	defer func() { _ = e.events.Close() }()
+
+	// Emit run_started immediately so a run dir without any later events still
+	// shows up as a real run in the UI. Validation/topo-sort failures below
+	// add a run_failed event and return; tier failures are handled later.
+	e.writeEvent(state.Event{Type: state.EventRunStarted})
+	e.logger.Info("run started", "dag", e.dag.Name, "run_id", e.runInfo.ID)
+
+	// Write initial metadata
+	if e.meta != nil {
+		e.writeMeta(e.runInfo.Dir, e.meta)
+	}
+
 	// Reject notify: references to channels missing from the loaded config
 	// before we do anything else. Falls through for DAGs without notify hooks.
 	channels := make(map[string]bool, len(e.notifications))
@@ -112,6 +124,7 @@ func (e *Engine) Run(ctx context.Context) error {
 		channels[name] = true
 	}
 	if err := dag.ValidateChannels(e.dag, channels); err != nil {
+		e.writeEvent(state.Event{Type: state.EventRunFailed, Error: err.Error()})
 		return err
 	}
 
@@ -120,15 +133,9 @@ func (e *Engine) Run(ctx context.Context) error {
 
 	tiers, err := dag.TopoSort(e.dag.Steps)
 	if err != nil {
-		return fmt.Errorf("topo sort: %w", err)
-	}
-
-	e.writeEvent(state.Event{Type: state.EventRunStarted})
-	e.logger.Info("run started", "dag", e.dag.Name, "run_id", e.runInfo.ID)
-
-	// Write initial metadata
-	if e.meta != nil {
-		e.writeMeta(e.runInfo.Dir, e.meta)
+		wrapped := fmt.Errorf("topo sort: %w", err)
+		e.writeEvent(state.Event{Type: state.EventRunFailed, Error: wrapped.Error()})
+		return wrapped
 	}
 
 	// Build environment: DAG-level env + daggle metadata + renv

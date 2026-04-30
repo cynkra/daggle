@@ -208,6 +208,74 @@ func TestEngine_FailureStopsTiers(t *testing.T) {
 	}
 }
 
+func TestEngine_RecordsValidateChannelsFailure(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a"},
+		},
+		// Reference a notify channel that the engine has no config for so
+		// ValidateChannels fails before any tier runs.
+		OnSuccess: &dag.Hook{Notify: "missing-channel"},
+	}
+
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		t.Fatal("no step should execute when ValidateChannels fails")
+		return executor.Result{}
+	}}
+
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error from ValidateChannels, got nil")
+	}
+
+	events, readErr := state.ReadEvents(run.Dir)
+	if readErr != nil {
+		t.Fatalf("ReadEvents: %v", readErr)
+	}
+	if len(events) < 2 || events[0].Type != state.EventRunStarted || events[len(events)-1].Type != state.EventRunFailed {
+		t.Fatalf("expected run_started followed by run_failed, got %+v", events)
+	}
+	if got := state.RunStatus(run.Dir); got != "failed" {
+		t.Errorf("RunStatus = %q, want %q", got, "failed")
+	}
+}
+
+func TestEngine_RecordsTopoSortFailure(t *testing.T) {
+	run := setupRun(t)
+	d := &dag.DAG{
+		Name: "test",
+		Steps: []dag.Step{
+			{ID: "a", Command: "echo a", Depends: []string{"b"}},
+			{ID: "b", Command: "echo b", Depends: []string{"a"}},
+		},
+	}
+
+	mock := &mockExecutor{fn: func(_ dag.Step) executor.Result {
+		t.Fatal("no step should execute when topo sort fails")
+		return executor.Result{}
+	}}
+
+	eng := newTestEngine(t, d, run, func(_ dag.Step) executor.Executor { return mock })
+	err := eng.Run(context.Background())
+	if err == nil {
+		t.Fatal("expected error from cycle, got nil")
+	}
+
+	events, readErr := state.ReadEvents(run.Dir)
+	if readErr != nil {
+		t.Fatalf("ReadEvents: %v", readErr)
+	}
+	if len(events) < 2 || events[0].Type != state.EventRunStarted || events[len(events)-1].Type != state.EventRunFailed {
+		t.Fatalf("expected run_started followed by run_failed, got %+v", events)
+	}
+	if got := state.RunStatus(run.Dir); got != "failed" {
+		t.Errorf("RunStatus = %q, want %q", got, "failed")
+	}
+}
+
 func TestEngine_Retry(t *testing.T) {
 	run := setupRun(t)
 	d := &dag.DAG{

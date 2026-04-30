@@ -7,11 +7,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
 // ParseFile reads and parses a YAML DAG definition from the given file path.
+// If the YAML omits a top-level `name:`, the file's basename (without the
+// .yaml/.yml extension) is used. The filled-in name is the canonical DAG
+// identity used by the scheduler when creating run directories.
 func ParseFile(path string) (*DAG, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -19,8 +23,17 @@ func ParseFile(path string) (*DAG, error) {
 	}
 	defer func() { _ = f.Close() }()
 
-	d, err := ParseReader(f)
-	if err != nil {
+	var d DAG
+	dec := yaml.NewDecoder(f)
+	dec.KnownFields(true)
+	if err := dec.Decode(&d); err != nil {
+		return nil, fmt.Errorf("parse YAML: %w", err)
+	}
+	if d.Name == "" {
+		base := filepath.Base(path)
+		d.Name = strings.TrimSuffix(strings.TrimSuffix(base, ".yaml"), ".yml")
+	}
+	if err := Validate(&d); err != nil {
 		return nil, err
 	}
 
@@ -37,7 +50,7 @@ func ParseFile(path string) (*DAG, error) {
 		}
 	}
 
-	return d, nil
+	return &d, nil
 }
 
 // HashFile computes the SHA-256 hash of a file's contents.

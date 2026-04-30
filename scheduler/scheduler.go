@@ -337,6 +337,7 @@ func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params m
 	d, err := dag.ParseFile(dagPath)
 	if err != nil {
 		s.logger.Error("failed to parse DAG for run", "path", dagPath, "error", err)
+		s.recordTriggerFailure(state.DAGNameFromFile(dagPath), source, fmt.Errorf("parse DAG: %w", err))
 		return
 	}
 
@@ -412,6 +413,7 @@ func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params m
 		expanded, err := dag.ExpandDAG(d, params)
 		if err != nil {
 			s.logger.Error("template expansion failed", "dag", d.Name, "error", err)
+			s.recordTriggerFailure(d.Name, source, fmt.Errorf("template expansion: %w", err))
 			return
 		}
 
@@ -420,11 +422,13 @@ func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params m
 		// values to mask.
 		if err := dag.ResolveEnv(expanded.Env); err != nil {
 			s.logger.Error("resolve env failed", "dag", d.Name, "error", err)
+			s.recordTriggerFailure(d.Name, source, fmt.Errorf("resolve env: %w", err))
 			return
 		}
 		for i := range expanded.Steps {
 			if err := dag.ResolveEnv(expanded.Steps[i].Env); err != nil {
 				s.logger.Error("resolve step env failed", "dag", d.Name, "step", expanded.Steps[i].ID, "error", err)
+				s.recordTriggerFailure(d.Name, source, fmt.Errorf("resolve env for step %q: %w", expanded.Steps[i].ID, err))
 				return
 			}
 		}
@@ -449,6 +453,9 @@ func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params m
 		eng, err := engine.New(engCfg)
 		if err != nil {
 			s.logger.Error("engine init failed", "dag", d.Name, "error", err)
+			// Run dir already exists from CreateRun above; record the
+			// failure into it so the UI shows "failed" instead of "unknown".
+			writeRunFailureEvents(run.Dir, fmt.Errorf("engine init: %w", err))
 			return
 		}
 
@@ -467,6 +474,35 @@ func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params m
 			s.logger.Error("completion event dropped after timeout", "dag", d.Name)
 		}
 	}()
+}
+
+// recordTriggerFailure persists a trigger attempt that failed before the
+// engine could take over (parse error, template expansion, env resolution).
+// Without this, the UI would show "never run" for DAGs whose triggers are
+// failing because no run directory ever exists on disk.
+//
+// Best effort: an invalid DAG name or filesystem error is logged and dropped
+// rather than panicking the trigger source.
+func (s *Scheduler) recordTriggerFailure(dagName, source string, cause error) {
+	if state.ValidateDAGName(dagName) != nil {
+		return
+	}
+	run, err := state.CreateRun(dagName)
+	if err != nil {
+		s.logger.Error("could not record trigger failure", "dag", dagName, "source", source, "error", err)
+		return
+	}
+	writeRunFailureEvents(run.Dir, cause)
+}
+
+// writeRunFailureEvents writes a Started+Failed event pair to an existing run
+// directory. Used by the scheduler to surface failures that happen between
+// run-dir creation and engine handoff.
+func writeRunFailureEvents(runDir string, cause error) {
+	w := state.NewEventWriter(runDir)
+	defer func() { _ = w.Close() }()
+	_ = w.Write(state.Event{Type: state.EventRunStarted})
+	_ = w.Write(state.Event{Type: state.EventRunFailed, Error: cause.Error()})
 }
 
 func fileHash(path string) (string, error) {
