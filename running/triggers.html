@@ -404,6 +404,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#git-changes" id="toc-git-changes" class="nav-link" data-scroll-target="#git-changes">Git changes</a></li>
   <li><a href="#combined-triggers" id="toc-combined-triggers" class="nav-link" data-scroll-target="#combined-triggers">Combined triggers</a></li>
   <li><a href="#overlap-policy" id="toc-overlap-policy" class="nav-link" data-scroll-target="#overlap-policy">Overlap policy</a></li>
+  <li><a href="#catchup-policy" id="toc-catchup-policy" class="nav-link" data-scroll-target="#catchup-policy">Catchup policy</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
     </div>
@@ -522,6 +523,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
+</section>
+<section id="catchup-policy" class="level2">
+<h2 class="anchored" data-anchor-id="catchup-policy">Catchup policy</h2>
+<p>If daggle is offline when a scheduled tick should fire, the tick is normally lost — the cron library only fires future ticks after registration. Opt in with <code>catchup</code> to have daggle reconcile missed ticks on startup:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">trigger</span><span class="kw">:</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span><span class="at"> </span><span class="st">"0 9 * * *"</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">catchup</span><span class="kw">:</span><span class="at"> once</span><span class="co">               # default is off</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 37%">
+<col style="width: 62%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Mode</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>off</code> (default)</td>
+<td>Missed ticks are dropped; only future ticks fire</td>
+</tr>
+<tr class="even">
+<td><code>once</code></td>
+<td>If one or more ticks were missed, fire <strong>one</strong> catch-up run on startup, then resume the normal schedule</td>
+</tr>
+<tr class="odd">
+<td><code>all</code></td>
+<td>Fire one run for every missed tick (Airflow-style backfill), serially. Capped at <code>scheduler.max_catchup_runs</code> (default 100) so a long outage cannot trigger an unbounded run storm — when truncated, a warning is logged</td>
+</tr>
+</tbody>
+</table>
+<p>Catchup is anchored to the end timestamp of the most recent terminal run (completed or failed). For DAGs with no run history, catchup is skipped — there is nothing to anchor against.</p>
+<p>Catchup fires only once per DAG per scheduler process: a cold start triggers it, but a hot reload (e.g.&nbsp;editing the DAG file while daggle is running) does not. Caught-up runs appear in logs with <code>source=catchup</code> so they are distinguishable from normal cron firings.</p>
+<div class="callout callout-style-simple callout-note">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p>Catchup currently applies to YAML-declared <code>trigger.schedule</code> only. Schedules created via the REST API (runtime schedules) do not honour <code>catchup</code> in v1.</p>
+</div>
+</div>
+</div>
 
 
 </section>

@@ -551,11 +551,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="trigger-fields">Trigger fields</h2>
 <p>The <code>trigger</code> object controls when the scheduler automatically starts a DAG. Multiple triggers can coexist – any match starts a run.</p>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 26%">
-<col style="width: 23%">
-<col style="width: 50%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Field</th>
@@ -575,36 +570,41 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>"skip"</code> (default) or <code>"cancel"</code> – what to do if DAG is already running</td>
 </tr>
 <tr class="odd">
+<td><code>catchup</code></td>
+<td>enum</td>
+<td><code>"off"</code> (default), <code>"once"</code>, or <code>"all"</code> – reconcile cron ticks missed while daggle was offline. Requires <code>schedule</code>. See <a href="../running/triggers.html#catchup-policy">catchup policy</a></td>
+</tr>
+<tr class="even">
 <td><code>deadline</code></td>
 <td>string</td>
 <td>Time-of-day deadline in <code>HH:MM</code> format. Used with <code>on_deadline</code> hook</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>on_deadline</code></td>
 <td>hook</td>
 <td>Hook executed when the deadline is reached and the DAG is still running</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>watch</code></td>
 <td>object</td>
 <td>File watcher trigger</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>webhook</code></td>
 <td>object</td>
 <td>HTTP POST trigger</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>on_dag</code></td>
 <td>object</td>
 <td>Trigger on another DAG’s completion</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>condition</code></td>
 <td>object</td>
 <td>Polling trigger (R expr or shell command)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>git</code></td>
 <td>object</td>
 <td>Trigger on new git commits</td>
