@@ -25,8 +25,10 @@ Writes the expression to a temp `.R` file in the run directory, runs via Rscript
   r_expr: |
     data <- readRDS("data/clean.rds")
     cat(sprintf("Rows: %d\n", nrow(data)))
-    cat("::daggle-output name=row_count::", nrow(data), "\n")
+    daggleR::daggle_output("row_count", nrow(data))
 ```
+
+The example above uses [`daggleR::daggle_output()`](https://cynkra.github.io/daggleR/reference/daggle_output.html) to emit a downstream value — see [Inter-Step Data Passing](data-passing.qmd) for the full pattern.
 
 ### `command:` -- Shell
 

@@ -4,6 +4,8 @@ title: "Tutorial: Data Quality Monitoring"
 
 This tutorial builds a scheduled data quality pipeline that checks completeness and distributions, logs results over time, and alerts on failures.
 
+Examples below use the [daggleR](https://cynkra.github.io/daggleR/) companion package for in-step helpers; install it with `pak::pkg_install("cynkra/daggleR")`.
+
 ## The pipeline
 
 ```yaml
@@ -28,7 +30,7 @@ steps:
       saveRDS(penguins, "penguins_snapshot.rds")
 
       cat(sprintf("Loaded %d rows at %s\n", nrow(penguins), Sys.time()))
-      cat("::daggle-output name=n_rows::", nrow(penguins), "\n")
+      daggleR::daggle_output("n_rows", nrow(penguins))
 
   - id: check-completeness
     r_expr: |
@@ -46,7 +48,7 @@ steps:
         stop(sprintf("Data completeness %.1f%% is below 90%% threshold!", pct_complete))
       }
 
-      cat("::daggle-output name=completeness::", pct_complete, "\n")
+      daggleR::daggle_output("completeness", pct_complete)
     depends: [load]
 
   - id: check-distributions
@@ -69,7 +71,7 @@ steps:
       }
 
       cat(sprintf("\nTotal outliers detected: %d\n", outlier_count))
-      cat("::daggle-output name=outlier_count::", outlier_count, "\n")
+      daggleR::daggle_output("outlier_count", outlier_count)
 
       counts <- table(penguins$species)
       cat("\nSpecies distribution:\n")
@@ -83,10 +85,10 @@ steps:
 
   - id: report
     r_expr: |
-      completeness <- Sys.getenv("DAGGLE_OUTPUT_CHECK_COMPLETENESS_COMPLETENESS")
-      outliers <- Sys.getenv("DAGGLE_OUTPUT_CHECK_DISTRIBUTIONS_OUTLIER_COUNT")
-      n_rows <- Sys.getenv("DAGGLE_OUTPUT_LOAD_N_ROWS")
-      run_id <- Sys.getenv("DAGGLE_RUN_ID")
+      completeness <- daggleR::daggle_get_output("check-completeness", "completeness")
+      outliers <- daggleR::daggle_get_output("check-distributions", "outlier_count")
+      n_rows <- daggleR::daggle_get_output("load", "n_rows")
+      run_id <- daggleR::daggle_run_id()
 
       report <- data.frame(
         timestamp = Sys.time(),
@@ -115,6 +117,8 @@ on_failure:
     cat(sprintf("DATA QUALITY CHECK FAILED at %s\n", Sys.time()))
     cat("Review the step logs for details.\n")
 ```
+
+The `report` step uses [`daggle_get_output()`](https://cynkra.github.io/daggleR/reference/daggle_get_output.html) and [`daggle_run_id()`](https://cynkra.github.io/daggleR/reference/daggle_run_id.html) instead of reading `DAGGLE_OUTPUT_*` env vars directly — same wire format, less boilerplate.
 
 ## How the DAG executes
 

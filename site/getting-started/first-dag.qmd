@@ -60,6 +60,8 @@ daggle run hello -p who=David
 
 You'll see step output streamed to the terminal. Output markers (`::daggle-output::` lines) are parsed and stripped from terminal output but kept in log files.
 
+In real R pipelines, prefer the [daggleR](https://cynkra.github.io/daggleR/) helpers — `daggleR::daggle_output("result", "success")` instead of the raw `cat()` call above. See [Tutorial: Using daggleR](../tutorials/using-daggler.qmd).
+
 ## 4. Check status
 
 ```bash

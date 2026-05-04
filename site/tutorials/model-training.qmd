@@ -4,6 +4,8 @@ title: "Tutorial: Model Training Pipeline"
 
 This tutorial fits three classification models in parallel, collects their accuracies, and produces a comparison table. It demonstrates parallel step execution and reading upstream outputs via environment variables.
 
+Examples below use the [daggleR](https://cynkra.github.io/daggleR/) companion package for in-step helpers; install it with `pak::pkg_install("cynkra/daggleR")`.
+
 ## The pipeline
 
 ```yaml
@@ -37,8 +39,8 @@ steps:
       saveRDS(test, file.path(Sys.getenv("DATA_DIR"), "test.rds"))
 
       cat(sprintf("Train: %d rows, Test: %d rows\n", nrow(train), nrow(test)))
-      cat("::daggle-output name=n_train::", nrow(train), "\n")
-      cat("::daggle-output name=n_test::", nrow(test), "\n")
+      daggleR::daggle_output("n_train", nrow(train))
+      daggleR::daggle_output("n_test", nrow(test))
 
   - id: fit-lda
     r_expr: |
@@ -52,7 +54,7 @@ steps:
 
       saveRDS(model, file.path(Sys.getenv("MODEL_DIR"), "lda_model.rds"))
       cat(sprintf("LDA accuracy: %.1f%%\n", accuracy * 100))
-      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")
+      daggleR::daggle_output("accuracy", round(accuracy, 4))
     depends: [prepare]
 
   - id: fit-tree
@@ -67,7 +69,7 @@ steps:
 
       saveRDS(model, file.path(Sys.getenv("MODEL_DIR"), "tree_model.rds"))
       cat(sprintf("Decision tree accuracy: %.1f%%\n", accuracy * 100))
-      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")
+      daggleR::daggle_output("accuracy", round(accuracy, 4))
     depends: [prepare]
 
   - id: fit-knn
@@ -87,14 +89,14 @@ steps:
       accuracy <- mean(preds == test$species)
 
       cat(sprintf("KNN (k=5) accuracy: %.1f%%\n", accuracy * 100))
-      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")
+      daggleR::daggle_output("accuracy", round(accuracy, 4))
     depends: [prepare]
 
   - id: compare
     r_expr: |
-      lda_acc <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_LDA_ACCURACY"))
-      tree_acc <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_TREE_ACCURACY"))
-      knn_acc <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_KNN_ACCURACY"))
+      lda_acc <- as.numeric(daggleR::daggle_get_output("fit-lda", "accuracy"))
+      tree_acc <- as.numeric(daggleR::daggle_get_output("fit-tree", "accuracy"))
+      knn_acc <- as.numeric(daggleR::daggle_get_output("fit-knn", "accuracy"))
 
       results <- data.frame(
         model = c("LDA", "Decision Tree", "KNN (k=5)"),
@@ -125,15 +127,15 @@ After `prepare` finishes, all three model-fitting steps run simultaneously. The 
 
 ## Reading upstream outputs
 
-Each fit step emits the same key (`accuracy`), but daggle namespaces outputs by step ID. The `compare` step reads them as:
+Each fit step emits the same key (`accuracy`), but daggle namespaces outputs by step ID. [`daggleR::daggle_get_output()`](https://cynkra.github.io/daggleR/reference/daggle_get_output.html) reads them by step + key:
 
 ```r
-lda_acc  <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_LDA_ACCURACY"))
-tree_acc <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_TREE_ACCURACY"))
-knn_acc  <- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_KNN_ACCURACY"))
+lda_acc  <- as.numeric(daggleR::daggle_get_output("fit-lda", "accuracy"))
+tree_acc <- as.numeric(daggleR::daggle_get_output("fit-tree", "accuracy"))
+knn_acc  <- as.numeric(daggleR::daggle_get_output("fit-knn", "accuracy"))
 ```
 
-The naming convention is `DAGGLE_OUTPUT_<STEP_ID>_<KEY>`, with the step ID uppercased and hyphens replaced by underscores.
+Under the hood the helper reads `DAGGLE_OUTPUT_<STEP_ID>_<KEY>`, with the step ID uppercased and hyphens replaced by underscores. Returns a character string — coerce with `as.numeric()` / `as.integer()` if you need a number.
 
 ## Alternative: matrix runs
 
@@ -186,7 +188,7 @@ accuracy <- switch(algo,
 )
 
 cat(sprintf("%s accuracy: %.1f%%\n", algo, accuracy * 100))
-cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")
+daggleR::daggle_output("accuracy", round(accuracy, 4))
 ```
 
 The matrix approach is cleaner when models share structure. Use explicit steps when each model has substantially different logic.

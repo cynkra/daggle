@@ -4,6 +4,23 @@ title: "Output Marker Protocol"
 
 Steps pass data to downstream steps by printing structured markers to stdout. daggle parses these markers during execution, strips them from terminal output, and injects the values as environment variables for dependent steps.
 
+## R quick reference
+
+In an R step, prefer the [daggleR](https://cynkra.github.io/daggleR/) helpers. They validate names, coerce values, and emit the protocol below:
+
+| Marker | daggleR helper |
+|---|---|
+| `::daggle-output::` | [`daggle_output(name, value)`](https://cynkra.github.io/daggleR/reference/daggle_output.html) |
+| `::daggle-summary format=markdown::` | [`daggle_summary_md(text)`](https://cynkra.github.io/daggleR/reference/daggle_summary_md.html) |
+| `::daggle-meta type=numeric::` | [`daggle_meta_numeric(name, value)`](https://cynkra.github.io/daggleR/reference/daggle_meta_numeric.html) |
+| `::daggle-meta type=text::` | [`daggle_meta_text(name, value)`](https://cynkra.github.io/daggleR/reference/daggle_meta_text.html) |
+| `::daggle-meta type=table::` | [`daggle_meta_table(name, df)`](https://cynkra.github.io/daggleR/reference/daggle_meta_table.html) |
+| `::daggle-meta type=image::` | [`daggle_meta_image(name, path)`](https://cynkra.github.io/daggleR/reference/daggle_meta_image.html) |
+| `::daggle-validation::` | [`daggle_validation(name, status, message)`](https://cynkra.github.io/daggleR/reference/daggle_validation.html) |
+| reading upstream | [`daggle_get_output(step, key)`](https://cynkra.github.io/daggleR/reference/daggle_get_output.html) |
+
+The rest of this page documents the wire format that any language can emit. See [Tutorial: Using daggleR](../tutorials/using-daggler.qmd) for full R examples.
+
 ## Marker format
 
 ```

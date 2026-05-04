@@ -4,6 +4,8 @@ title: "Tutorial: ETL Pipeline"
 
 This tutorial builds a data extraction, cleaning, summarization, plotting, and reporting pipeline using the Palmer Penguins dataset. It demonstrates step dependencies, parallel execution, output markers, and lifecycle hooks.
 
+Examples below use the [daggleR](https://cynkra.github.io/daggleR/) companion package for in-step helpers; install it with `pak::pkg_install("cynkra/daggleR")`.
+
 ## The pipeline
 
 Create `pipeline.yaml` in your project directory:
@@ -30,7 +32,7 @@ steps:
       raw <- penguins
       cat(sprintf("Loaded %d rows, %d columns\n", nrow(raw), ncol(raw)))
       saveRDS(raw, file.path(Sys.getenv("DATA_DIR"), "raw_penguins.rds"))
-      cat("::daggle-output name=n_raw::", nrow(raw), "\n")
+      daggleR::daggle_output("n_raw", nrow(raw))
     depends: [setup]
 
   - id: clean
@@ -41,8 +43,8 @@ steps:
       cat(sprintf("Removed %d incomplete rows (%d remaining)\n",
                   nrow(raw) - nrow(clean), nrow(clean)))
       saveRDS(clean, file.path(Sys.getenv("DATA_DIR"), "clean_penguins.rds"))
-      cat("::daggle-output name=n_clean::", nrow(clean), "\n")
-      cat("::daggle-output name=n_dropped::", nrow(raw) - nrow(clean), "\n")
+      daggleR::daggle_output("n_clean", nrow(clean))
+      daggleR::daggle_output("n_dropped", nrow(raw) - nrow(clean))
     depends: [extract]
 
   - id: summarize
@@ -64,7 +66,7 @@ steps:
       print(summary_df, row.names = FALSE)
       write.csv(summary_df, file.path(Sys.getenv("OUTPUT_DIR"), "species_summary.csv"),
                 row.names = FALSE)
-      cat("::daggle-output name=n_species::", nrow(summary_df), "\n")
+      daggleR::daggle_output("n_species", nrow(summary_df))
     depends: [clean]
 
   - id: plot
@@ -121,19 +123,19 @@ The key insight: `summarize` and `plot` both depend only on `clean`, so they run
 
 ## Output markers
 
-Steps communicate values downstream using the `::daggle-output::` protocol. The `extract` step emits:
+Steps communicate values downstream by emitting the `::daggle-output::` protocol on stdout. In R, [`daggleR::daggle_output()`](https://cynkra.github.io/daggleR/reference/daggle_output.html) wraps the protocol with name validation:
 
 ```r
-cat("::daggle-output name=n_raw::", nrow(raw), "\n")
+daggleR::daggle_output("n_raw", nrow(raw))
 ```
 
-daggle strips these lines from terminal output, parses them, and injects them as environment variables into downstream steps. The `clean` step could read this value as:
+daggle strips these lines from terminal output, parses them, and injects them as environment variables into downstream steps. The `clean` step reads the value with [`daggle_get_output()`](https://cynkra.github.io/daggleR/reference/daggle_get_output.html):
 
 ```r
-n_raw <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_N_RAW"))
+n_raw <- as.integer(daggleR::daggle_get_output("extract", "n_raw"))
 ```
 
-Step IDs are uppercased and hyphens become underscores in the variable name.
+Under the hood this reads `DAGGLE_OUTPUT_EXTRACT_N_RAW` from the environment — the helper handles the uppercasing and hyphen-to-underscore conversion. See [Output Marker Protocol](../reference/output-protocol.qmd) for the wire format.
 
 ## Environment variables
 

@@ -4,6 +4,8 @@ title: "Tutorial: Multi-DAG Workflows"
 
 This tutorial shows two approaches to chaining DAGs: event-driven triggers for loosely coupled workflows, and sub-DAG calls for tightly composed pipelines.
 
+Examples below use the [daggleR](https://cynkra.github.io/daggleR/) companion package for in-step helpers; install it with `pak::pkg_install("cynkra/daggleR")`.
+
 ## Approach 1: on_dag trigger
 
 Independent DAGs, loose coupling. The upstream DAG does not know about the downstream DAG.
@@ -20,14 +22,14 @@ steps:
     r_expr: |
       data <- read.csv("/data/incoming/daily_export.csv")
       saveRDS(data, "data/raw.rds")
-      cat("::daggle-output name=n_rows::", nrow(data), "\n")
+      daggleR::daggle_output("n_rows", nrow(data))
 
   - id: clean
     r_expr: |
       raw <- readRDS("data/raw.rds")
       clean <- raw[complete.cases(raw), ]
       saveRDS(clean, "data/clean.rds")
-      cat("::daggle-output name=n_clean::", nrow(clean), "\n")
+      daggleR::daggle_output("n_clean", nrow(clean))
     depends: [extract]
 
   - id: load
@@ -36,7 +38,7 @@ steps:
       con <- DBI::dbConnect(RSQLite::SQLite(), "warehouse.db")
       DBI::dbWriteTable(con, "daily_data", clean, append = TRUE)
       DBI::dbDisconnect(con)
-      cat("::daggle-output name=loaded::true\n")
+      daggleR::daggle_output("loaded", "true")
     depends: [clean]
 ```
 
@@ -53,10 +55,10 @@ trigger:
 steps:
   - id: generate
     r_expr: |
-      n_rows <- Sys.getenv("DAGGLE_OUTPUT_LOAD_LOADED")
-      cat(sprintf("ETL completed, generating report\n"))
+      loaded <- daggleR::daggle_get_output("load", "loaded")
+      cat(sprintf("ETL completed (loaded=%s), generating report\n", loaded))
       # ... build report from warehouse data ...
-      cat("::daggle-output name=report_path::output/daily_report.html\n")
+      daggleR::daggle_output("report_path", "output/daily_report.html")
 
   - id: distribute
     command: |
@@ -96,7 +98,7 @@ steps:
     r_expr: |
       cat("Generating report from warehouse data\n")
       # ... build report ...
-      cat("::daggle-output name=report_path::output/daily_report.html\n")
+      daggleR::daggle_output("report_path", "output/daily_report.html")
     depends: [run-etl]
 
   - id: distribute
