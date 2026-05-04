@@ -108,7 +108,7 @@ steps:
     r_expr: |
       data <- readRDS("data/raw.rds")
       stopifnot(nrow(data) > 0)
-      cat("::daggle-output name=row_count::", nrow(data), "\n")
+      daggleR::daggle_output("row_count", nrow(data))
     depends: [extract]
     error_on: warning
 

@@ -4,75 +4,58 @@ title: "Inter-Step Data Passing"
 
 Steps pass data to downstream steps using stdout markers. daggle parses these markers, strips them from terminal output, and passes the values as environment variables.
 
-## Output marker protocol
+## Emitting and reading outputs
 
-Print a line matching this format from any step:
-
-```r
-cat("::daggle-output name=row_count::", nrow(data), "\n")
-```
-
-Format: `::daggle-output name=<key>::<value>`
-
-- **Key:** `[a-zA-Z_][a-zA-Z0-9_]*` (alphanumeric + underscores)
-- **Value:** everything after `::` until the newline, trimmed
-- **Single-line only.** For complex data, write to a file and pass the path.
-
-## Reading outputs
-
-Downstream steps receive outputs as environment variables, namespaced by step ID:
-
-```
-DAGGLE_OUTPUT_<STEP_ID>_<KEY>
-```
-
-Step IDs are uppercased with hyphens replaced by underscores. For example, step `fit-lda` emitting key `accuracy` becomes:
-
-```
-DAGGLE_OUTPUT_FIT_LDA_ACCURACY
-```
-
-In YAML:
+In an R step, use the [daggleR](https://cynkra.github.io/daggleR/) helpers — [`daggle_output()`](https://cynkra.github.io/daggleR/reference/daggle_output.html) to emit and [`daggle_get_output()`](https://cynkra.github.io/daggleR/reference/daggle_get_output.html) to read:
 
 ```yaml
 - id: extract
   r_expr: |
-    cat("::daggle-output name=row_count::", nrow(data), "\n")
+    daggleR::daggle_output("row_count", nrow(data))
 
 - id: report
   r_expr: |
-    rows <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
+    rows <- as.integer(daggleR::daggle_get_output("extract", "row_count"))
     cat(sprintf("Processing %d rows\n", rows))
   depends: [extract]
 ```
 
-## Using daggleR helpers
+`daggle_output()` validates the key format (must match `[a-zA-Z_][a-zA-Z0-9_]*`), coerces the value to character, and prints a single line. Each emitted value is single-line — for complex data, write to a file and pass the path.
 
-The [daggleR](https://cynkra.github.io/daggleR/) package provides ergonomic wrappers:
+## Wire format and raw protocol
+
+daggleR is a thin convenience layer over a stdout protocol any language can emit. Shell steps and non-R steps emit it directly:
 
 ::: {.panel-tabset}
 
-### Raw protocol
-
-```r
-# Emit
-cat(sprintf("::daggle-output name=row_count::%d\n", nrow(data)))
-
-# Read
-n <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
-```
-
-### With daggleR
+### daggleR (R steps)
 
 ```r
 # Emit
 daggleR::daggle_output("row_count", nrow(data))
 
 # Read
-n <- daggleR::daggle_get_output("extract", "row_count")
+n <- as.integer(daggleR::daggle_get_output("extract", "row_count"))
+```
+
+### Raw protocol
+
+```r
+# Emit (R)
+cat(sprintf("::daggle-output name=row_count::%d\n", nrow(data)))
+
+# Read (R)
+n <- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))
+```
+
+```bash
+# Emit (shell)
+echo "::daggle-output name=row_count::$count"
 ```
 
 :::
+
+Format: `::daggle-output name=<key>::<value>`. Downstream steps receive outputs as environment variables `DAGGLE_OUTPUT_<STEP_ID>_<KEY>`, with the step ID uppercased and hyphens replaced by underscores (e.g. step `fit-lda` emitting `accuracy` becomes `DAGGLE_OUTPUT_FIT_LDA_ACCURACY`). Full spec: [Output Marker Protocol](../reference/output-protocol.qmd).
 
 ## Log handling
 

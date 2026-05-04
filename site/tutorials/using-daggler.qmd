@@ -4,6 +4,14 @@ title: "Tutorial: Using daggleR"
 
 The daggleR package provides two sets of helpers: in-step functions for use inside pipeline steps, and API wrappers for controlling daggle from an R session. This tutorial shows how to migrate from raw protocol calls to daggleR, and how to use the API wrappers.
 
+> **Function reference:** [cynkra.github.io/daggleR/reference](https://cynkra.github.io/daggleR/reference/) — every exported helper, with arguments and examples.
+
+Install with:
+
+```r
+pak::pkg_install("cynkra/daggleR")
+```
+
 ## Part 1: In-step helpers
 
 In-step helpers replace raw `cat()` and `Sys.getenv()` calls with validated, readable functions. They work inside any R step executed by daggle.

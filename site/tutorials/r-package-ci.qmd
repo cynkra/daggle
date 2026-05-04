@@ -92,7 +92,7 @@ Now commit and watch the pipeline kick off.
 
 ## Structured output from built-in steps
 
-The `test:`, `check:`, and `coverage:` step types automatically emit structured output via `::daggle-output::` markers. You do not need to write any parsing code.
+The `test:`, `check:`, and `coverage:` step types automatically emit structured output via `::daggle-output::` markers. You do not need to write any parsing code. From R, read the values with [`daggleR::daggle_get_output()`](https://cynkra.github.io/daggleR/reference/daggle_get_output.html).
 
 **test** emits:
 
