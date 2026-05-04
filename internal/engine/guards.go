@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/internal/envutil"
 	"github.com/cynkra/daggle/state"
 )
 
@@ -94,7 +95,7 @@ func (e *Engine) evaluateCondition(ctx context.Context, cond *dag.StepCondition,
 		return false, nil
 	}
 
-	cmd.Env = append(os.Environ(), env...)
+	cmd.Env = envutil.WithUTF8Locale(append(os.Environ(), env...))
 	cmd.Dir = e.dag.ResolveWorkdir(dag.Step{})
 
 	if err := cmd.Run(); err != nil {

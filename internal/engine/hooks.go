@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/internal/envutil"
 	"github.com/cynkra/daggle/internal/notify"
 	"github.com/cynkra/daggle/state"
 )
@@ -93,6 +94,7 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	baseEnv := buildEnv(e.dag, e.runInfo, e.renvLibPath)
 	cmd.Env = append(os.Environ(), e.buildStepEnv(baseEnv, dag.Step{})...)
 	cmd.Env = append(cmd.Env, e.hookEnvExtras...)
+	cmd.Env = envutil.WithUTF8Locale(cmd.Env)
 
 	// Route hook output through log files so secrets can be redacted
 	hookStdout, err := os.Create(filepath.Join(e.runInfo.Dir, "hook_"+sanitize(name)+".stdout.log"))
