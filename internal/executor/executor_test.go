@@ -86,6 +86,53 @@ func TestShellExecutor_EnvVars(t *testing.T) {
 	}
 }
 
+// TestShellExecutor_ForcesUTF8Locale verifies that step subprocesses get a
+// UTF-8 locale even when the daemon was launched with LANG=C (e.g. systemd,
+// cron). Without this, R's write.csv emits non-ASCII as <U+nnnn> escapes.
+func TestShellExecutor_ForcesUTF8Locale(t *testing.T) {
+	t.Setenv("LC_ALL", "C")
+	t.Setenv("LANG", "C")
+
+	logDir := t.TempDir()
+	step := dag.Step{ID: "locale", Command: `printf '%s|%s' "$LANG" "$LC_ALL"`}
+
+	exec := &ShellExecutor{}
+	result := exec.Run(context.Background(), step, logDir, "", nil)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	stdout, _ := os.ReadFile(filepath.Join(logDir, "locale.stdout.log"))
+	got := strings.TrimRight(string(stdout), "\n")
+	want := "C.UTF-8|C.UTF-8"
+	if got != want {
+		t.Errorf("stdout = %q, want %q", got, want)
+	}
+}
+
+// TestShellExecutor_PreservesNonBrokenLocale verifies that an already-good
+// LC_ALL set on the daemon is not clobbered.
+func TestShellExecutor_PreservesNonBrokenLocale(t *testing.T) {
+	t.Setenv("LC_ALL", "en_US.UTF-8")
+	t.Setenv("LANG", "en_US.UTF-8")
+
+	logDir := t.TempDir()
+	step := dag.Step{ID: "locale-keep", Command: `printf '%s|%s' "$LANG" "$LC_ALL"`}
+
+	exec := &ShellExecutor{}
+	result := exec.Run(context.Background(), step, logDir, "", nil)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+
+	stdout, _ := os.ReadFile(filepath.Join(logDir, "locale-keep.stdout.log"))
+	got := strings.TrimRight(string(stdout), "\n")
+	want := "en_US.UTF-8|en_US.UTF-8"
+	if got != want {
+		t.Errorf("stdout = %q, want %q", got, want)
+	}
+}
+
 func TestShellExecutor_Workdir(t *testing.T) {
 	logDir := t.TempDir()
 	workdir := t.TempDir()

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/internal/envutil"
 	"github.com/cynkra/daggle/state"
 )
 
@@ -88,6 +89,7 @@ func checkApprovalDecision(runDir, stepID string) string {
 func runApprovalNotify(ctx context.Context, hook *dag.Hook, logDir, stepID string) {
 	if hook.Command != "" {
 		cmd := exec.CommandContext(ctx, state.ToolPath("sh"), "-c", hook.Command)
+		cmd.Env = envutil.WithUTF8Locale(os.Environ())
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		_ = cmd.Run()
@@ -98,6 +100,7 @@ func runApprovalNotify(ctx context.Context, hook *dag.Hook, logDir, stepID strin
 			return
 		}
 		cmd := exec.CommandContext(ctx, state.ToolPath("rscript"), "--no-save", "--no-restore", tmpFile)
+		cmd.Env = envutil.WithUTF8Locale(os.Environ())
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		runErr := cmd.Run()

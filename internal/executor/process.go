@@ -13,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/cynkra/daggle/internal/envutil"
 )
 
 const (
@@ -52,8 +54,10 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 		cmd.Dir = workdir
 	}
 
-	// Merge environment
-	cmd.Env = append(os.Environ(), env...)
+	// Merge environment, ensuring a UTF-8 locale so step subprocesses
+	// (R, Python, libc) don't escape non-ASCII output as <U+nnnn> when the
+	// daemon was launched with LANG=C.
+	cmd.Env = envutil.WithUTF8Locale(append(os.Environ(), env...))
 
 	// Set up log files
 	stdoutPath := filepath.Join(logDir, stepID+".stdout.log")
