@@ -426,9 +426,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul class="collapse">
-  <li><a href="#output-marker-protocol" id="toc-output-marker-protocol" class="nav-link active" data-scroll-target="#output-marker-protocol">Output marker protocol</a></li>
-  <li><a href="#reading-outputs" id="toc-reading-outputs" class="nav-link" data-scroll-target="#reading-outputs">Reading outputs</a></li>
-  <li><a href="#using-daggler-helpers" id="toc-using-daggler-helpers" class="nav-link" data-scroll-target="#using-daggler-helpers">Using daggleR helpers</a></li>
+  <li><a href="#emitting-and-reading-outputs" id="toc-emitting-and-reading-outputs" class="nav-link active" data-scroll-target="#emitting-and-reading-outputs">Emitting and reading outputs</a></li>
+  <li><a href="#wire-format-and-raw-protocol" id="toc-wire-format-and-raw-protocol" class="nav-link" data-scroll-target="#wire-format-and-raw-protocol">Wire format and raw protocol</a></li>
   <li><a href="#log-handling" id="toc-log-handling" class="nav-link" data-scroll-target="#log-handling">Log handling</a></li>
   </ul>
 <div class="toc-actions"><ul class="collapse"><li><a href="https://github.com/cynkra/daggle/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></nav>
@@ -457,56 +456,45 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Steps pass data to downstream steps using stdout markers. daggle parses these markers, strips them from terminal output, and passes the values as environment variables.</p>
-<section id="output-marker-protocol" class="level2">
-<h2 class="anchored" data-anchor-id="output-marker-protocol">Output marker protocol</h2>
-<p>Print a line matching this format from any step:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-output name=row_count::"</span>, <span class="fu">nrow</span>(data), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Format: <code>::daggle-output name=&lt;key&gt;::&lt;value&gt;</code></p>
-<ul>
-<li><strong>Key:</strong> <code>[a-zA-Z_][a-zA-Z0-9_]*</code> (alphanumeric + underscores)</li>
-<li><strong>Value:</strong> everything after <code>::</code> until the newline, trimmed</li>
-<li><strong>Single-line only.</strong> For complex data, write to a file and pass the path.</li>
-</ul>
+<section id="emitting-and-reading-outputs" class="level2">
+<h2 class="anchored" data-anchor-id="emitting-and-reading-outputs">Emitting and reading outputs</h2>
+<p>In an R step, use the <a href="https://cynkra.github.io/daggleR/">daggleR</a> helpers — <a href="https://cynkra.github.io/daggleR/reference/daggle_output.html"><code>daggle_output()</code></a> to emit and <a href="https://cynkra.github.io/daggleR/reference/daggle_get_output.html"><code>daggle_get_output()</code></a> to read:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> extract</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">  r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    daggleR::daggle_output("row_count", nrow(data))</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> report</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">  r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    rows &lt;- as.integer(daggleR::daggle_get_output("extract", "row_count"))</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    cat(sprintf("Processing %d rows\n", rows))</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">extract</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>daggle_output()</code> validates the key format (must match <code>[a-zA-Z_][a-zA-Z0-9_]*</code>), coerces the value to character, and prints a single line. Each emitted value is single-line — for complex data, write to a file and pass the path.</p>
 </section>
-<section id="reading-outputs" class="level2">
-<h2 class="anchored" data-anchor-id="reading-outputs">Reading outputs</h2>
-<p>Downstream steps receive outputs as environment variables, namespaced by step ID:</p>
-<pre><code>DAGGLE_OUTPUT_&lt;STEP_ID&gt;_&lt;KEY&gt;</code></pre>
-<p>Step IDs are uppercased with hyphens replaced by underscores. For example, step <code>fit-lda</code> emitting key <code>accuracy</code> becomes:</p>
-<pre><code>DAGGLE_OUTPUT_FIT_LDA_ACCURACY</code></pre>
-<p>In YAML:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> extract</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">  r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    cat("::daggle-output name=row_count::", nrow(data), "\n")</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> report</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">  r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    rows &lt;- as.integer(Sys.getenv("DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"))</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    cat(sprintf("Processing %d rows\n", rows))</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">extract</span><span class="kw">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</section>
-<section id="using-daggler-helpers" class="level2">
-<h2 class="anchored" data-anchor-id="using-daggler-helpers">Using daggleR helpers</h2>
-<p>The <a href="https://cynkra.github.io/daggleR/">daggleR</a> package provides ergonomic wrappers:</p>
+<section id="wire-format-and-raw-protocol" class="level2">
+<h2 class="anchored" data-anchor-id="wire-format-and-raw-protocol">Wire format and raw protocol</h2>
+<p>daggleR is a thin convenience layer over a stdout protocol any language can emit. Shell steps and non-R steps emit it directly:</p>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">Raw protocol</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">With daggleR</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">daggleR (R steps)</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Raw protocol</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Emit</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"::daggle-output name=row_count::%d</span><span class="sc">\n</span><span class="st">"</span>, <span class="fu">nrow</span>(data)))</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Read</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(<span class="fu">Sys.getenv</span>(<span class="st">"DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Emit</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>daggleR<span class="sc">::</span><span class="fu">daggle_output</span>(<span class="st">"row_count"</span>, <span class="fu">nrow</span>(data))</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Read</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(daggleR<span class="sc">::</span><span class="fu">daggle_get_output</span>(<span class="st">"extract"</span>, <span class="st">"row_count"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Emit</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>daggleR<span class="sc">::</span><span class="fu">daggle_output</span>(<span class="st">"row_count"</span>, <span class="fu">nrow</span>(data))</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Read</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> daggleR<span class="sc">::</span><span class="fu">daggle_get_output</span>(<span class="st">"extract"</span>, <span class="st">"row_count"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Emit (R)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"::daggle-output name=row_count::%d</span><span class="sc">\n</span><span class="st">"</span>, <span class="fu">nrow</span>(data)))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Read (R)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(<span class="fu">Sys.getenv</span>(<span class="st">"DAGGLE_OUTPUT_EXTRACT_ROW_COUNT"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Emit (shell)</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">"::daggle-output name=row_count::</span><span class="va">$count</span><span class="st">"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </div>
 </div>
+<p>Format: <code>::daggle-output name=&lt;key&gt;::&lt;value&gt;</code>. Downstream steps receive outputs as environment variables <code>DAGGLE_OUTPUT_&lt;STEP_ID&gt;_&lt;KEY&gt;</code>, with the step ID uppercased and hyphens replaced by underscores (e.g.&nbsp;step <code>fit-lda</code> emitting <code>accuracy</code> becomes <code>DAGGLE_OUTPUT_FIT_LDA_ACCURACY</code>). Full spec: <a href="../reference/output-protocol.html">Output Marker Protocol</a>.</p>
 </section>
 <section id="log-handling" class="level2">
 <h2 class="anchored" data-anchor-id="log-handling">Log handling</h2>

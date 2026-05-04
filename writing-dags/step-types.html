@@ -479,7 +479,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">  r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    data &lt;- readRDS("data/clean.rds")</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    cat(sprintf("Rows: %d\n", nrow(data)))</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    cat("::daggle-output name=row_count::", nrow(data), "\n")</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    daggleR::daggle_output("row_count", nrow(data))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The example above uses <a href="https://cynkra.github.io/daggleR/reference/daggle_output.html"><code>daggleR::daggle_output()</code></a> to emit a downstream value — see <a href="../writing-dags/data-passing.html">Inter-Step Data Passing</a> for the full pattern.</p>
 </section>
 <section id="command-shell" class="level3">
 <h3 class="anchored" data-anchor-id="command-shell"><code>command:</code> – Shell</h3>

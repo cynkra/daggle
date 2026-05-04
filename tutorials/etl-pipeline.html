@@ -435,6 +435,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>This tutorial builds a data extraction, cleaning, summarization, plotting, and reporting pipeline using the Palmer Penguins dataset. It demonstrates step dependencies, parallel execution, output markers, and lifecycle hooks.</p>
+<p>Examples below use the <a href="https://cynkra.github.io/daggleR/">daggleR</a> companion package for in-step helpers; install it with <code>pak::pkg_install("cynkra/daggleR")</code>.</p>
 <section id="the-pipeline" class="level2">
 <h2 class="anchored" data-anchor-id="the-pipeline">The pipeline</h2>
 <p>Create <code>pipeline.yaml</code> in your project directory:</p>
@@ -459,7 +460,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>      raw &lt;- penguins</span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>      cat(sprintf("Loaded %d rows, %d columns\n", nrow(raw), ncol(raw)))</span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      saveRDS(raw, file.path(Sys.getenv("DATA_DIR"), "raw_penguins.rds"))</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=n_raw::", nrow(raw), "\n")</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("n_raw", nrow(raw))</span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">setup</span><span class="kw">]</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> clean</span></span>
@@ -470,8 +471,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>      cat(sprintf("Removed %d incomplete rows (%d remaining)\n",</span>
 <span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>                  nrow(raw) - nrow(clean), nrow(clean)))</span>
 <span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>      saveRDS(clean, file.path(Sys.getenv("DATA_DIR"), "clean_penguins.rds"))</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=n_clean::", nrow(clean), "\n")</span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=n_dropped::", nrow(raw) - nrow(clean), "\n")</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("n_clean", nrow(clean))</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("n_dropped", nrow(raw) - nrow(clean))</span>
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">extract</span><span class="kw">]</span></span>
 <span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> summarize</span></span>
@@ -493,7 +494,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>      print(summary_df, row.names = FALSE)</span>
 <span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>      write.csv(summary_df, file.path(Sys.getenv("OUTPUT_DIR"), "species_summary.csv"),</span>
 <span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>                row.names = FALSE)</span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=n_species::", nrow(summary_df), "\n")</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("n_species", nrow(summary_df))</span>
 <span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">clean</span><span class="kw">]</span></span>
 <span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> plot</span></span>
@@ -541,11 +542,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="output-markers" class="level2">
 <h2 class="anchored" data-anchor-id="output-markers">Output markers</h2>
-<p>Steps communicate values downstream using the <code>::daggle-output::</code> protocol. The <code>extract</code> step emits:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-output name=n_raw::"</span>, <span class="fu">nrow</span>(raw), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>daggle strips these lines from terminal output, parses them, and injects them as environment variables into downstream steps. The <code>clean</code> step could read this value as:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>n_raw <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(<span class="fu">Sys.getenv</span>(<span class="st">"DAGGLE_OUTPUT_EXTRACT_N_RAW"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Step IDs are uppercased and hyphens become underscores in the variable name.</p>
+<p>Steps communicate values downstream by emitting the <code>::daggle-output::</code> protocol on stdout. In R, <a href="https://cynkra.github.io/daggleR/reference/daggle_output.html"><code>daggleR::daggle_output()</code></a> wraps the protocol with name validation:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>daggleR<span class="sc">::</span><span class="fu">daggle_output</span>(<span class="st">"n_raw"</span>, <span class="fu">nrow</span>(raw))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>daggle strips these lines from terminal output, parses them, and injects them as environment variables into downstream steps. The <code>clean</code> step reads the value with <a href="https://cynkra.github.io/daggleR/reference/daggle_get_output.html"><code>daggle_get_output()</code></a>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>n_raw <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(daggleR<span class="sc">::</span><span class="fu">daggle_get_output</span>(<span class="st">"extract"</span>, <span class="st">"n_raw"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Under the hood this reads <code>DAGGLE_OUTPUT_EXTRACT_N_RAW</code> from the environment — the helper handles the uppercasing and hyphen-to-underscore conversion. See <a href="../reference/output-protocol.html">Output Marker Protocol</a> for the wire format.</p>
 </section>
 <section id="environment-variables" class="level2">
 <h2 class="anchored" data-anchor-id="environment-variables">Environment variables</h2>

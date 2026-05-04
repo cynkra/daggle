@@ -434,6 +434,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>This tutorial fits three classification models in parallel, collects their accuracies, and produces a comparison table. It demonstrates parallel step execution and reading upstream outputs via environment variables.</p>
+<p>Examples below use the <a href="https://cynkra.github.io/daggleR/">daggleR</a> companion package for in-step helpers; install it with <code>pak::pkg_install("cynkra/daggleR")</code>.</p>
 <section id="the-pipeline" class="level2">
 <h2 class="anchored" data-anchor-id="the-pipeline">The pipeline</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> penguin-models</span></span>
@@ -466,8 +467,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>      saveRDS(test, file.path(Sys.getenv("DATA_DIR"), "test.rds"))</span>
 <span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>      cat(sprintf("Train: %d rows, Test: %d rows\n", nrow(train), nrow(test)))</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=n_train::", nrow(train), "\n")</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=n_test::", nrow(test), "\n")</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("n_train", nrow(train))</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("n_test", nrow(test))</span>
 <span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> fit-lda</span></span>
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="fu">    r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
@@ -481,7 +482,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>      saveRDS(model, file.path(Sys.getenv("MODEL_DIR"), "lda_model.rds"))</span>
 <span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>      cat(sprintf("LDA accuracy: %.1f%%\n", accuracy * 100))</span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("accuracy", round(accuracy, 4))</span>
 <span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">prepare</span><span class="kw">]</span></span>
 <span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> fit-tree</span></span>
@@ -496,7 +497,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>      saveRDS(model, file.path(Sys.getenv("MODEL_DIR"), "tree_model.rds"))</span>
 <span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>      cat(sprintf("Decision tree accuracy: %.1f%%\n", accuracy * 100))</span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("accuracy", round(accuracy, 4))</span>
 <span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">prepare</span><span class="kw">]</span></span>
 <span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> fit-knn</span></span>
@@ -516,14 +517,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a>      accuracy &lt;- mean(preds == test$species)</span>
 <span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a>      cat(sprintf("KNN (k=5) accuracy: %.1f%%\n", accuracy * 100))</span>
-<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a>      cat("::daggle-output name=accuracy::", round(accuracy, 4), "\n")</span>
+<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a>      daggleR::daggle_output("accuracy", round(accuracy, 4))</span>
 <span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">depends</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">prepare</span><span class="kw">]</span></span>
 <span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">id</span><span class="kw">:</span><span class="at"> compare</span></span>
 <span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a><span class="fu">    r_expr</span><span class="kw">: </span><span class="ch">|</span></span>
-<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>      lda_acc &lt;- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_LDA_ACCURACY"))</span>
-<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>      tree_acc &lt;- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_TREE_ACCURACY"))</span>
-<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a>      knn_acc &lt;- as.numeric(Sys.getenv("DAGGLE_OUTPUT_FIT_KNN_ACCURACY"))</span>
+<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>      lda_acc &lt;- as.numeric(daggleR::daggle_get_output("fit-lda", "accuracy"))</span>
+<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>      tree_acc &lt;- as.numeric(daggleR::daggle_get_output("fit-tree", "accuracy"))</span>
+<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a>      knn_acc &lt;- as.numeric(daggleR::daggle_get_output("fit-knn", "accuracy"))</span>
 <span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a>      results &lt;- data.frame(</span>
 <span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a>        model = c("LDA", "Decision Tree", "KNN (k=5)"),</span>
@@ -550,11 +551,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="reading-upstream-outputs" class="level2">
 <h2 class="anchored" data-anchor-id="reading-upstream-outputs">Reading upstream outputs</h2>
-<p>Each fit step emits the same key (<code>accuracy</code>), but daggle namespaces outputs by step ID. The <code>compare</code> step reads them as:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>lda_acc  <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">Sys.getenv</span>(<span class="st">"DAGGLE_OUTPUT_FIT_LDA_ACCURACY"</span>))</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>tree_acc <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">Sys.getenv</span>(<span class="st">"DAGGLE_OUTPUT_FIT_TREE_ACCURACY"</span>))</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>knn_acc  <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">Sys.getenv</span>(<span class="st">"DAGGLE_OUTPUT_FIT_KNN_ACCURACY"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>The naming convention is <code>DAGGLE_OUTPUT_&lt;STEP_ID&gt;_&lt;KEY&gt;</code>, with the step ID uppercased and hyphens replaced by underscores.</p>
+<p>Each fit step emits the same key (<code>accuracy</code>), but daggle namespaces outputs by step ID. <a href="https://cynkra.github.io/daggleR/reference/daggle_get_output.html"><code>daggleR::daggle_get_output()</code></a> reads them by step + key:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>lda_acc  <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(daggleR<span class="sc">::</span><span class="fu">daggle_get_output</span>(<span class="st">"fit-lda"</span>, <span class="st">"accuracy"</span>))</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>tree_acc <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(daggleR<span class="sc">::</span><span class="fu">daggle_get_output</span>(<span class="st">"fit-tree"</span>, <span class="st">"accuracy"</span>))</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>knn_acc  <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(daggleR<span class="sc">::</span><span class="fu">daggle_get_output</span>(<span class="st">"fit-knn"</span>, <span class="st">"accuracy"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Under the hood the helper reads <code>DAGGLE_OUTPUT_&lt;STEP_ID&gt;_&lt;KEY&gt;</code>, with the step ID uppercased and hyphens replaced by underscores. Returns a character string — coerce with <code>as.numeric()</code> / <code>as.integer()</code> if you need a number.</p>
 </section>
 <section id="alternative-matrix-runs" class="level2">
 <h2 class="anchored" data-anchor-id="alternative-matrix-runs">Alternative: matrix runs</h2>
@@ -601,7 +602,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">sprintf</span>(<span class="st">"%s accuracy: %.1f%%</span><span class="sc">\n</span><span class="st">"</span>, algo, accuracy <span class="sc">*</span> <span class="dv">100</span>))</span>
-<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"::daggle-output name=accuracy::"</span>, <span class="fu">round</span>(accuracy, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>daggleR<span class="sc">::</span><span class="fu">daggle_output</span>(<span class="st">"accuracy"</span>, <span class="fu">round</span>(accuracy, <span class="dv">4</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>The matrix approach is cleaner when models share structure. Use explicit steps when each model has substantially different logic.</p>
 </section>
 <section id="running" class="level2">

@@ -402,7 +402,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul class="collapse">
-  <li><a href="#marker-format" id="toc-marker-format" class="nav-link active" data-scroll-target="#marker-format">Marker format</a></li>
+  <li><a href="#r-quick-reference" id="toc-r-quick-reference" class="nav-link active" data-scroll-target="#r-quick-reference">R quick reference</a></li>
+  <li><a href="#marker-format" id="toc-marker-format" class="nav-link" data-scroll-target="#marker-format">Marker format</a></li>
   <li><a href="#environment-variable-naming" id="toc-environment-variable-naming" class="nav-link" data-scroll-target="#environment-variable-naming">Environment variable naming</a></li>
   <li><a href="#parsing-behavior" id="toc-parsing-behavior" class="nav-link" data-scroll-target="#parsing-behavior">Parsing behavior</a></li>
   <li><a href="#examples" id="toc-examples" class="nav-link" data-scroll-target="#examples">Examples</a></li>
@@ -437,6 +438,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Steps pass data to downstream steps by printing structured markers to stdout. daggle parses these markers during execution, strips them from terminal output, and injects the values as environment variables for dependent steps.</p>
+<section id="r-quick-reference" class="level2">
+<h2 class="anchored" data-anchor-id="r-quick-reference">R quick reference</h2>
+<p>In an R step, prefer the <a href="https://cynkra.github.io/daggleR/">daggleR</a> helpers. They validate names, coerce values, and emit the protocol below:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Marker</th>
+<th>daggleR helper</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>::daggle-output::</code></td>
+<td><a href="https://cynkra.github.io/daggleR/reference/daggle_output.html"><code>daggle_output(name, value)</code></a></td>
+</tr>
+<tr class="even">
+<td><code>::daggle-summary format=markdown::</code></td>
+<td><a href="https://cynkra.github.io/daggleR/reference/daggle_summary_md.html"><code>daggle_summary_md(text)</code></a></td>
+</tr>
+<tr class="odd">
+<td><code>::daggle-meta type=numeric::</code></td>
+<td><a href="https://cynkra.github.io/daggleR/reference/daggle_meta_numeric.html"><code>daggle_meta_numeric(name, value)</code></a></td>
+</tr>
+<tr class="even">
+<td><code>::daggle-meta type=text::</code></td>
+<td><a href="https://cynkra.github.io/daggleR/reference/daggle_meta_text.html"><code>daggle_meta_text(name, value)</code></a></td>
+</tr>
+<tr class="odd">
+<td><code>::daggle-meta type=table::</code></td>
+<td><a href="https://cynkra.github.io/daggleR/reference/daggle_meta_table.html"><code>daggle_meta_table(name, df)</code></a></td>
+</tr>
+<tr class="even">
+<td><code>::daggle-meta type=image::</code></td>
+<td><a href="https://cynkra.github.io/daggleR/reference/daggle_meta_image.html"><code>daggle_meta_image(name, path)</code></a></td>
+</tr>
+<tr class="odd">
+<td><code>::daggle-validation::</code></td>
+<td><a href="https://cynkra.github.io/daggleR/reference/daggle_validation.html"><code>daggle_validation(name, status, message)</code></a></td>
+</tr>
+<tr class="even">
+<td>reading upstream</td>
+<td><a href="https://cynkra.github.io/daggleR/reference/daggle_get_output.html"><code>daggle_get_output(step, key)</code></a></td>
+</tr>
+</tbody>
+</table>
+<p>The rest of this page documents the wire format that any language can emit. See <a href="../tutorials/using-daggler.html">Tutorial: Using daggleR</a> for full R examples.</p>
+</section>
 <section id="marker-format" class="level2">
 <h2 class="anchored" data-anchor-id="marker-format">Marker format</h2>
 <pre><code>::daggle-output name=&lt;key&gt;::&lt;value&gt;</code></pre>

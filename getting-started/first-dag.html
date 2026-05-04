@@ -464,6 +464,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Override the <code>who</code> parameter:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> run hello <span class="at">-p</span> who=David</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>You’ll see step output streamed to the terminal. Output markers (<code>::daggle-output::</code> lines) are parsed and stripped from terminal output but kept in log files.</p>
+<p>In real R pipelines, prefer the <a href="https://cynkra.github.io/daggleR/">daggleR</a> helpers — <code>daggleR::daggle_output("result", "success")</code> instead of the raw <code>cat()</code> call above. See <a href="../tutorials/using-daggler.html">Tutorial: Using daggleR</a>.</p>
 </section>
 <section id="check-status" class="level2">
 <h2 class="anchored" data-anchor-id="check-status">4. Check status</h2>

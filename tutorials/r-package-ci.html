@@ -508,7 +508,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="structured-output-from-built-in-steps" class="level2">
 <h2 class="anchored" data-anchor-id="structured-output-from-built-in-steps">Structured output from built-in steps</h2>
-<p>The <code>test:</code>, <code>check:</code>, and <code>coverage:</code> step types automatically emit structured output via <code>::daggle-output::</code> markers. You do not need to write any parsing code.</p>
+<p>The <code>test:</code>, <code>check:</code>, and <code>coverage:</code> step types automatically emit structured output via <code>::daggle-output::</code> markers. You do not need to write any parsing code. From R, read the values with <a href="https://cynkra.github.io/daggleR/reference/daggle_get_output.html"><code>daggleR::daggle_get_output()</code></a>.</p>
 <p><strong>test</strong> emits:</p>
 <ul>
 <li><code>passed</code> – number of passing tests</li>
