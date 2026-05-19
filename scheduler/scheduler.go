@@ -452,11 +452,22 @@ func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params m
 			return
 		}
 
+		dagHash, _ := dag.HashFile(dagPath)
+		meta := &state.RunMeta{
+			RunID:         run.ID,
+			DAGName:       expanded.Name,
+			DAGHash:       dagHash,
+			DAGPath:       dagPath,
+			Params:        params,
+			TriggerSource: source,
+		}
+
 		cacheDir := filepath.Join(state.DataDir(), "cache")
 		engCfg := engine.Config{
 			DAG:         expanded,
 			Run:         run,
 			ExecFactory: executor.New,
+			Meta:        meta,
 			Redactor:    dag.NewRedactor(dag.AllEnvMaps(expanded)...),
 			CacheStore:  cache.NewStore(cacheDir),
 		}
@@ -468,7 +479,7 @@ func (s *Scheduler) triggerRunWithParams(dagPath string, source string, params m
 			s.logger.Error("engine init failed", "dag", d.Name, "error", err)
 			// Run dir already exists from CreateRun above; record the
 			// failure into it so the UI shows "failed" instead of "unknown".
-			writeRunFailureEvents(run.Dir, fmt.Errorf("engine init: %w", err))
+			writeRunFailureEvents(run.Dir, source, fmt.Errorf("engine init: %w", err))
 			return
 		}
 
@@ -505,16 +516,17 @@ func (s *Scheduler) recordTriggerFailure(dagName, source string, cause error) {
 		s.logger.Error("could not record trigger failure", "dag", dagName, "source", source, "error", err)
 		return
 	}
-	writeRunFailureEvents(run.Dir, cause)
+	writeRunFailureEvents(run.Dir, source, cause)
 }
 
 // writeRunFailureEvents writes a Started+Failed event pair to an existing run
 // directory. Used by the scheduler to surface failures that happen between
-// run-dir creation and engine handoff.
-func writeRunFailureEvents(runDir string, cause error) {
+// run-dir creation and engine handoff. The source is stamped on run_started so
+// these synthetic failures are still attributable.
+func writeRunFailureEvents(runDir, source string, cause error) {
 	w := state.NewEventWriter(runDir)
 	defer func() { _ = w.Close() }()
-	_ = w.Write(state.Event{Type: state.EventRunStarted})
+	_ = w.Write(state.Event{Type: state.EventRunStarted, Source: source})
 	_ = w.Write(state.Event{Type: state.EventRunFailed, Error: cause.Error()})
 }
 

@@ -109,7 +109,11 @@ func (e *Engine) Run(ctx context.Context) error {
 	// Emit run_started immediately so a run dir without any later events still
 	// shows up as a real run in the UI. Validation/topo-sort failures below
 	// add a run_failed event and return; tier failures are handled later.
-	e.writeEvent(state.Event{Type: state.EventRunStarted})
+	started := state.Event{Type: state.EventRunStarted}
+	if e.meta != nil {
+		started.Source = e.meta.TriggerSource
+	}
+	e.writeEvent(started)
 	e.logger.Info("run started", "dag", e.dag.Name, "run_id", e.runInfo.ID)
 
 	// Write initial metadata
