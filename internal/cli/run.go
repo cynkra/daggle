@@ -147,6 +147,7 @@ func executeRun(ctx context.Context, dagPath string, params map[string]string) e
 		Platform:      runtime.GOOS + "/" + runtime.GOARCH,
 		Params:        params,
 		DaggleVersion: Version,
+		TriggerSource: "cli",
 	}
 
 	projectDir := resolveProjectDir(expanded)

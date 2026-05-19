@@ -57,6 +57,7 @@ type Event struct {
 	Attempt     int       `json:"attempt,omitempty"`
 	Message     string    `json:"message,omitempty"`  // approval message
 	Approver    string    `json:"approver,omitempty"` // system user who approved/rejected
+	Source      string    `json:"source,omitempty"`   // trigger source on run_started (cron/manual/api/...)
 
 	// Annotation fields (used by EventRunAnnotated).
 	Note   string `json:"note,omitempty"`

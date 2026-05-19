@@ -112,10 +112,10 @@ daggle's threat model is **trusted multi-user, not adversarial tenancy**: anyone
 What that means in practice today (as of v0.3.1):
 
 - **Loopback-only by default.** `daggle serve` binds to `127.0.0.1`. Reachable only from the host or via SSH tunnel.
-- **No authentication on state-changing endpoints.** `/run`, `/cancel`, `/approve`, `/reject`, `/projects`, `/cleanup`, `/annotations`, `/schedules` all accept anyone who can reach the loopback port. Phase 11 adds basic + token auth and a guardrail that refuses to start with a non-loopback bind under `DAGGLE_AUTH_MODE=none`.
-- **No CORS headers.** No browser-origin validation; the read-only UI is served from the same origin and there's no expectation of cross-origin calls today. Will be added with Phase 11 auth.
+- **No authentication on state-changing endpoints.** `/run`, `/cancel`, `/approve`, `/reject`, `/projects`, `/cleanup`, `/annotations`, `/schedules` all accept anyone who can reach the loopback port. Phase 11 adds per-user authentication and authorisation; Phase 12 adds a single-tenant fallback (`DAGGLE_AUTH_MODE=none|basic|token`) and a guardrail that refuses to start with a non-loopback bind under `DAGGLE_AUTH_MODE=none`.
+- **No CORS headers.** No browser-origin validation; the read-only UI is served from the same origin and there's no expectation of cross-origin calls today. Will be added with Phase 12 (self-hosted browser deployment).
 - **No webhook replay protection beyond HMAC.** `scheduler/webhook.go` validates `X-Daggle-Signature` against a per-DAG secret, but there's no nonce or timestamp window — a captured signed request can be replayed. Acceptable for the current "trusted CI hits this" posture; revisit if webhooks ever face a public surface.
-- **No rate limiting.** The same posture argument applies — loopback or trusted SSH tunnels mean bursty clients are not currently a threat. Phase 11 may add a basic global limiter alongside auth.
+- **No rate limiting.** The same posture argument applies — loopback or trusted SSH tunnels mean bursty clients are not currently a threat. Phase 12 may add a basic global limiter alongside the self-hosted-browser-facing deployment shape.
 
 What the codebase does enforce today (the high/medium audit items shipped in 0.3.1):
 
@@ -126,7 +126,7 @@ What the codebase does enforce today (the high/medium audit items shipped in 0.3
 - HMAC validation is constant-time (`hmac.Equal`).
 - `~/.vault-token` is refused if its mode permits group/world access; the scheduler PID file is written 0600.
 
-If you're operating daggle in a less-trusted environment than the on-prem PWB sidecar, wait for Phase 11 (or stand it up behind your own auth proxy + non-loopback bind on a VPN-only network).
+If you're operating daggle in a less-trusted environment than the on-prem PWB sidecar, wait for Phase 11 (multi-user safety) and Phase 12 (self-hosted deployment shape) — or stand it up behind your own auth proxy + non-loopback bind on a VPN-only network.
 
 ## Roadmap
 
@@ -156,32 +156,15 @@ If you're operating daggle in a less-trusted environment than the on-prem PWB si
 
 ### Planned
 
-**Phase 11 — Deploy & Secure:**
+**Phase 11 — Multi-user safety:** Make the on-prem multi-user PWB deployment actually safe. RBAC with per-project ownership in `projects.yaml`, identity propagation so step subprocesses run under the caller's UID rather than root, and Unix-permission-based filesystem isolation. Closes the "scheduled-but-private-and-run-as-me" gap that today forces every shared workflow to be world-visible-and-root-executed.
 
-Today daggle supports exactly one deployment shape: the on-prem PWB sidecar, where daggle runs as a supervisord process inside the PWB container, binds to `127.0.0.1` only (hardcoded), and runs unauthenticated because the port is never exposed outside the container. Phase 11 adds a second supported posture — a small-scale, single-node, self-hosted daggle brought up with `docker compose up` and reachable from a browser with TLS and a login — while leaving the on-prem defaults untouched (loopback, no auth). Inspired by [dagu](https://github.com/dagu-org/dagu)'s deployment model (loopback-by-default, explicit `DAGU_HOST=0.0.0.0`, `DAGU_AUTH_MODE=basic|builtin|oidc`, single-volume file-backed state, published image, minimal + prod compose files).
+→ See [`auth-and-deployment.md`](auth-and-deployment.md) for the working design.
 
-Scope is deliberately narrow: static bearer token + HTTP basic auth only — no user accounts, no JWT sessions, no `/setup` flow, no OIDC. Multi-user RBAC, SSO, and distributed workers stay in Phase 12. daggle is pre-release, so internal rewrites (pulling transport concerns out of `api/server.go` into an `internal/httpserve/` package, adding an `internal/auth/` middleware layer) are on the table.
+**Phase 12 — Deploy & Secure:** Add a second supported deployment posture (small-scale self-hosted daggle behind TLS with a single-tenant login) alongside the on-prem PWB sidecar. Configurable bind address, three auth modes (`none`/`basic`/`token`), TLS termination, reverse-proxy awareness, safety guardrails that refuse unsafe combinations at startup, published Docker images, and compose templates. Independent of Phase 11 — either order ships fine.
 
-- **Configurable bind address** — `--bind` / `DAGGLE_BIND_ADDR`, default `127.0.0.1` (on-prem posture preserved). Opt in to `0.0.0.0` for public bind.
-- **Auth modes** — `DAGGLE_AUTH_MODE=none|basic|token`. Basic uses `DAGGLE_AUTH_BASIC_USERNAME/PASSWORD` (or `_PASSWORD_FILE` for Docker secrets). Token uses `DAGGLE_AUTH_TOKEN` / `DAGGLE_AUTH_TOKEN_FILE`, auto-generated and persisted to `$DAGGLE_DATA_DIR/auth/token` (0600) if unset, printed once on first start.
-- **TLS termination in daggle** — `DAGGLE_TLS_CERT_FILE` + `DAGGLE_TLS_KEY_FILE` for the no-reverse-proxy case.
-- **Reverse-proxy awareness** — `DAGGLE_BASE_PATH` for subpath mounting behind Caddy/nginx; `--trust-proxy` to honor `X-Forwarded-*` headers.
-- **Safety guardrails** — daggle refuses to start if bind is non-loopback and auth is `none` (prevents accidental open API); refuses if TLS cert/key are asymmetric; refuses basic mode with missing credentials.
-- **First-class Docker** — published `ghcr.io/cynkra/daggle` (~50 MB, HTTP/shell/quarto DAGs) and `ghcr.io/cynkra/daggle-r` (rocker/r-ver + renv, full R step support). GoReleaser publishes both on tag.
-- **Compose templates** — `deploy/docker/compose.minimal.yaml` (loopback, no auth, matches on-prem posture) and `deploy/docker/compose.selfhost.yaml` (daggle + Caddy auto-TLS via Let's Encrypt, token auth by default).
-- **`daggle token generate`** — print a new secure random token (32 bytes, base64url).
-- **`daggle doctor` deploy section** — reports bind, auth mode, TLS state, base path; warns on near-misses of the guardrails.
-- **daggleR auth** — companion R package honors `DAGGLE_API_TOKEN` (Authorization: Bearer) and `DAGGLE_API_BASIC_USER`/`DAGGLE_API_BASIC_PASSWORD`. Tracked separately in the daggleR repo.
-- **Docs** — new `docs/deploy.md` covers both on-prem PWB sidecar and self-hosted compose. Existing webhook HMAC in `scheduler/webhook.go` is already correct and just needs to be documented.
+→ See [`auth-and-deployment.md`](auth-and-deployment.md) for the working design.
 
-**Phase 12 — Scale:**
-- **State compaction** — `daggle compact <dag>` merges old `events.jsonl` files into summary records. Keep full detail for recent N runs, compress historical data. Prevents slowdown on hourly DAGs running for months.
-- **Distributed workers** — Coordinator/worker model for running steps across machines.
-- **Queue system** — Concurrency limits with queue overlap policy.
-- **RBAC** — File-based role-based access control. Builds on the Phase 11 auth middleware, whose `Validator` interface attaches a principal to the request context so authorization checks layer on without touching transport code.
-- **Prometheus metrics** — Expose scheduler and run metrics for monitoring.
-- **SSH remote execution** — Run steps on remote machines via SSH.
-- **R session pooling** — Keep warm Rscript processes for fast inline expressions.
+**Phase 13 — Scale:** State compaction (`daggle compact <dag>` merges old `events.jsonl` files into summary records to prevent slowdown on long-running DAGs), distributed workers (coordinator/worker model across machines), a queue system (concurrency limits with queue overlap policy), Prometheus metrics, SSH remote execution, and R session pooling for fast inline expressions. None of these are gated on Phase 11 or 12.
 
 ## Open design questions
 
@@ -238,8 +221,8 @@ Ideas we may want to consider at some point. Not on the roadmap; no commitment t
 - **Scheduler dry-run** — `daggle serve --dry-run`: print what triggers would fire over the next N hours, without actually firing.
 - **Drift detection** — Flag runs where step duration or success-rate breaks recent trend. Statistical, not threshold-based.
 - **SLO budgets** — Extend `deadline:` to a multi-run SLO ("95% of runs must complete within 10m over 30 days") with budget burn alerts.
-- **OpenTelemetry traces** — One trace per run, one span per step, exportable to Jaeger/Honeycomb/Tempo. Phase 12 already plans Prometheus; OTel is the trace counterpart.
-- **Web UI write actions** — Current UI is read-only. Trigger-from-UI, approve-from-UI, cancel-from-UI. Phase 11 is adding auth, which makes this safer to ship.
+- **OpenTelemetry traces** — One trace per run, one span per step, exportable to Jaeger/Honeycomb/Tempo. Phase 13 already plans Prometheus; OTel is the trace counterpart.
+- **Web UI write actions** — Current UI is read-only. Trigger-from-UI, approve-from-UI, cancel-from-UI. Phase 11 (multi-user auth) and Phase 12 (single-tenant auth) both make this safer to ship.
 - **Web UI search & filter** — Filter DAG list by `tags:` / `team:` / `owner:`; search runs by error message substring.
 - **Audit log endpoint** — Append-only log of admin actions (register/unregister/cancel/approve/reject) for compliance.
 
@@ -254,7 +237,7 @@ Ideas we may want to consider at some point. Not on the roadmap; no commitment t
 
 ### Data & artifacts
 
-- **Object-store artifact backends** — Write artifacts to S3/GCS/Azure instead of (or in addition to) the local run dir. Required for distributed workers (Phase 12).
+- **Object-store artifact backends** — Write artifacts to S3/GCS/Azure instead of (or in addition to) the local run dir. Required for distributed workers (Phase 13).
 - **Artifact promotion** — `daggle promote <run-id> <artifact>` copies an artifact to a "blessed" location after approval. Useful for model-publishing workflows.
 - **Artifact lineage** — Track artifact provenance (which run, which step) even after run cleanup, in a separate small DB.
 - **Artifact preview in UI/status** — Show first N rows of CSV, Parquet schema, PNG thumbnail. Currently you only see the file name and hash.
@@ -274,7 +257,7 @@ Ideas we may want to consider at some point. Not on the roadmap; no commitment t
 - **PDF audit reports** — Render the audit as a PDF for archival in regulated environments.
 - **Input hash-pinning** — Record content hashes of declared input files, fail the run if a file's hash drifts unexpectedly between runs.
 
-### Performance & scale (gaps in Phase 12)
+### Performance & scale (gaps in Phase 13)
 
 - **Shared cache backends** — Current cache is local. Allow team-shared cache via S3/GCS so a teammate's "I already ran this" speeds up your run.
 - **Cache invalidation rules** — Beyond content-hashing: time-based ("invalidate every 24h") or "always invalidate when file X changes".
