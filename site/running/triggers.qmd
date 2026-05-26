@@ -13,6 +13,19 @@ trigger:
 
 Supports standard 5-field cron expressions plus shorthands: `@every 5m`, `@hourly`, `@daily`, `@weekly`.
 
+### Firing precision
+
+The scheduler checks for due cron entries on every poll tick — by default every **30 seconds**. A run fires within `[scheduled_time, scheduled_time + poll_interval]`. For most batch workflows this is fine: a `30 6 * * MON-FRI` cron lands between 06:30:00 and 06:30:30.
+
+If you need finer precision — e.g. an `@every 1s` schedule that must actually fire every second — lower `scheduler.poll_interval` in `config.yaml` to match the cadence you need:
+
+```yaml
+scheduler:
+  poll_interval: "500ms"
+```
+
+See [Global configuration](../reference/file-layout.qmd#global-configuration-configyaml) for the full `scheduler` block.
+
 ## File watcher
 
 ```yaml

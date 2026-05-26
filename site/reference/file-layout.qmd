@@ -82,6 +82,15 @@ tools:
   quarto: /opt/homebrew/bin/quarto
   git: /usr/bin/git
 
+# Scheduler behaviour (all optional)
+scheduler:
+  poll_interval: "30s"      # how often to scan DAG files AND fire due cron
+                            # entries. Lower this if you have sub-30s cron
+                            # schedules (e.g. "500ms" for @every 1s).
+  max_concurrent: 4         # cap on concurrent DAG runs across the daemon
+  watch_debounce: "500ms"   # quiet window for file-watcher triggers
+  max_catchup_runs: 100     # cap on `catchup: all` fires per startup
+
 # Automatic cleanup of old run data
 cleanup:
   older_than: "30d"

@@ -23,7 +23,7 @@ daggle stop
 
 - Scans all DAG sources (global directory, registered projects, cwd) for files with `trigger:` blocks
 - Manages all trigger types: cron, file watcher, webhook, DAG completion, condition polling, git
-- Hot-reloads DAG files every 30 seconds (detects changes via SHA-256 hashing)
+- Polls every 30 seconds for both DAG-file changes (SHA-256 hashing) and due cron entries — the poll interval determines cron firing precision (see [Firing precision](triggers.qmd#firing-precision))
 - Immediate reload on `kill -HUP <pid>` (SIGHUP)
 - Enforces overlap policy per DAG (`skip` or `cancel`)
 - Limits to 4 concurrent DAG runs
