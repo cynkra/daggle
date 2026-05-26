@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/robfig/cron/v3"
-
 	"github.com/cynkra/daggle/cache"
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/internal/engine"
@@ -34,12 +32,23 @@ type runEntry struct {
 	done   chan struct{} // closed when the run goroutine exits
 }
 
-// dagEntry tracks a registered DAG and its active triggers.
+// dagEntry tracks a registered DAG and its active triggers. The cron trigger
+// (if present) is stored as a *cronEntry; nil means no cron schedule on this
+// DAG. Job execution is driven by Scheduler.fireDueCronEntries from the poll
+// loop — see scheduler/cron_executor.go.
 type dagEntry struct {
-	cronID    cron.EntryID         // zero if no cron trigger
-	schedule  string               // cron expression (empty if none)
+	cron      *cronEntry           // nil if no cron trigger
 	hash      string               // file content hash for change detection
 	cancelFns []context.CancelFunc // cancel functions for non-cron trigger goroutines
+}
+
+// schedule returns the cron expression for this entry, or "" if none.
+// Kept for places that previously inspected dagEntry.schedule directly.
+func (e *dagEntry) schedule() string {
+	if e.cron == nil {
+		return ""
+	}
+	return e.cron.expr
 }
 
 // teardown cancels all non-cron triggers for this entry.
@@ -52,7 +61,6 @@ func (e *dagEntry) teardown() {
 
 // Scheduler manages trigger-based DAG execution.
 type Scheduler struct {
-	cron    *cron.Cron
 	sources []state.DAGSource
 	logger  *slog.Logger
 
@@ -124,7 +132,6 @@ func NewWithConfig(sources []state.DAGSource, cfg state.SchedulerConfig) *Schedu
 		maxCatchup = cfg.MaxCatchupRuns
 	}
 	return &Scheduler{
-		cron:             cron.New(),
 		sources:          sources,
 		logger:           slog.Default(),
 		registered:       make(map[string]*dagEntry),
@@ -158,7 +165,7 @@ func (s *Scheduler) Status() Status {
 
 	triggers := make(map[string]int)
 	for _, entry := range s.registered {
-		if entry.schedule != "" {
+		if entry.cron != nil {
 			triggers["schedule"]++
 		}
 		triggers["other"] += len(entry.cancelFns)
@@ -218,7 +225,10 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	// DAG scan so dagPathFor can resolve registered DAGs.
 	s.loadRuntimeSchedules()
 
-	s.cron.Start()
+	// Fire any cron entries that came due during startup (typically none, but
+	// ensures we don't wait a full poll interval before the first fire on a
+	// schedule whose next tick is imminent).
+	s.fireDueCronEntries(time.Now())
 	s.logger.Info("scheduler started", "sources", len(s.sources))
 
 	// Start on_dag completion dispatcher
@@ -271,6 +281,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 			if err := s.syncDAGs(ctx); err != nil {
 				s.logger.Error("DAG sync failed", "error", err)
 			}
+			s.fireDueCronEntries(time.Now())
 			s.checkDeadlines(ctx)
 		case <-cleanupCh:
 			result, err := state.CleanupRuns(cleanupThreshold)
@@ -285,10 +296,10 @@ func (s *Scheduler) Start(ctx context.Context) error {
 
 // shutdown performs graceful shutdown.
 func (s *Scheduler) shutdown() {
-	// Stop cron (no new triggers)
-	cronCtx := s.cron.Stop()
-
-	// Cancel all non-cron trigger goroutines and stop webhook server
+	// Cancel all non-cron trigger goroutines and stop webhook server. The
+	// cron entries themselves are just data — no goroutines to stop — since
+	// firing is driven by the Start loop, which has already exited by the
+	// time shutdown is called.
 	s.mu.Lock()
 	for _, entry := range s.registered {
 		entry.teardown()
@@ -298,9 +309,6 @@ func (s *Scheduler) shutdown() {
 		s.webhookCloseFn = nil
 	}
 	s.mu.Unlock()
-
-	// Wait for cron jobs to finish their scheduling
-	<-cronCtx.Done()
 
 	// Wait for in-flight runs with a grace period
 	s.mu.Lock()

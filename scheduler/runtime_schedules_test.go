@@ -63,7 +63,7 @@ func TestAddRuntimeSchedule_EnabledRegistersWithCron(t *testing.T) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rs := s.runtimeSchedules[view.ID]
-	if rs == nil || rs.cronID == 0 {
+	if rs == nil || rs.cron == nil {
 		t.Errorf("not registered with cron: rs=%+v", rs)
 	}
 }
@@ -84,7 +84,7 @@ func TestAddRuntimeSchedule_DisabledDoesNotRegister(t *testing.T) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.runtimeSchedules[view.ID].cronID != 0 {
+	if s.runtimeSchedules[view.ID].cron != nil {
 		t.Errorf("disabled schedule should not have a cronID")
 	}
 }
@@ -154,7 +154,7 @@ func TestSetRuntimeScheduleEnabled_Toggle(t *testing.T) {
 		t.Errorf("want disabled")
 	}
 	s.mu.Lock()
-	if s.runtimeSchedules[view.ID].cronID != 0 {
+	if s.runtimeSchedules[view.ID].cron != nil {
 		t.Errorf("cronID not cleared on disable")
 	}
 	s.mu.Unlock()
@@ -168,7 +168,7 @@ func TestSetRuntimeScheduleEnabled_Toggle(t *testing.T) {
 		t.Errorf("want enabled")
 	}
 	s.mu.Lock()
-	if s.runtimeSchedules[view.ID].cronID == 0 {
+	if s.runtimeSchedules[view.ID].cron == nil {
 		t.Errorf("cronID not populated on re-enable")
 	}
 	s.mu.Unlock()
@@ -258,10 +258,10 @@ steps:
 	if len(s.runtimeSchedules) != 2 {
 		t.Errorf("want 2 loaded, got %d", len(s.runtimeSchedules))
 	}
-	if s.runtimeSchedules["sch_seeded_enabled"].cronID == 0 {
+	if s.runtimeSchedules["sch_seeded_enabled"].cron == nil {
 		t.Errorf("enabled should be registered with cron")
 	}
-	if s.runtimeSchedules["sch_seeded_disabled"].cronID != 0 {
+	if s.runtimeSchedules["sch_seeded_disabled"].cron != nil {
 		t.Errorf("disabled should not be registered with cron")
 	}
 }

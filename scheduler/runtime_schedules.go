@@ -14,7 +14,7 @@ import (
 
 // ScheduleView is a read-only snapshot of a schedule (YAML-declared or
 // runtime) suitable for the API layer. NextRun is the zero value when the
-// schedule is disabled or the cron library has not yet computed a next fire.
+// schedule is disabled.
 type ScheduleView struct {
 	ID      string
 	Cron    string
@@ -24,20 +24,19 @@ type ScheduleView struct {
 	Params  map[string]string
 }
 
-// runtimeSchedule pairs a stored schedule with its live cron entry ID. A zero
-// cronID means the schedule is disabled and not currently registered with the
-// cron scheduler.
+// runtimeSchedule pairs a stored schedule with its live cron entry. A nil
+// cron entry means the schedule is disabled and not currently registered for
+// firing.
 type runtimeSchedule struct {
 	dagName string
 	entry   state.ScheduleEntry
 	dagPath string
-	cronID  cron.EntryID
+	cron    *cronEntry
 }
 
-// loadRuntimeSchedules registers every enabled runtime schedule in schedules.yaml
-// with the cron scheduler. Called once at Start; silently skips schedules
-// whose DAG is not currently registered (they'll be picked up when the DAG
-// comes online).
+// loadRuntimeSchedules registers every enabled runtime schedule in
+// schedules.yaml. Called once at Start; silently skips schedules whose DAG is
+// not currently registered (they'll be picked up when the DAG comes online).
 func (s *Scheduler) loadRuntimeSchedules() {
 	all, err := state.LoadSchedules()
 	if err != nil {
@@ -47,6 +46,7 @@ func (s *Scheduler) loadRuntimeSchedules() {
 	if s.runtimeSchedules == nil {
 		s.runtimeSchedules = make(map[string]*runtimeSchedule)
 	}
+	now := time.Now()
 	for dagName, entries := range all {
 		dagPath := s.dagPathFor(dagName)
 		if dagPath == "" {
@@ -56,13 +56,11 @@ func (s *Scheduler) loadRuntimeSchedules() {
 		for _, e := range entries {
 			rs := &runtimeSchedule{dagName: dagName, entry: e, dagPath: dagPath}
 			if e.Enabled {
-				id, err := s.cron.AddFunc(e.Cron, func() {
-					s.triggerRunWithParams(dagPath, "runtime-schedule", e.Params)
-				})
+				ce, err := newCronEntry(e.Cron, dagPath, e.Params, now)
 				if err != nil {
 					s.logger.Error("invalid runtime cron; leaving disabled", "dag", dagName, "id", e.ID, "cron", e.Cron, "error", err)
 				} else {
-					rs.cronID = id
+					rs.cron = ce
 				}
 			}
 			s.runtimeSchedules[e.ID] = rs
@@ -90,9 +88,8 @@ func (s *Scheduler) dagPathFor(dagName string) string {
 }
 
 // ListSchedules returns every YAML-declared and runtime schedule for a DAG.
-// Safe to call even if no scheduler loop is running — NextRun is still
-// populated via a direct cron.ParseStandard(cronExpr).Next(time.Now()) when
-// the cron entry's cached Next is zero (e.g. before cron.Start).
+// Safe to call even before any cron tick has fired — NextRun is read straight
+// off the cronEntry.next field, which is initialised on registration.
 func (s *Scheduler) ListSchedules(dagName string) []ScheduleView {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -100,13 +97,13 @@ func (s *Scheduler) ListSchedules(dagName string) []ScheduleView {
 	var out []ScheduleView
 
 	// YAML-declared (at most one per DAG today).
-	if e, ok := s.registered[dagName]; ok && e.schedule != "" {
+	if e, ok := s.registered[dagName]; ok && e.cron != nil {
 		out = append(out, ScheduleView{
 			ID:      "yaml-" + dagName,
-			Cron:    e.schedule,
+			Cron:    e.cron.expr,
 			Source:  "yaml",
 			Enabled: true,
-			NextRun: s.nextRun(e.cronID, e.schedule),
+			NextRun: e.cron.next,
 		})
 	}
 
@@ -122,8 +119,8 @@ func (s *Scheduler) ListSchedules(dagName string) []ScheduleView {
 			Enabled: rs.entry.Enabled,
 			Params:  rs.entry.Params,
 		}
-		if rs.entry.Enabled {
-			view.NextRun = s.nextRun(rs.cronID, rs.entry.Cron)
+		if rs.entry.Enabled && rs.cron != nil {
+			view.NextRun = rs.cron.next
 		}
 		out = append(out, view)
 	}
@@ -132,26 +129,9 @@ func (s *Scheduler) ListSchedules(dagName string) []ScheduleView {
 	return out
 }
 
-// nextRun reads the cached Next time from the cron entry, falling back to
-// parsing the expression if the cron scheduler hasn't started yet (Entry.Next
-// is a zero value until the cron loop ticks). Must be called with s.mu held.
-func (s *Scheduler) nextRun(id cron.EntryID, expr string) time.Time {
-	if id == 0 {
-		return time.Time{}
-	}
-	if next := s.cron.Entry(id).Next; !next.IsZero() {
-		return next
-	}
-	sched, err := cron.ParseStandard(expr)
-	if err != nil {
-		return time.Time{}
-	}
-	return sched.Next(time.Now())
-}
-
 // AddRuntimeSchedule validates the cron expression, persists the entry, and
-// registers it with the cron scheduler (if enabled). Returns the resulting
-// view — includes the generated ID and the first NextRun.
+// registers it for firing (if enabled). Returns the resulting view, including
+// the generated ID and the first NextRun.
 func (s *Scheduler) AddRuntimeSchedule(dagName string, cronExpr string, params map[string]string, enabled bool) (ScheduleView, error) {
 	dagPath := s.dagPathFor(dagName)
 	if dagPath == "" {
@@ -173,16 +153,14 @@ func (s *Scheduler) AddRuntimeSchedule(dagName string, cronExpr string, params m
 
 	rs := &runtimeSchedule{dagName: dagName, entry: entry, dagPath: dagPath}
 	if enabled {
-		id, err := s.cron.AddFunc(cronExpr, func() {
-			s.triggerRunWithParams(dagPath, "runtime-schedule", params)
-		})
+		ce, err := newCronEntry(cronExpr, dagPath, params, time.Now())
 		if err != nil {
 			// Shouldn't happen because we validated above, but roll back
 			// storage to keep state consistent.
 			_ = state.RemoveSchedule(dagName, entry.ID)
 			return ScheduleView{}, fmt.Errorf("register cron: %w", err)
 		}
-		rs.cronID = id
+		rs.cron = ce
 	}
 
 	s.mu.Lock()
@@ -191,8 +169,8 @@ func (s *Scheduler) AddRuntimeSchedule(dagName string, cronExpr string, params m
 	}
 	s.runtimeSchedules[entry.ID] = rs
 	var next time.Time
-	if entry.Enabled {
-		next = s.nextRun(rs.cronID, entry.Cron)
+	if rs.cron != nil {
+		next = rs.cron.next
 	}
 	s.mu.Unlock()
 
@@ -206,20 +184,16 @@ func (s *Scheduler) AddRuntimeSchedule(dagName string, cronExpr string, params m
 	}, nil
 }
 
-// RemoveRuntimeSchedule unregisters from cron and deletes from storage. It is
-// NOT allowed on YAML-declared schedules — callers should catch ErrYAMLSchedule
-// and return 400 to the user.
+// RemoveRuntimeSchedule deletes a runtime schedule from memory and storage.
+// It is NOT allowed on YAML-declared schedules — callers should catch
+// ErrYAMLSchedule and return 400 to the user.
 func (s *Scheduler) RemoveRuntimeSchedule(dagName, scheduleID string) error {
 	if isYAMLScheduleID(scheduleID) {
 		return ErrYAMLSchedule
 	}
 
 	s.mu.Lock()
-	rs, ok := s.runtimeSchedules[scheduleID]
-	if ok && rs.dagName == dagName {
-		if rs.cronID != 0 {
-			s.cron.Remove(rs.cronID)
-		}
+	if rs, ok := s.runtimeSchedules[scheduleID]; ok && rs.dagName == dagName {
 		delete(s.runtimeSchedules, scheduleID)
 	}
 	s.mu.Unlock()
@@ -230,8 +204,9 @@ func (s *Scheduler) RemoveRuntimeSchedule(dagName, scheduleID string) error {
 	return nil
 }
 
-// SetRuntimeScheduleEnabled toggles enabled and registers/unregisters with cron
-// accordingly. Idempotent when the flag already matches the stored value.
+// SetRuntimeScheduleEnabled toggles enabled and (un)registers the firing
+// entry accordingly. Idempotent when the flag already matches the stored
+// value.
 func (s *Scheduler) SetRuntimeScheduleEnabled(dagName, scheduleID string, enabled bool) (ScheduleView, error) {
 	if isYAMLScheduleID(scheduleID) {
 		return ScheduleView{}, ErrYAMLSchedule
@@ -258,23 +233,20 @@ func (s *Scheduler) SetRuntimeScheduleEnabled(dagName, scheduleID string, enable
 	}
 
 	// Apply the enabled transition.
-	if enabled && rs.cronID == 0 {
-		id, err := s.cron.AddFunc(updated.Cron, func() {
-			s.triggerRunWithParams(rs.dagPath, "runtime-schedule", updated.Params)
-		})
+	if enabled && rs.cron == nil {
+		ce, err := newCronEntry(updated.Cron, rs.dagPath, updated.Params, time.Now())
 		if err != nil {
 			s.mu.Unlock()
 			return ScheduleView{}, fmt.Errorf("register cron: %w", err)
 		}
-		rs.cronID = id
-	} else if !enabled && rs.cronID != 0 {
-		s.cron.Remove(rs.cronID)
-		rs.cronID = 0
+		rs.cron = ce
+	} else if !enabled {
+		rs.cron = nil
 	}
 	rs.entry = updated
 	var next time.Time
-	if updated.Enabled {
-		next = s.nextRun(rs.cronID, updated.Cron)
+	if rs.cron != nil {
+		next = rs.cron.next
 	}
 	s.mu.Unlock()
 
