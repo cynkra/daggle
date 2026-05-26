@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cynkra/daggle/dag"
 	"github.com/cynkra/daggle/state"
@@ -43,7 +44,6 @@ func (s *Scheduler) pruneUnregisteredDAGs(seen map[string]bool, newListeners map
 	defer s.mu.Unlock()
 	for name, entry := range s.registered {
 		if !seen[name] {
-			s.cron.Remove(entry.cronID)
 			entry.teardown()
 			delete(s.registered, name)
 			s.logger.Info("unregistered DAG", "dag", name)
@@ -170,7 +170,6 @@ func (s *Scheduler) syncSource(ctx context.Context, src state.DAGSource, seen ma
 			continue // no change
 		}
 		if exists {
-			s.cron.Remove(existing.cronID)
 			existing.teardown()
 			delete(s.registered, d.Name)
 			s.logger.Info("updating DAG triggers", "dag", d.Name)
@@ -184,14 +183,11 @@ func (s *Scheduler) syncSource(ctx context.Context, src state.DAGSource, seen ma
 
 		// Set up cron trigger
 		if sched := d.CronSchedule(); sched != "" {
-			entryID, err := s.cron.AddFunc(sched, func() {
-				s.triggerRun(dagPath, "cron")
-			})
+			ce, err := newCronEntry(sched, dagPath, nil, time.Now())
 			if err != nil {
 				s.logger.Error("invalid cron schedule", "dag", d.Name, "schedule", sched, "error", err)
 			} else {
-				newEntry.cronID = entryID
-				newEntry.schedule = sched
+				newEntry.cron = ce
 				if mode := d.Trigger.Catchup; mode == "once" || mode == "all" {
 					if s.catchupOnce(d.Name) {
 						go s.runCatchup(d.Name, dagPath, sched, mode)

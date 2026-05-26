@@ -179,8 +179,8 @@ steps:
     command: echo a
 `)
 	_ = sched.syncDAGs(context.Background())
-	if sched.registered["new-dag"].schedule != "@every 2h" {
-		t.Errorf("schedule = %q, want %q", sched.registered["new-dag"].schedule, "@every 2h")
+	if sched.registered["new-dag"].schedule() != "@every 2h" {
+		t.Errorf("schedule = %q, want %q", sched.registered["new-dag"].schedule(), "@every 2h")
 	}
 
 	// Remove DAG file
