@@ -197,8 +197,8 @@ Phase 8 added a first-class notification path independent of R. The `internal/no
 
 The scheduler (`daggle serve`) runs as a long-lived daemon managing all trigger types:
 
-- Uses `robfig/cron/v3` for cron expression parsing
-- **Hot reload** — re-scans DAG directory every 30s, detects changes via SHA-256 file hashing
+- Uses `robfig/cron/v3` for cron expression parsing only; execution is driven by daggle's own poll loop (see [`scheduler/cron_executor.go`](../scheduler/cron_executor.go))
+- **Poll loop** — every 30s the scheduler re-scans DAG sources (SHA-256 file hashing) AND fires any cron entry whose `next` time has passed. Cron firing precision is therefore bounded by `scheduler.poll_interval`; users with sub-30s cadences should lower it
 - **Overlap protection** — skips a scheduled run if the same DAG is still executing
 - **Concurrency limit** — max 4 simultaneous DAG runs (configurable)
 - **Graceful shutdown** — on SIGINT/SIGTERM, stops scheduling and waits up to 5 minutes for in-flight runs
