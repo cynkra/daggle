@@ -15,9 +15,10 @@ import (
 
 // TestSchedulerFiresDAG registers a DAG with an @every 1s schedule, starts
 // the scheduler, and waits for a run directory to appear on disk. The
-// scheduler uses a 30s default poll interval for DAG source rescans, but
-// the initial scan at Start() registers the cron entry immediately, so
-// the first tick fires within a few seconds.
+// scheduler fires due cron entries on every poll tick, so for sub-30s
+// schedules the poll interval has to be lowered to match — otherwise the
+// first fire of an @every 1s cron is delayed by up to 30 seconds. The test
+// uses a 500ms poll interval to stay well inside the 10-second deadline.
 func TestSchedulerFiresDAG(t *testing.T) {
 	isolate(t)
 
@@ -30,7 +31,10 @@ func TestSchedulerFiresDAG(t *testing.T) {
 		t.Fatalf("write fixture: %v", err)
 	}
 
-	sch := scheduler.New([]state.DAGSource{{Name: "test", Dir: dagDir}})
+	sch := scheduler.NewWithConfig(
+		[]state.DAGSource{{Name: "test", Dir: dagDir}},
+		state.SchedulerConfig{PollInterval: "500ms"},
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
