@@ -130,6 +130,7 @@ daggle does not embed R. Every R step spawns a fresh `Rscript` process:
 - **Process groups** (`Setpgid: true`) — ensures child processes (e.g. R spawning further processes) are killed on timeout
 - **Timeout enforcement** — context deadline triggers SIGTERM to the process group, 5s grace period, then SIGKILL
 - **Environment isolation** — each step gets: parent env + DAG env + renv `R_LIBS_USER` (if detected) + step env + accumulated `DAGGLE_OUTPUT_*` vars + metadata (`DAGGLE_RUN_ID`, `DAGGLE_DAG_NAME`, `DAGGLE_RUN_DIR`)
+- **PATH injection** — the directories of all resolved tools (`state.ToolDirs()`) are prepended onto the subprocess `PATH` (see [`internal/envutil/path.go`](../internal/envutil/path.go)). daggle invokes tools by absolute path, but tools that spawn *their own* subprocesses via `PATH` lookup — notably Quarto searching for `Rscript` — would otherwise fail under a minimal daemon `PATH` (launchd/systemd/cron). Applied to steps, engine hooks, and scheduler deadline hooks.
 - **Log capture** — stdout and stderr written to per-step log files; stdout parsed line-by-line for four marker protocols: `::daggle-output::` (inter-step data), `::daggle-summary::` (rich summaries), `::daggle-meta::` (typed metadata), `::daggle-validation::` (validation results). See [protocols.md](protocols.md)
 
 ## State and storage
