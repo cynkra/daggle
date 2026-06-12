@@ -80,9 +80,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-33269adcf1721b81efc5ea7fcfe7f0ee.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-69b6f6b14e1ab199578962ccb16417aa.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-925208da596ad05acbc155bf6a92b2a8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-69b6f6b14e1ab199578962ccb16417aa.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-67966299d4bdcafe038240119600a703.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-cab1462c65bc2974394ef66cbfc55328.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-67966299d4bdcafe038240119600a703.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -611,6 +611,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong>Bare binary name</strong> — fallback (may fail if not on <code>PATH</code>)</li>
 </ol>
 <p><strong>Auto-detection:</strong> When daggle discovers a tool via <code>PATH</code> lookup (step 2), it automatically saves the resolved absolute path to <code>config.yaml</code>. This means running any daggle command once from an interactive shell (e.g., <code>daggle doctor</code> or <code>daggle run</code>) will persist the tool paths. Future scheduler runs — even as a system service with a minimal <code>PATH</code> — will find the saved paths in config.</p>
+<p><strong>Nested tool lookups (<code>PATH</code> injection):</strong> Resolved tool paths only cover the binaries daggle invokes <em>directly</em>. Some of those tools spawn further subprocesses via their own <code>PATH</code> lookup — most notably Quarto, which searches <code>PATH</code> for <code>Rscript</code> to render R chunks. To keep these working under a minimal daemon <code>PATH</code>, daggle prepends the directories of all resolved tools onto the <code>PATH</code> of every step, hook, and deadline-hook subprocess. So once <code>Rscript</code> is resolved (in config or via auto-detection), a Quarto step finds it even when the scheduler was launched by launchd/systemd/cron. See <a href="../running/scheduler.html#troubleshooting-tool-not-found">Scheduler troubleshooting</a>.</p>
 <p>Run <code>daggle doctor</code> to see which paths daggle resolved.</p>
 
 

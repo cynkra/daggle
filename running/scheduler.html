@@ -80,9 +80,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-33269adcf1721b81efc5ea7fcfe7f0ee.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-69b6f6b14e1ab199578962ccb16417aa.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-925208da596ad05acbc155bf6a92b2a8.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-69b6f6b14e1ab199578962ccb16417aa.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-67966299d4bdcafe038240119600a703.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-cab1462c65bc2974394ef66cbfc55328.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-67966299d4bdcafe038240119600a703.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -492,16 +492,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">string</span>&gt;--port&lt;/<span class="kw">string</span>&gt;</span>
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">string</span>&gt;8787&lt;/<span class="kw">string</span>&gt;</span>
 <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  &lt;/<span class="kw">array</span>&gt;</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;RunAtLoad&lt;/<span class="kw">key</span>&gt;</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">true</span>/&gt;</span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;KeepAlive&lt;/<span class="kw">key</span>&gt;</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">true</span>/&gt;</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;StandardOutPath&lt;/<span class="kw">key</span>&gt;</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">string</span>&gt;/tmp/daggle.stdout.log&lt;/<span class="kw">string</span>&gt;</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;StandardErrorPath&lt;/<span class="kw">key</span>&gt;</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">string</span>&gt;/tmp/daggle.stderr.log&lt;/<span class="kw">string</span>&gt;</span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">dict</span>&gt;</span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">plist</span>&gt;</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;EnvironmentVariables&lt;/<span class="kw">key</span>&gt;</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">dict</span>&gt;</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">key</span>&gt;PATH&lt;/<span class="kw">key</span>&gt;</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    &lt;<span class="kw">string</span>&gt;/usr/local/bin:/Library/Frameworks/R.framework/Resources/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin&lt;/<span class="kw">string</span>&gt;</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  &lt;/<span class="kw">dict</span>&gt;</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;RunAtLoad&lt;/<span class="kw">key</span>&gt;</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">true</span>/&gt;</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;KeepAlive&lt;/<span class="kw">key</span>&gt;</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">true</span>/&gt;</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;StandardOutPath&lt;/<span class="kw">key</span>&gt;</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">string</span>&gt;/tmp/daggle.stdout.log&lt;/<span class="kw">string</span>&gt;</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">key</span>&gt;StandardErrorPath&lt;/<span class="kw">key</span>&gt;</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>  &lt;<span class="kw">string</span>&gt;/tmp/daggle.stderr.log&lt;/<span class="kw">string</span>&gt;</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">dict</span>&gt;</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>&lt;/<span class="kw">plist</span>&gt;</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load (starts immediately and on login)</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ex">launchctl</span> load ~/Library/LaunchAgents/com.cynkra.daggle.plist</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -520,13 +525,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">[Service]</span></span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="dt">Type</span><span class="ot">=</span><span class="st">simple</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="dt">ExecStart</span><span class="ot">=</span><span class="st">/usr/local/bin/daggle serve --port 8787</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="dt">ExecStop</span><span class="ot">=</span><span class="st">/usr/local/bin/daggle stop</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="dt">Restart</span><span class="ot">=</span><span class="st">on-failure</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="dt">RestartSec</span><span class="ot">=</span><span class="st">5s</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="kw">[Install]</span></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="dt">WantedBy</span><span class="ot">=</span><span class="st">default.target</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="dt">Environment</span><span class="ot">=</span><span class="st">PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="dt">ExecStart</span><span class="ot">=</span><span class="st">/usr/local/bin/daggle serve --port 8787</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="dt">ExecStop</span><span class="ot">=</span><span class="st">/usr/local/bin/daggle stop</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="dt">Restart</span><span class="ot">=</span><span class="st">on-failure</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="dt">RestartSec</span><span class="ot">=</span><span class="st">5s</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="kw">[Install]</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="dt">WantedBy</span><span class="ot">=</span><span class="st">default.target</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Enable and start</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">systemctl</span> <span class="at">--user</span> daemon-reload</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ex">systemctl</span> <span class="at">--user</span> enable daggle</span>
@@ -542,16 +548,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="troubleshooting-tool-not-found" class="level2">
 <h2 class="anchored" data-anchor-id="troubleshooting-tool-not-found">Troubleshooting: tool not found</h2>
-<p>When running as a system service, the scheduler may not have your shell’s <code>PATH</code>. daggle auto-detects tool paths the first time you run any command from an interactive shell and saves them to <code>~/.config/daggle/config.yaml</code>. To prime the config, simply run:</p>
+<p>A system service often starts with a minimal <code>PATH</code> (launchd uses <code>/usr/bin:/bin:/usr/sbin:/sbin</code>; systemd and cron are similarly bare), missing the <code>/usr/local/bin</code>, <code>/opt/homebrew/bin</code>, or R-framework directories where your shell finds <code>Rscript</code> and <code>quarto</code>. There are two distinct failure modes:</p>
+<section id="daggle-cant-find-rscript-quarto-git" class="level3">
+<h3 class="anchored" data-anchor-id="daggle-cant-find-rscript-quarto-git">daggle can’t find Rscript / quarto / git</h3>
+<p>This is daggle’s <em>own</em> invocation failing. daggle auto-detects tool paths the first time you run any command from an interactive shell and saves them to <code>~/.config/daggle/config.yaml</code>. To prime the config, run:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">daggle</span> doctor</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This resolves and persists paths for Rscript, quarto, git, and sh. Future scheduler runs (including as a system service) will use the saved paths.</p>
-<p>If auto-detection picks the wrong binary or you need a custom path, edit <code>~/.config/daggle/config.yaml</code> directly:</p>
+<p>This resolves and persists absolute paths for Rscript, quarto, git, and sh. Future scheduler runs (including as a system service) use the saved paths and no longer depend on <code>PATH</code>. If auto-detection picks the wrong binary, edit the config directly:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tools</span><span class="kw">:</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">rscript</span><span class="kw">:</span><span class="at"> /usr/local/bin/Rscript</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">quarto</span><span class="kw">:</span><span class="at"> /opt/homebrew/bin/quarto</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="quarto-reports-unable-to-locate-an-installed-version-of-r" class="level3">
+<h3 class="anchored" data-anchor-id="quarto-reports-unable-to-locate-an-installed-version-of-r">Quarto reports “Unable to locate an installed version of R”</h3>
+<p>This one is subtler. daggle launches <code>quarto</code> fine (via the resolved absolute path above), but <strong>Quarto then spawns <code>Rscript</code> itself</strong>, using its own <code>PATH</code> lookup to run the R chunks in your <code>.qmd</code>. daggle’s <code>tools:</code> config has no influence over that nested lookup. Under a minimal daemon <code>PATH</code> you’ll see:</p>
+<pre><code>ERROR: Error executing 'Rscript': Failed to spawn 'Rscript': entity not found
+Unable to locate an installed version of R.</code></pre>
+<p>even though your manual <code>daggle run</code> works (your interactive shell’s <code>PATH</code> includes R).</p>
+<p>daggle mitigates this automatically: it <strong>prepends the directories of all resolved tools onto the <code>PATH</code></strong> it hands to every step, hook, and deadline-hook subprocess. So as long as <code>daggle doctor</code> has resolved Rscript (step 1 above), Quarto inherits a <code>PATH</code> that contains it.</p>
+<p>For belt-and-suspenders — or if you invoke other PATH-dependent tools from within R or Quarto — also set an explicit <code>PATH</code> on the service itself (<code>EnvironmentVariables</code> in the launchd plist, <code>Environment=</code> in the systemd unit, both shown above). That fixes <code>PATH</code> at the source for the daemon and everything it spawns.</p>
 <p>See <a href="../reference/file-layout.html#tool-path-resolution">File Layout</a> for details.</p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
