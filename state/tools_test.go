@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 )
@@ -69,6 +70,74 @@ func TestInitTools_FallbackToBare(t *testing.T) {
 		got := ToolPath(key)
 		if got == "" {
 			t.Errorf("ToolPath(%q) returned empty string, want at least %q", key, bin)
+		}
+	}
+}
+
+func TestToolDirs(t *testing.T) {
+	resetTools()
+	withTempConfig(t)
+	InitTools(Config{
+		Tools: map[string]string{
+			"rscript": "/usr/local/bin/Rscript",
+			"quarto":  "/usr/local/bin/quarto", // same dir as rscript -> de-duped
+			"git":     "/opt/homebrew/bin/git",
+			"sh":      "/bin/sh",
+			"docker":  "/usr/local/bin/docker",
+		},
+	})
+
+	dirs := ToolDirs()
+	// Expect each distinct dir exactly once.
+	want := map[string]bool{
+		"/usr/local/bin":    true,
+		"/opt/homebrew/bin": true,
+		"/bin":              true,
+	}
+	if len(dirs) != len(want) {
+		t.Fatalf("ToolDirs() = %v, want %d distinct dirs", dirs, len(want))
+	}
+	seen := map[string]int{}
+	for _, d := range dirs {
+		seen[d]++
+		if !want[d] {
+			t.Errorf("unexpected dir %q in %v", d, dirs)
+		}
+	}
+	for d, n := range seen {
+		if n != 1 {
+			t.Errorf("dir %q appears %d times, want 1", d, n)
+		}
+	}
+}
+
+func TestToolDirs_SkipsBareNames(t *testing.T) {
+	resetTools()
+	withTempConfig(t)
+	// Empty config + tools not resolvable fall back to bare names, which are
+	// not absolute paths and must not contribute a "." directory.
+	InitTools(Config{Tools: map[string]string{"rscript": "Rscript"}})
+	for _, d := range ToolDirs() {
+		if d == "." || !filepath.IsAbs(d) {
+			t.Errorf("ToolDirs() returned non-absolute dir %q", d)
+		}
+	}
+}
+
+func TestToolDirs_Deterministic(t *testing.T) {
+	resetTools()
+	withTempConfig(t)
+	InitTools(Config{
+		Tools: map[string]string{
+			"rscript": "/a/Rscript",
+			"quarto":  "/b/quarto",
+			"git":     "/c/git",
+		},
+	})
+	first := ToolDirs()
+	for i := 0; i < 5; i++ {
+		if got := ToolDirs(); !slices.Equal(got, first) {
+			t.Fatalf("ToolDirs() not deterministic: %v vs %v", got, first)
 		}
 	}
 }

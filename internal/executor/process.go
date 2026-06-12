@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cynkra/daggle/internal/envutil"
+	"github.com/cynkra/daggle/state"
 )
 
 const (
@@ -56,8 +57,11 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 
 	// Merge environment, ensuring a UTF-8 locale so step subprocesses
 	// (R, Python, libc) don't escape non-ASCII output as <U+nnnn> when the
-	// daemon was launched with LANG=C.
-	cmd.Env = envutil.WithUTF8Locale(append(os.Environ(), env...))
+	// daemon was launched with LANG=C. Also prepend the resolved tool dirs onto
+	// PATH so tools that do their own lookup (e.g. Quarto finding Rscript)
+	// succeed under a minimal daemon PATH (launchd/systemd/cron).
+	merged := envutil.WithToolDirsOnPath(append(os.Environ(), env...), state.ToolDirs())
+	cmd.Env = envutil.WithUTF8Locale(merged)
 
 	// Set up log files
 	stdoutPath := filepath.Join(logDir, stepID+".stdout.log")

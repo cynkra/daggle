@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cynkra/daggle/dag"
+	"github.com/cynkra/daggle/internal/envutil"
 	"github.com/cynkra/daggle/state"
 )
 
@@ -106,6 +107,11 @@ func (s *Scheduler) fireDeadlineHook(ctx context.Context, dagName string, hook *
 	default:
 		return
 	}
+
+	// Inherit the daemon env, but prepend resolved tool dirs onto PATH and
+	// ensure a UTF-8 locale — same treatment as step and engine-hook
+	// subprocesses (see internal/executor/process.go).
+	cmd.Env = envutil.WithUTF8Locale(envutil.WithToolDirsOnPath(os.Environ(), state.ToolDirs()))
 
 	if err := cmd.Run(); err != nil {
 		s.logger.Error("deadline hook failed", "dag", dagName, "error", err)

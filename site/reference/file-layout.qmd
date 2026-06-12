@@ -122,4 +122,6 @@ At startup, daggle resolves each tool path using this precedence:
 
 **Auto-detection:** When daggle discovers a tool via `PATH` lookup (step 2), it automatically saves the resolved absolute path to `config.yaml`. This means running any daggle command once from an interactive shell (e.g., `daggle doctor` or `daggle run`) will persist the tool paths. Future scheduler runs — even as a system service with a minimal `PATH` — will find the saved paths in config.
 
+**Nested tool lookups (`PATH` injection):** Resolved tool paths only cover the binaries daggle invokes *directly*. Some of those tools spawn further subprocesses via their own `PATH` lookup — most notably Quarto, which searches `PATH` for `Rscript` to render R chunks. To keep these working under a minimal daemon `PATH`, daggle prepends the directories of all resolved tools onto the `PATH` of every step, hook, and deadline-hook subprocess. So once `Rscript` is resolved (in config or via auto-detection), a Quarto step finds it even when the scheduler was launched by launchd/systemd/cron. See [Scheduler troubleshooting](../running/scheduler.qmd#troubleshooting-tool-not-found).
+
 Run `daggle doctor` to see which paths daggle resolved.

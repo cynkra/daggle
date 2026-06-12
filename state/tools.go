@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -95,6 +96,37 @@ func ToolPath(name string) string {
 		return bin
 	}
 	return name
+}
+
+// ToolDirs returns the de-duplicated directories of resolved tools whose paths
+// are absolute, in a stable (sorted-by-tool-key) order. These are prepended to
+// the PATH of spawned subprocesses so that tools performing their own PATH
+// lookup (notably Quarto searching for Rscript) find the same binaries daggle
+// resolved, even when the daemon runs with a minimal PATH. Tools that only
+// resolved to a bare binary name (not found anywhere) are skipped.
+func ToolDirs() []string {
+	resolved := ResolvedTools()
+	keys := make([]string, 0, len(resolved))
+	for k := range resolved {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var dirs []string
+	seen := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		p := resolved[k]
+		if !filepath.IsAbs(p) {
+			continue
+		}
+		d := filepath.Dir(p)
+		if seen[d] {
+			continue
+		}
+		seen[d] = true
+		dirs = append(dirs, d)
+	}
+	return dirs
 }
 
 // ResolvedTools returns a copy of the resolved tool paths map.

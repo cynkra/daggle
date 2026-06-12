@@ -75,6 +75,11 @@ Create `~/Library/LaunchAgents/com.cynkra.daggle.plist`:
     <string>--port</string>
     <string>8787</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/Library/Frameworks/R.framework/Resources/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
@@ -109,6 +114,7 @@ After=network.target
 
 [Service]
 Type=simple
+Environment=PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin
 ExecStart=/usr/local/bin/daggle serve --port 8787
 ExecStop=/usr/local/bin/daggle stop
 Restart=on-failure
@@ -135,20 +141,56 @@ For system-level (all users), place the unit file in `/etc/systemd/system/daggle
 
 ## Troubleshooting: tool not found
 
-When running as a system service, the scheduler may not have your shell's `PATH`. daggle auto-detects tool paths the first time you run any command from an interactive shell and saves them to `~/.config/daggle/config.yaml`. To prime the config, simply run:
+A system service often starts with a minimal `PATH` (launchd uses
+`/usr/bin:/bin:/usr/sbin:/sbin`; systemd and cron are similarly bare), missing
+the `/usr/local/bin`, `/opt/homebrew/bin`, or R-framework directories where your
+shell finds `Rscript` and `quarto`. There are two distinct failure modes:
+
+### daggle can't find Rscript / quarto / git
+
+This is daggle's *own* invocation failing. daggle auto-detects tool paths the
+first time you run any command from an interactive shell and saves them to
+`~/.config/daggle/config.yaml`. To prime the config, run:
 
 ```bash
 daggle doctor
 ```
 
-This resolves and persists paths for Rscript, quarto, git, and sh. Future scheduler runs (including as a system service) will use the saved paths.
-
-If auto-detection picks the wrong binary or you need a custom path, edit `~/.config/daggle/config.yaml` directly:
+This resolves and persists absolute paths for Rscript, quarto, git, and sh.
+Future scheduler runs (including as a system service) use the saved paths and no
+longer depend on `PATH`. If auto-detection picks the wrong binary, edit the
+config directly:
 
 ```yaml
 tools:
   rscript: /usr/local/bin/Rscript
   quarto: /opt/homebrew/bin/quarto
 ```
+
+### Quarto reports "Unable to locate an installed version of R"
+
+This one is subtler. daggle launches `quarto` fine (via the resolved absolute
+path above), but **Quarto then spawns `Rscript` itself**, using its own `PATH`
+lookup to run the R chunks in your `.qmd`. daggle's `tools:` config has no
+influence over that nested lookup. Under a minimal daemon `PATH` you'll see:
+
+```
+ERROR: Error executing 'Rscript': Failed to spawn 'Rscript': entity not found
+Unable to locate an installed version of R.
+```
+
+even though your manual `daggle run` works (your interactive shell's `PATH`
+includes R).
+
+daggle mitigates this automatically: it **prepends the directories of all
+resolved tools onto the `PATH`** it hands to every step, hook, and deadline-hook
+subprocess. So as long as `daggle doctor` has resolved Rscript (step 1 above),
+Quarto inherits a `PATH` that contains it.
+
+For belt-and-suspenders — or if you invoke other PATH-dependent tools from
+within R or Quarto — also set an explicit `PATH` on the service itself
+(`EnvironmentVariables` in the launchd plist, `Environment=` in the systemd
+unit, both shown above). That fixes `PATH` at the source for the daemon and
+everything it spawns.
 
 See [File Layout](../reference/file-layout.qmd#tool-path-resolution) for details.

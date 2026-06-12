@@ -94,6 +94,9 @@ func (e *Engine) runHook(ctx context.Context, hook *dag.Hook, name string) {
 	baseEnv := buildEnv(e.dag, e.runInfo, e.renvLibPath)
 	cmd.Env = append(os.Environ(), e.buildStepEnv(baseEnv, dag.Step{})...)
 	cmd.Env = append(cmd.Env, e.hookEnvExtras...)
+	// Prepend resolved tool dirs onto PATH so nested lookups (e.g. Quarto
+	// finding Rscript) work under a minimal daemon PATH.
+	cmd.Env = envutil.WithToolDirsOnPath(cmd.Env, state.ToolDirs())
 	cmd.Env = envutil.WithUTF8Locale(cmd.Env)
 
 	// Route hook output through log files so secrets can be redacted
