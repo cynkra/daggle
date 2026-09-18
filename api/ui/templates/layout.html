@@ -5,21 +5,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ .Title }} — daggle</title>
-  <link rel="stylesheet" href="/ui/static/style.css">
+  <link rel="stylesheet" href="{{ .BasePath }}/ui/static/style.css">
   {{ if .RefreshSeconds }}<meta http-equiv="refresh" content="{{ .RefreshSeconds }}">{{ end }}
 </head>
 <body>
   <header class="header">
-    <a href="/ui/" class="brand">daggle</a>
+    <a href="{{ .BasePath }}/ui/" class="brand">daggle</a>
     <nav>
-      <a href="/ui/" class="{{ if eq .Nav "dags" }}active{{ end }}">DAGs</a>
+      <a href="{{ .BasePath }}/ui/" class="{{ if eq .Nav "dags" }}active{{ end }}">DAGs</a>
     </nav>
   </header>
   <main class="content">
     {{ template "content" . }}
   </main>
   <footer class="footer">
-    daggle status dashboard — <a href="/api/v1/health">API</a>
+    daggle status dashboard — <a href="{{ .BasePath }}/api/v1/health">API</a>
   </footer>
 </body>
 </html>

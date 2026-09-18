@@ -24,8 +24,11 @@ phases are technically independent (see §7). What was previously called
 
 ## 1. Where daggle is today
 
-daggle currently supports exactly one deployment shape: the **on-prem PWB
-sidecar**. In that shape:
+daggle's **defaults** are still the on-prem PWB sidecar, and that is still the
+only shape with an end-to-end operational story.
+([§9](#9-deployment-profile-managed-multi-user-r-hosts) describes the
+deployment profile that shape lands in, and what the alternative shape there
+would demand.) In that shape:
 
 - `daggle serve` runs as a `supervisord` process inside a Posit Workbench (PWB)
   container.
@@ -34,6 +37,12 @@ sidecar**. In that shape:
   container.
 - There is **no authentication**. Every R session inside the container can
   call any API endpoint as an anonymous, equally-privileged caller.
+
+Those last two are now *defaults* rather than the only option: the first part
+of Phase 12 has shipped, so a deployment can bind elsewhere and turn on
+single-tenant auth (§4). What has **not** changed is everything below — the
+daemon is still root and steps still inherit its identity, which is why
+Phase 11 remains the more important piece of work.
 - The daemon runs as **`root`** so it can read every user's home directory to
   discover `.daggle/` project folders.
 - DAG steps inherit the daemon's identity. **Every step runs as root.** A
@@ -226,28 +235,39 @@ self-hosted daggle brought up with `docker compose up` and reachable from a
 browser with TLS (encrypted HTTPS). The on-prem PWB defaults stay untouched
 (loopback bind, no auth) so existing deployments don't need to change.
 
-This phase is **independent of Phase 11**. The self-hosted posture works in
+This phase is **independent of Phase 11**. Three of its items — bind address,
+auth mode, base path — are what currently block daggle from being deployed as a
+service on a managed multi-user R host at all; see
+[§9.2](#92-blocking-gaps-for-shape-b). The self-hosted posture works in
 single-tenant mode (one shared password or token); if Phase 11's user-aware
 auth is also installed, it works in multi-user mode too. Either order ships
 fine.
 
 ### What changes
 
-- **Configurable bind address** — `--bind` / `DAGGLE_BIND_ADDR`, default
-  `127.0.0.1`. Opt in to `0.0.0.0` for "listen on all interfaces".
-- **Single-tenant auth modes** — `DAGGLE_AUTH_MODE=none|basic|token`. Basic
-  uses one shared username/password. Token uses one shared bearer token,
-  auto-generated and persisted to `$DAGGLE_DATA_DIR/auth/token` (mode 0600)
-  on first start. These modes layer on top of Phase 11's user-aware auth as
-  a "single-tenant fallback" for deployments that don't want per-user
-  identity.
+Items marked **shipped** are in the tree today; see `docs/api.md` for the
+operator-facing reference.
+
+- ✅ **shipped** — **Configurable bind address** — `--bind` / `DAGGLE_BIND_ADDR` /
+  `server.bind`, default `127.0.0.1`. Opt in to `0.0.0.0` for "listen on all
+  interfaces".
+- ✅ **shipped** — **Single-tenant auth modes** — `DAGGLE_AUTH_MODE=none|basic|token`,
+  also `--auth-mode` and `server.auth.mode`. Basic uses one shared
+  username/password. Token uses one shared bearer token, auto-generated and
+  persisted to `$DAGGLE_DATA_DIR/auth/token` (mode 0600) on first start and
+  reused on every later start. Both accept `password_file` / `token_file`
+  variants for credentials that arrive as decrypted files. These modes layer
+  on top of Phase 11's user-aware auth as a "single-tenant fallback" for
+  deployments that don't want per-user identity.
 - **TLS termination in daggle** — `DAGGLE_TLS_CERT_FILE` +
   `DAGGLE_TLS_KEY_FILE` for the no-reverse-proxy case.
-- **Reverse-proxy awareness** — `DAGGLE_BASE_PATH` for sub-path mounting
-  behind Caddy/nginx; `--trust-proxy` to honour `X-Forwarded-*` headers.
-- **Safety guardrails** — daggle refuses to start in unsafe combinations
-  (non-loopback bind + `auth=none`, asymmetric TLS cert/key, basic mode with
-  no credentials).
+- ✅ **shipped** — **Reverse-proxy awareness** — `DAGGLE_BASE_PATH` / `--base-path`
+  for sub-path mounting behind Caddy/nginx, with the UI's own links emitted
+  under the prefix; `--trust-proxy` to honour `X-Forwarded-*` headers.
+- ✅ **shipped** (bar the TLS check, which waits on TLS) — **Safety guardrails** —
+  daggle refuses to start in unsafe combinations: non-loopback bind +
+  `auth=none`, an unknown auth mode, basic mode with no credentials, or a
+  configured credential file that is missing or empty.
 - **First-class Docker images** — `ghcr.io/cynkra/daggle` (~50 MB,
   HTTP/shell/Quarto DAGs) and `ghcr.io/cynkra/daggle-r` (rocker/r-ver +
   renv, full R step support). GoReleaser publishes both on tag.
@@ -257,6 +277,9 @@ fine.
 - **`daggle token generate`** — one-shot CLI helper.
 - **`daggle doctor` deploy section** — reports bind, auth mode, TLS state,
   base path; warns near guardrail trips.
+- **An unauthenticated liveness probe** — ✅ **shipped** as `/healthz`, the one
+  route exempt from auth, so a container healthcheck works before any
+  credential exists. `/api/v1/health` keeps the detail and stays behind auth.
 - **daggleR auth** — companion R package honours `DAGGLE_API_TOKEN` and
   `DAGGLE_API_BASIC_USER`/`_PASSWORD`. Tracked separately in the daggleR
   repo.
@@ -419,6 +442,202 @@ how do existing runs and projects (which have no `owner` field) appear?
 Reasonable default: assign them all to a synthetic `legacy` admin owner,
 prompt the operator to reassign during a quiet maintenance window.
 
+**Who decides the executing uid when the executor is remote?** If daggle grows
+the coordinator/worker split that managed multi-user R hosts need (§9.1
+shape b), §3.4 no longer describes one process. Either the coordinator resolves
+the caller to a uid and the worker trusts the dispatch, or the worker
+re-authenticates. Whichever we pick, the coordinator↔worker channel becomes
+part of the trust boundary (§9.4) — and that constrains the protocol, so it
+wants deciding first.
+
+**Is there a "never execute locally" mode?** dagu forces
+`default_execution_mode: distributed` so a run cannot silently execute in a
+container without R (§9.3). Should daggle refuse local execution whenever a
+worker is configured, and should that be the default rather than opt-in?
+
+**Where does run history live?** In shape (b) the executor container is
+recreated on every iteration bump. Schedules, queue, and history have to sit
+with the scheduler; run *logs* are written by the worker. That implies a shared
+volume with a mixed-uid write discipline, which is a known sharp edge in
+comparable deployments: the DAG directory ends up with three classes of writer
+and the UI quietly stops listing what it cannot read.
+
+**Can the whole configuration be generated?** Anything daggle writes to itself
+on first start (a generated token, a user table, a migrated state file) is
+invisible to a template-driven estate (§9.5). Is "every setting expressible in
+one rendered file, no interactive setup step" a constraint we are willing to
+hold?
+
+---
+
+## 9. Deployment profile: managed multi-user R hosts
+
+Everything above is written in the abstract. This section pins it to the
+deployment profile daggle is actually expected to land in, because that profile
+rules some of the options above out and makes others nearly free. It describes a
+class of environment, not one installation — but it is the class we build for
+first, so treat it as the acceptance criteria for Phases 11 and 12.
+
+The profile, in one paragraph: a single host runs a Docker Compose stack
+generated from templates by a provisioning repo. One reverse proxy terminates
+TLS and serves every other service under a sub-path of a host FQDN; nothing else
+publishes a port. Alongside shared infrastructure (database, directory server,
+identity provider) the host runs one or more **multi-user R server containers**
+— a Posit Workbench container or equivalent — each pinned to a dated environment
+snapshot, so several generations of toolchain coexist on one host. Users are real
+Unix accounts, provisioned from LDAP or AD.
+
+Three properties of that profile constrain daggle more than the topology does.
+
+**Containers are disposable; the generated config is the source of truth.** A
+host is rebuilt by re-rendering templates and bringing the stack back up.
+Anything not in the provisioning repo or in a declared volume does not survive.
+Configuration therefore has to be a file a template can generate — not state a
+daemon writes to itself on first start.
+
+**Secrets arrive as encrypted files in the repo**, decrypted by each container's
+entrypoint at start into mode-0400 files under a runtime directory. There is no
+secret manager daemon in the stack. daggle's `${file:...}` env source is exactly
+the right primitive here; `${vault:...}` is dead weight for this profile.
+
+**The R environment lives in exactly one container.** See §9.3 — this is the
+constraint that shapes everything else.
+
+### 9.1 Two candidate shapes, and what each demands
+
+**(a) Sidecar inside the R server container — the shape §1 already describes.**
+`daggle serve` runs as a supervisord program inside the Workbench container: the
+binary is baked into the image, config is rendered to `/etc/daggle/`, and a
+program file is dropped into the image's supervisord include directory. Loopback
+binding is fine, nothing is exposed, and **daggle supports this shape today with
+no new code** — it is how comparable schedulers get deployed on these hosts as an
+interim measure.
+
+Its limits are why that interim measure does not last: the scheduler's lifecycle
+is welded to one environment snapshot's container, run history dies when that
+container is recreated on the next toolchain bump, and one snapshot becomes
+"special" for reasons unrelated to what it contains.
+
+**(b) Standalone service plus workers inside the R containers.** The scheduler,
+web UI, and a dispatch coordinator run in their own container; each R server
+container runs a passive worker that long-polls the coordinator and executes
+dispatched steps locally, making only outbound connections. This is the shape
+that survives snapshot churn, and the one daggle would have to adopt to be a
+first-class service on such a host. It is also, not coincidentally, the shape
+dagu moved to for the same reasons (§5). **daggle cannot do this today** — there
+is no worker/coordinator split (`design.md` Phase 13), so a standalone daggle
+would try to execute steps inside its own container. §9.3 covers why that fails
+outright rather than merely degrading.
+
+### 9.2 Blocking gaps for shape (b)
+
+Checked against the current tree (`internal/cli/serve.go`, `internal/cli/serveconfig.go`, `api/`). The first four shipped in the `feat/deployable-serve` work; the rest are open:
+
+| Requirement | Why | Status |
+|---|---|---|
+| Configurable bind address | Inside a container, loopback is container-local, so the reverse proxy — a *different* container — could never reach it. | ✅ `--bind` / `DAGGLE_BIND_ADDR` / `server.bind` |
+| Auth on by default | The proxy publishes the service on a public FQDN. An unauthenticated "run arbitrary R and shell" API is not deployable. | ✅ `basic` and `token` modes, and a bind guardrail that makes exposure without one impossible |
+| Sub-path mounting | Services live at `https://<fqdn>/<subpath>/`. The proxy forwards `/<subpath>/` without stripping the prefix when the app knows its own root (dagu's `base_path`, authentik's `AUTHENTIK_WEB__PATH`); stripping instead breaks every absolute link the app emits. | ✅ `--base-path` / `DAGGLE_BASE_PATH` / `server.base_path`; UI links are emitted with the prefix |
+| `X-Forwarded-*` handling | TLS terminates at the proxy; daggle sees plain HTTP plus `X-Forwarded-Proto: https`. Redirects, absolute links, and cookie `Secure` flags must follow the forwarded scheme. | ✅ `--trust-proxy` / `server.trust_proxy`, opt-in so headers are never honoured from a direct client |
+| Published OCI image, stable binary path | Images are pinned by tag and tracked by an automated updater; the R image installs a matching CLI by copying the binary straight out of the server image at build time. That needs a published image, a fixed path for the binary, and a static build (`CGO_ENABLED=0` already holds). | **Missing.** Phase 12 `ghcr.io/cynkra/daggle{,-r}` |
+| `PUID` / `PGID` remapping | Shared volumes get written by the daemon, by workers, and by named users, each with a different uid. An entrypoint that honours `PUID`/`PGID` lets a host align the service's identity with local convention without rebuilding the image. | **Missing** |
+| Coordinator/worker version lock | Both sides should come from the same pinned tag, and the protocol needs an explicit version check on connect — a mixed-version pair must refuse to run rather than misbehave. | N/A until workers exist |
+
+TLS *inside* daggle (Phase 12's `DAGGLE_TLS_CERT_FILE`) is not needed for this
+profile — the proxy owns certificates — which makes it the lowest-value Phase 12
+item here. Bind address, auth, and base path were the three that unblocked
+anything at all, and they are now in place; what remains before shape (b) is
+real is the image and the worker split.
+
+### 9.3 Why steps cannot execute in daggle's own container
+
+The R server container is the only place on such a host with a usable execution
+environment, and that is structural rather than incidental. It holds the R
+versions, the Python interpreters, the system libraries and database drivers, the
+decrypted secrets — and the user accounts. Users are resolved through NSS/sssd
+against LDAP or AD, the directory client itself runs under that container's
+supervisord stack, and the container's entrypoint owns home-directory creation
+driven by `getent passwd`. A second container started from the *same image* does
+not inherit any of that, because the provisioning happens at container start, not
+at build time.
+
+So a standalone daggle executing steps locally would run `Rscript` in an image
+with no R, no named users, and no home directories. dagu's answer is
+`default_execution_mode: distributed`, which forces every run through the
+coordinator precisely so that an unlabelled DAG cannot silently execute in the
+scheduler's own container. daggle needs an equivalent, and it should **fail
+loudly** rather than attempt a local run: the failure it prevents ("why does my
+DAG report `Rscript: not found` when R is obviously installed?") is otherwise
+very expensive to diagnose.
+
+### 9.4 Identity: what this profile gives you, and what shape (b) breaks
+
+Good news for §3.4. Inside the R server container the users are real Unix users:
+NSS resolves them, PAM works, `getent passwd alice` returns a home directory, and
+supervisord already runs its children as root. That makes **option 1
+(daemon-as-root, `setuid` before `exec`) directly implementable**, makes **option
+A (PAM)** a genuine choice rather than a theoretical one, and makes **option E
+(Unix-socket peercred)** work for R sessions, since they are processes in the
+same container as the daemon.
+
+Bad news: shape (b) splits the authenticator from the executor, which §3.4
+implicitly assumes are one process. With the coordinator in the standalone
+service and the worker in the R container, identity has to travel over the wire —
+the coordinator authenticates alice, the dispatch carries "run this as alice",
+and the *worker* performs the `setuid`. That turns the worker into a
+privilege-granting surface: it must not accept a bare uid from an unauthenticated
+peer, which pulls the coordinator↔worker channel inside the trust boundary. The
+usual deployment of that channel is unencrypted h2c on an internal container
+network, which is acceptable only as long as nothing on it grants privilege —
+exactly the property identity propagation removes. This wants deciding **before**
+the worker protocol is designed, not after.
+
+It is also where daggle can be better than the incumbent rather than merely
+equivalent. Comparable schedulers run every step as root with `HOME=/root` and
+treat per-user execution as out of scope (§5); on a host where a dozen analysts
+share one container, that is the gap that matters most.
+
+### 9.5 Auth configuration has to be render-time
+
+A builtin user store with browser-driven first-admin setup (dagu's `builtin` mode
+and its `POST /api/v1/auth/setup`) fits this profile badly: the account exists
+only in a volume, so it is invisible to the provisioning repo, lost on a volume
+reset, and not reproducible when the host is rebuilt from templates. Two shapes
+do fit:
+
+- credentials rendered into the config file from per-host variables and encrypted
+  secrets — what comparable services do for their basic-auth credentials;
+- Phase 11 option B's `users.yaml`, which can live encrypted in the provisioning
+  repo and be decrypted into the config directory by the entrypoint.
+
+If Phase 12 auto-generates a token into `$DAGGLE_DATA_DIR/auth/token` on first
+start, it needs two properties to be operable here: it must be **overridable** by
+an env var or a file the template supplies, and when generated it must land in a
+**declared volume**. A secret that only ever exists inside a container is one the
+operator cannot hand to daggleR clients or rotate from the repo.
+
+The general rule: every setting must be expressible in one generated config file,
+and no start-up path may require an interactive step.
+
+### 9.6 What this suggests about ordering
+
+1. ~~**`--bind`, an auth mode, `DAGGLE_BASE_PATH`, forwarded-proto handling.**~~
+   **Shipped.** Individually small — a flag, a middleware, a path prefix — and
+   together they were the difference between "can be deployed as a service on
+   such a host" and "cannot". Config lives in a `server:` block so the whole
+   posture is expressible in one generated file (§9.5), and the guardrails make
+   an unauthenticated exposed daggle a startup error rather than an incident.
+2. **A published image with a stable binary path and a pinned tag.** Also cheap,
+   and it is what lets the R image install a CLI that matches the server.
+3. **§3.4 identity propagation.** The piece comparable tools do not have, and the
+   R server container is the one place where it is both implementable and worth
+   having.
+4. **Worker/coordinator split.** The large one; only worth starting once 1–3
+   exist, and it should be designed with §9.4's trust question settled.
+
+Shape (a) needs none of this. If daggle should reach a managed host before any of
+the above lands, the in-container sidecar is the route.
+
 ---
 
 ## See also
@@ -428,3 +647,6 @@ prompt the operator to reassign during a quiet maintenance window.
   today.
 - [`api.md`](api.md) — current REST API surface (which Phase 11 will
   authorise per-caller).
+- Internal deployment notes for the managed-host platform (private) — the
+  concrete instance of the §9 profile, including the per-host variables and
+  generated Compose/Dockerfile templates a deployment would need.

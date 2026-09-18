@@ -111,8 +111,8 @@ daggle's threat model is **trusted multi-user, not adversarial tenancy**: anyone
 
 What that means in practice today (as of v0.3.1):
 
-- **Loopback-only by default.** `daggle serve` binds to `127.0.0.1`. Reachable only from the host or via SSH tunnel.
-- **No authentication on state-changing endpoints.** `/run`, `/cancel`, `/approve`, `/reject`, `/projects`, `/cleanup`, `/annotations`, `/schedules` all accept anyone who can reach the loopback port. Phase 11 adds per-user authentication and authorisation; Phase 12 adds a single-tenant fallback (`DAGGLE_AUTH_MODE=none|basic|token`) and a guardrail that refuses to start with a non-loopback bind under `DAGGLE_AUTH_MODE=none`.
+- **Loopback-only by default.** `daggle serve` binds to `127.0.0.1` unless `--bind` / `DAGGLE_BIND_ADDR` / `server.bind` says otherwise. Reachable only from the host or via SSH tunnel.
+- **No authentication by default, and no unauthenticated exposure.** In the default loopback posture every endpoint — `/run`, `/cancel`, `/approve`, `/reject`, `/projects`, `/cleanup`, `/annotations`, `/schedules` — accepts anyone who can reach the port. Exposing the API requires choosing an auth mode: `basic` or `token` (`--auth-mode`, `DAGGLE_AUTH_MODE`, `server.auth.mode`), and daggle refuses to start on a non-loopback bind under mode `none`. These are *single-tenant* credentials — one shared identity, no per-user authorisation and no per-user step execution; that is Phase 11.
 - **No CORS headers.** No browser-origin validation; the read-only UI is served from the same origin and there's no expectation of cross-origin calls today. Will be added with Phase 12 (self-hosted browser deployment).
 - **No webhook replay protection beyond HMAC.** `scheduler/webhook.go` validates `X-Daggle-Signature` against a per-DAG secret, but there's no nonce or timestamp window — a captured signed request can be replayed. Acceptable for the current "trusted CI hits this" posture; revisit if webhooks ever face a public surface.
 - **No rate limiting.** The same posture argument applies — loopback or trusted SSH tunnels mean bursty clients are not currently a threat. Phase 12 may add a basic global limiter alongside the self-hosted-browser-facing deployment shape.
@@ -126,7 +126,10 @@ What the codebase does enforce today (the high/medium audit items shipped in 0.3
 - HMAC validation is constant-time (`hmac.Equal`).
 - `~/.vault-token` is refused if its mode permits group/world access; the scheduler PID file is written 0600.
 
-If you're operating daggle in a less-trusted environment than the on-prem PWB sidecar, wait for Phase 11 (multi-user safety) and Phase 12 (self-hosted deployment shape) — or stand it up behind your own auth proxy + non-loopback bind on a VPN-only network.
+- Authentication comparisons are constant-time over SHA-256 digests, so neither a wrong username nor a wrong-length secret is distinguishable by timing. `/healthz` is the only unauthenticated route, and it reports nothing but liveness.
+- A configured credential file (`auth.password_file`, `auth.token_file`) that is missing or empty is a startup error, never a silent fallback to an unauthenticated server.
+
+If you're operating daggle in a multi-user environment, note that single-tenant auth answers "who may call the API", not "whose files may this step touch" — every step still runs as the daemon's own user. For that, wait for Phase 11 (multi-user safety).
 
 ## Roadmap
 
@@ -160,7 +163,11 @@ If you're operating daggle in a less-trusted environment than the on-prem PWB si
 
 → See [`auth-and-deployment.md`](auth-and-deployment.md) for the working design.
 
-**Phase 12 — Deploy & Secure:** Add a second supported deployment posture (small-scale self-hosted daggle behind TLS with a single-tenant login) alongside the on-prem PWB sidecar. Configurable bind address, three auth modes (`none`/`basic`/`token`), TLS termination, reverse-proxy awareness, safety guardrails that refuse unsafe combinations at startup, published Docker images, and compose templates. Independent of Phase 11 — either order ships fine.
+**Phase 12 — Deploy & Secure:** Add a second supported deployment posture (small-scale self-hosted daggle behind TLS with a single-tenant login) alongside the on-prem PWB sidecar. Independent of Phase 11 — either order ships fine.
+
+*Shipped:* configurable bind address (`--bind`), three auth modes (`none`/`basic`/`token`) with file-based credential sources, sub-path mounting (`--base-path`), reverse-proxy awareness (`--trust-proxy`), an unauthenticated `/healthz` probe, a `server:` section in `config.yaml` covering all of it, and startup guardrails that refuse a non-loopback bind under `auth.mode: none`, an unknown mode, `basic` without credentials, or a missing credential file.
+
+*Remaining:* TLS termination inside daggle (`DAGGLE_TLS_CERT_FILE`/`_KEY_FILE`) for the no-reverse-proxy case, published Docker images (`ghcr.io/cynkra/daggle`, `daggle-r`), compose templates, `daggle token generate`, a `daggle doctor` deploy section, and CORS headers for browser deployments.
 
 → See [`auth-and-deployment.md`](auth-and-deployment.md) for the working design.
 

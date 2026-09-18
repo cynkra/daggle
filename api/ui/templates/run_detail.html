@@ -1,7 +1,7 @@
 {{ define "content" }}
 <div class="breadcrumb">
-  <a href="/ui/">DAGs</a><span class="sep">/</span>
-  <a href="/ui/dags/{{ .Run.DAGName }}/runs/latest">{{ .Run.DAGName }}</a><span class="sep">/</span>
+  <a href="{{ .BasePath }}/ui/">DAGs</a><span class="sep">/</span>
+  <a href="{{ .BasePath }}/ui/dags/{{ .Run.DAGName }}/runs/latest">{{ .Run.DAGName }}</a><span class="sep">/</span>
   <span>{{ .Run.RunID }}</span>
 </div>
 
@@ -58,7 +58,7 @@
   <tbody>
     {{ range .Run.Steps }}
     <tr>
-      <td><a href="/ui/dags/{{ $.Run.DAGName }}/runs/{{ $.Run.RunID }}/steps/{{ .StepID }}/log">{{ .StepID }}</a></td>
+      <td><a href="{{ $.BasePath }}/ui/dags/{{ $.Run.DAGName }}/runs/{{ $.Run.RunID }}/steps/{{ .StepID }}/log">{{ .StepID }}</a></td>
       <td><span class="badge badge-{{ .Status }}">{{ .Status }}</span></td>
       <td>{{ .DurationFmt }}</td>
       <td>{{ .Attempts }}</td>

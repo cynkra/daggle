@@ -44,6 +44,9 @@ type Server struct {
 	logger          *slog.Logger
 	ctx             context.Context
 	cancel          context.CancelFunc
+	auth            Auth
+	trustProxy      bool
+	basePath        string
 }
 
 // New creates a new API server. The sourceFunc is called on each request
@@ -77,14 +80,82 @@ func WithSchedulerStatus(fn SchedulerStatusFunc) ServerOption {
 	}
 }
 
+// WithBasePath mounts the API and UI under a sub-path such as "/daggle", for
+// reverse proxies that forward the prefix rather than stripping it.
+//
+// Routes are registered at their canonical paths and the prefix is stripped on
+// the way in, so every handler and every route pattern stays prefix-unaware.
+// Links the server emits are prefixed on the way out (see Server.Link).
+func WithBasePath(p string) ServerOption {
+	return func(s *Server) {
+		s.basePath = normalizeBasePath(p)
+	}
+}
+
+// normalizeBasePath turns operator input into a canonical prefix: empty, or a
+// leading slash with no trailing slash. "/daggle/", "daggle" and "/daggle"
+// all mean the same thing.
+func normalizeBasePath(p string) string {
+	p = strings.Trim(strings.TrimSpace(p), "/")
+	if p == "" {
+		return ""
+	}
+	return "/" + p
+}
+
+// BasePath returns the configured sub-path prefix, or "" when the server is
+// mounted at the root.
+func (s *Server) BasePath() string { return s.basePath }
+
+// Link prefixes a server-absolute path with the base path. Templates and
+// redirects build every internal URL through this, so a sub-path deployment
+// needs no separate link table.
+func (s *Server) Link(p string) string { return s.basePath + p }
+
+// publicPaths are reachable without credentials. Only the liveness probe
+// qualifies: a container healthcheck has to work before anyone has a token,
+// and it reveals nothing but that the process is up.
+var publicPaths = map[string]bool{"/healthz": true}
+
 // sources returns the current DAG sources.
 func (s *Server) sources() []state.DAGSource {
 	return s.sourceFunc()
 }
 
-// Handler returns the HTTP handler for the API server.
+// Handler returns the HTTP handler for the API server, wrapped in the
+// configured middleware.
+//
+// Order matters. Forwarded headers are applied first so everything inside
+// sees the client's real scheme and address; the base path is stripped next so
+// auth and routing work on canonical paths; auth runs last before the mux so
+// no route can be reached without passing it.
 func (s *Server) Handler() http.Handler {
-	return s.mux
+	var h http.Handler = s.mux
+	h = s.auth.requireAuth(h, publicPaths)
+	h = s.stripBasePath(h)
+	if s.trustProxy {
+		h = forwarded(h)
+	}
+	return h
+}
+
+// stripBasePath removes the configured prefix before routing, and redirects
+// the bare prefix ("/daggle") to its directory form ("/daggle/") so relative
+// links from the UI resolve correctly.
+func (s *Server) stripBasePath(next http.Handler) http.Handler {
+	if s.basePath == "" {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == s.basePath:
+			http.Redirect(w, r, s.basePath+"/", http.StatusMovedPermanently)
+		case strings.HasPrefix(r.URL.Path, s.basePath+"/"):
+			http.StripPrefix(s.basePath, next).ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 }
 
 // Shutdown cancels the server context, signalling all async runs to stop.
@@ -98,6 +169,7 @@ func (s *Server) registerRoutes() {
 
 	// System
 	s.mux.HandleFunc("GET /api/v1/health", s.handleHealth)
+	s.mux.HandleFunc("GET /healthz", handleLiveness)
 
 	// DAGs
 	s.mux.HandleFunc("GET /api/v1/dags", s.handleListDAGs)
@@ -159,6 +231,13 @@ func (s *Server) registerRoutes() {
 
 	// UI
 	s.registerUI()
+}
+
+// handleLiveness is the unauthenticated probe. It deliberately reports
+// nothing but that the process is serving: version, uptime and run counts
+// live on /api/v1/health, behind auth.
+func handleLiveness(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func handleOpenAPISpec(w http.ResponseWriter, _ *http.Request) {

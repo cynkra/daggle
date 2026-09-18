@@ -11,7 +11,36 @@ servers:
   - url: http://localhost:9090
     description: Local daggle server (default port)
 
+# Applies to every operation except /healthz, which overrides it with an empty
+# security list. Under auth mode "none" (the loopback default) no credential is
+# required at all; the schemes below describe modes "basic" and "token".
+security:
+  - basicAuth: []
+  - bearerAuth: []
+
 paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      description: >-
+        Unauthenticated liveness check for container healthchecks. Reports only
+        that the process is serving; version, uptime and scheduler counts live
+        on /api/v1/health, which requires credentials.
+      operationId: getLiveness
+      tags: [system]
+      security: []
+      responses:
+        "200":
+          description: Server is serving.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
   /api/v1/health:
     get:
       summary: Health check
@@ -734,6 +763,18 @@ paths:
           $ref: "#/components/responses/BadRequest"
 
 components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: >-
+        Auth mode "basic": one shared username and password. In auth mode
+        "token" the same scheme is accepted with the token as the password and
+        any username, so browsers can reach the status dashboard.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 'Auth mode "token": one shared bearer token.'
   parameters:
     dagName:
       name: name

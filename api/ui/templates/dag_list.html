@@ -17,7 +17,7 @@
     <tr>
       <td>
         {{ if .LastRunID }}
-          <a href="/ui/dags/{{ .Name }}/runs/latest">{{ .Name }}</a>
+          <a href="{{ $.BasePath }}/ui/dags/{{ .Name }}/runs/latest">{{ .Name }}</a>
         {{ else }}
           {{ .Name }}
         {{ end }}
