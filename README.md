@@ -252,11 +252,34 @@ trigger:
 
 ## Scheduler
 
-`daggle serve` runs a long-lived daemon managing all triggers. `daggle serve --port 8787` also starts the REST API and a read-only status dashboard. Hot-reloads DAGs every 30s (or immediately on SIGHUP), limits to 4 concurrent runs, and shuts down gracefully on SIGINT/SIGTERM. Without `daggle serve`, use `daggle run` for manual execution.
+`daggle serve` runs a long-lived daemon managing all triggers. `daggle serve --port 8787` also starts the REST API and a read-only status dashboard (loopback-only and unauthenticated unless configured otherwise — see [REST API](#rest-api)). Hot-reloads DAGs every 30s (or immediately on SIGHUP), limits to 4 concurrent runs, and shuts down gracefully on SIGINT/SIGTERM. Without `daggle serve`, use `daggle run` for manual execution.
 
 ## REST API
 
 When the scheduler is started with `--port`, it also serves a REST API for programmatic access and a read-only status dashboard. See [docs/api.md](docs/api.md) for the full endpoint reference.
+
+By default the API listens on `127.0.0.1` with no authentication — reachable only from the machine (or container) it runs in. To expose it, set a bind address and an auth mode; daggle refuses to start on a non-loopback address without one:
+
+```bash
+daggle serve --port 8787 --bind 0.0.0.0 --auth-mode basic   # credentials from config.yaml or the environment
+daggle serve --port 8787 --base-path /daggle --trust-proxy  # behind a reverse proxy on a sub-path
+```
+
+Everything is settable in `config.yaml` as well, so a deployment can express the whole server posture in one generated file:
+
+```yaml
+server:
+  bind: 0.0.0.0
+  port: 8787
+  base_path: /daggle
+  trust_proxy: true
+  auth:
+    mode: basic
+    username: admin
+    password_file: /run/secrets/daggle-password
+```
+
+See [docs/api.md](docs/api.md#authentication) for the auth modes, the unauthenticated `/healthz` probe, and reverse-proxy details.
 
 The API is designed to be wrapped — build custom dashboards with daggleR + Shiny, or any HTTP client.
 
@@ -297,7 +320,7 @@ daggle lint <dag|path>                         Semantic diagnostics (scripts, se
 daggle status <dag> [--run-id <id>]            Latest (or specific) run status
 daggle why <dag> [run-id]                      Collapse status + stderr + dag_hash drift for a failure
 daggle list [--tag/--team/--owner <x>]         List DAGs with last run status
-daggle serve [--port <n>]                      Scheduler daemon (and REST API with --port)
+daggle serve [--port <n>] [--bind <addr>]      Scheduler daemon (and REST API with --port)
 ```
 
 Other commands: `stop`, `doctor`, `history`, `stats`, `plan`, `logs`, `diff`, `monitor`, `impact`, `annotate`, `archive`, `verify`, `cancel`, `clean`, `approve`, `reject`, `init`, `register`, `unregister`, `projects`, `version`.

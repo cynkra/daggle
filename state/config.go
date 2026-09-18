@@ -13,7 +13,53 @@ type Config struct {
 	Tools         map[string]string              `yaml:"tools,omitempty"`
 	Engine        EngineConfig                   `yaml:"engine,omitempty"`
 	Scheduler     SchedulerConfig                `yaml:"scheduler,omitempty"`
+	Server        ServerConfig                   `yaml:"server,omitempty"`
 	Notifications map[string]NotificationChannel `yaml:"notifications,omitempty"`
+}
+
+// ServerConfig controls how `daggle serve` exposes its HTTP API and UI.
+//
+// Every field is also settable by flag or environment variable (see
+// internal/cli/serve.go), but the file is the primary surface: deployments
+// that generate their configuration from templates need to express the whole
+// server posture in one rendered file, with no interactive setup step.
+type ServerConfig struct {
+	// Bind is the address the API listens on. Default "127.0.0.1".
+	// Set to "0.0.0.0" to accept connections from other containers or hosts;
+	// doing so requires an auth mode other than "none".
+	Bind string `yaml:"bind,omitempty"`
+	// Port is the API port. A --port flag overrides it; 0 means the API is
+	// not started at all.
+	Port int `yaml:"port,omitempty"`
+	// BasePath mounts the API and UI under a sub-path, e.g. "/daggle", for
+	// deployments behind a reverse proxy that does not strip the prefix.
+	BasePath string `yaml:"base_path,omitempty"`
+	// TrustProxy makes daggle honour X-Forwarded-Proto/Host/For. Enable it
+	// only when daggle is genuinely behind a proxy that sets them, since a
+	// direct client can otherwise forge its own apparent scheme and address.
+	TrustProxy bool `yaml:"trust_proxy,omitempty"`
+	// Auth configures who may call the API.
+	Auth AuthConfig `yaml:"auth,omitempty"`
+}
+
+// AuthConfig selects the single-tenant authentication mode and its credentials.
+//
+// The *File variants read the secret from a file at startup, which is how
+// credentials reach a container that decrypts them from an encrypted store at
+// entrypoint time. When both are set, the inline value wins.
+type AuthConfig struct {
+	// Mode is "none", "basic" or "token". Default "none", which is only
+	// permitted on a loopback bind.
+	Mode string `yaml:"mode,omitempty"`
+	// Username and Password are used by mode "basic".
+	Username     string `yaml:"username,omitempty"`
+	Password     string `yaml:"password,omitempty"`
+	PasswordFile string `yaml:"password_file,omitempty"`
+	// Token is the shared bearer token used by mode "token". When mode is
+	// "token" and no token is configured, daggle generates one on first start
+	// and persists it under the data directory.
+	Token     string `yaml:"token,omitempty"`
+	TokenFile string `yaml:"token_file,omitempty"`
 }
 
 // NotificationChannel describes a named notification target in config.yaml.

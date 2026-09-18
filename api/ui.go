@@ -48,7 +48,7 @@ func (s *Server) registerUI() {
 
 	// Root redirect
 	s.mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/ui/", http.StatusFound)
+		http.Redirect(w, r, s.Link("/ui/"), http.StatusFound)
 	})
 }
 
@@ -57,6 +57,7 @@ func (s *Server) registerUI() {
 type dagListView struct {
 	Title          string
 	Nav            string
+	BasePath       string
 	RefreshSeconds int
 	DAGs           []dagListItem
 }
@@ -75,6 +76,7 @@ type dagListItem struct {
 type runDetailView struct {
 	Title          string
 	Nav            string
+	BasePath       string
 	RefreshSeconds int
 	Run            runViewModel
 	Outputs        []OutputEntry
@@ -105,6 +107,7 @@ type stepViewModel struct {
 type stepLogView struct {
 	Title          string
 	Nav            string
+	BasePath       string
 	RefreshSeconds int
 	DAGName        string
 	RunID          string
@@ -166,6 +169,7 @@ func (s *Server) uiDAGList(w http.ResponseWriter, _ *http.Request) {
 	view := dagListView{
 		Title:          "DAGs",
 		Nav:            "dags",
+		BasePath:       s.basePath,
 		RefreshSeconds: 30,
 		DAGs:           dags,
 	}
@@ -235,6 +239,7 @@ func (s *Server) uiRunDetail(w http.ResponseWriter, r *http.Request) {
 	view := runDetailView{
 		Title:          name + " — " + detail.RunID,
 		Nav:            "dags",
+		BasePath:       s.basePath,
 		RefreshSeconds: refresh,
 		Run:            vm,
 		Outputs:        outputs,
@@ -271,6 +276,7 @@ func (s *Server) uiStepLog(w http.ResponseWriter, r *http.Request) {
 	view := stepLogView{
 		Title:          stepID + " — log",
 		Nav:            "dags",
+		BasePath:       s.basePath,
 		RefreshSeconds: refresh,
 		DAGName:        name,
 		RunID:          run.ID,

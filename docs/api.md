@@ -10,11 +10,60 @@ The API is designed to be wrapped. Build custom dashboards with [daggleR](https:
 http://localhost:8787/api/v1
 ```
 
-Port is configurable via `daggle serve --port 8787`. The API is off by default — it only starts when `--port` is explicitly provided.
+Port is configurable via `daggle serve --port 8787` (or `server.port` in `config.yaml`, or `DAGGLE_PORT`). The API is off by default — it only starts when a port is explicitly configured.
+
+The API binds to `127.0.0.1` unless told otherwise. `--bind 0.0.0.0` makes it reachable from other containers or hosts, and requires an authentication mode — daggle refuses to start on a non-loopback address with `auth.mode: none`.
+
+Behind a reverse proxy that forwards a sub-path rather than stripping it, set `--base-path /daggle` (or `server.base_path`). Every route then lives under that prefix, including the UI and `/openapi.yaml`, and the UI's own links are emitted with it.
 
 ## Authentication
 
-No authentication by default (localhost-only). Authentication can be added in a future release.
+Three single-tenant modes, selected with `--auth-mode`, `DAGGLE_AUTH_MODE`, or `server.auth.mode` in `config.yaml`:
+
+| Mode | Credential | Notes |
+|------|-----------|-------|
+| `none` | — | Default. Only permitted on a loopback bind. |
+| `basic` | Shared username + password | HTTP Basic. The browser-facing choice: the status dashboard prompts for a login. |
+| `token` | Shared bearer token | `Authorization: Bearer <token>`, or HTTP Basic with the token as the password and any username (so a browser can reach the UI too). |
+
+```bash
+# basic
+curl -u admin:secret http://localhost:8787/api/v1/dags
+
+# token
+curl -H "Authorization: Bearer $DAGGLE_TOKEN" http://localhost:8787/api/v1/dags
+```
+
+In `token` mode with no token configured, daggle generates one on first start, prints it once, and persists it to `$DAGGLE_DATA_DIR/auth/token` (mode 0600). Subsequent starts reuse it, so restarting does not invalidate every client.
+
+Credentials can be supplied inline or read from a file, which is how they reach a container that decrypts them at entrypoint time:
+
+```yaml
+# config.yaml
+server:
+  bind: 0.0.0.0
+  port: 8787
+  base_path: /daggle
+  trust_proxy: true
+  auth:
+    mode: basic
+    username: admin
+    password_file: /run/secrets/daggle-password
+```
+
+A configured secret file that is missing or empty is a startup error, never a silent fallback to no authentication.
+
+### Liveness
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/healthz` | Unauthenticated liveness probe. Returns `{"status":"ok"}` and nothing else. |
+
+`/healthz` is the only route exempt from authentication, so a container healthcheck works before any credential exists. `/api/v1/health` reports version, uptime and scheduler counts, and stays behind auth.
+
+### Behind a reverse proxy
+
+With `--trust-proxy`, daggle honours `X-Forwarded-Proto`, `X-Forwarded-Host` and `X-Forwarded-For`, so it sees the external scheme, hostname and client address rather than the proxy hop. Enable it only when a proxy genuinely sets those headers — a direct client can otherwise forge them.
 
 ## Endpoints
 

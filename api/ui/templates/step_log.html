@@ -1,7 +1,7 @@
 {{ define "content" }}
 <div class="breadcrumb">
-  <a href="/ui/">DAGs</a><span class="sep">/</span>
-  <a href="/ui/dags/{{ .DAGName }}/runs/{{ .RunID }}">{{ .DAGName }} / {{ .RunID }}</a><span class="sep">/</span>
+  <a href="{{ .BasePath }}/ui/">DAGs</a><span class="sep">/</span>
+  <a href="{{ .BasePath }}/ui/dags/{{ .DAGName }}/runs/{{ .RunID }}">{{ .DAGName }} / {{ .RunID }}</a><span class="sep">/</span>
   <span>{{ .StepID }}</span>
 </div>
 
