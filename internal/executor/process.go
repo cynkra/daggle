@@ -1,7 +1,6 @@
 package executor
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -91,47 +90,48 @@ func runProcess(ctx context.Context, cmd *exec.Cmd, stepID, logDir, workdir stri
 	}
 
 	// Read stdout, parse output/summary/meta/validation markers, write to log file and terminal.
-	// The scanner must finish BEFORE cmd.Wait() is called, otherwise Wait closes the
+	// The reader must finish BEFORE cmd.Wait() is called, otherwise Wait closes the
 	// pipe and any unread kernel-buffered data is discarded (see StdoutPipe docs).
 	outputs := make(map[string]string)
 	var summaries []Summary
 	var metadata []MetaEntry
 	var validations []ValidationResult
+
+	handleLine := func(line string) {
+		if m := OutputMarkerRe.FindStringSubmatch(line); m != nil {
+			outputs[m[1]] = strings.TrimSpace(m[2])
+			// Don't write marker lines to terminal, but still log them
+			_, _ = fmt.Fprintln(stdoutFile, line)
+		} else if m := summaryMarkerRe.FindStringSubmatch(line); m != nil {
+			summaries = append(summaries, Summary{
+				Format:  m[1],
+				Content: m[2],
+			})
+			_, _ = fmt.Fprintln(stdoutFile, line)
+		} else if m := metaMarkerRe.FindStringSubmatch(line); m != nil {
+			metadata = append(metadata, MetaEntry{
+				Type:  m[1],
+				Name:  m[2],
+				Value: m[3],
+			})
+			_, _ = fmt.Fprintln(stdoutFile, line)
+		} else if m := validationMarkerRe.FindStringSubmatch(line); m != nil {
+			validations = append(validations, ValidationResult{
+				Status:  m[1],
+				Name:    m[2],
+				Message: m[3],
+			})
+			_, _ = fmt.Fprintln(stdoutFile, line)
+		} else {
+			_, _ = fmt.Fprintln(stdoutFile, line)
+			_, _ = fmt.Fprintln(os.Stdout, line)
+		}
+	}
+
 	scanDone := make(chan struct{})
 	go func() {
 		defer close(scanDone)
-		scanner := bufio.NewScanner(stdoutPipe)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if m := OutputMarkerRe.FindStringSubmatch(line); m != nil {
-				outputs[m[1]] = strings.TrimSpace(m[2])
-				// Don't write marker lines to terminal, but still log them
-				_, _ = fmt.Fprintln(stdoutFile, line)
-			} else if m := summaryMarkerRe.FindStringSubmatch(line); m != nil {
-				summaries = append(summaries, Summary{
-					Format:  m[1],
-					Content: m[2],
-				})
-				_, _ = fmt.Fprintln(stdoutFile, line)
-			} else if m := metaMarkerRe.FindStringSubmatch(line); m != nil {
-				metadata = append(metadata, MetaEntry{
-					Type:  m[1],
-					Name:  m[2],
-					Value: m[3],
-				})
-				_, _ = fmt.Fprintln(stdoutFile, line)
-			} else if m := validationMarkerRe.FindStringSubmatch(line); m != nil {
-				validations = append(validations, ValidationResult{
-					Status:  m[1],
-					Name:    m[2],
-					Message: m[3],
-				})
-				_, _ = fmt.Fprintln(stdoutFile, line)
-			} else {
-				_, _ = fmt.Fprintln(stdoutFile, line)
-				_, _ = fmt.Fprintln(os.Stdout, line)
-			}
-		}
+		drainLines(stdoutPipe, handleLine)
 	}()
 
 	// Watch for context cancellation: kill the process group so its stdout closes

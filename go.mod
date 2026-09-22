@@ -1,6 +1,6 @@
 module github.com/cynkra/daggle
 
-go 1.26.4
+go 1.26.6
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
