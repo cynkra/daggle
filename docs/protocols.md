@@ -121,3 +121,4 @@ Emit structured validation results for data quality checks.
 - Marker names must start with a letter or underscore, followed by letters, digits, or underscores.
 - Markers are parsed line-by-line from stdout only (not stderr).
 - Invalid marker lines (wrong format, unknown status, etc.) are treated as regular output.
+- A line is whatever precedes the next newline, however long that is, and stdout keeps being read no matter what a step prints. Only the first 1MB of a single line is kept; the rest is dropped and the line is logged with a `[daggle: line too long, N further bytes dropped]` note. A progress counter that redraws with `\r` and never prints `\n` therefore arrives as one very long line, which is worth knowing when a step's log looks emptier than expected.
