@@ -3,6 +3,7 @@ package executor
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -43,7 +44,7 @@ func drainLines(r io.Reader, handle func(string)) {
 				dropped += len(chunk) - room
 			}
 		}
-		if err == bufio.ErrBufferFull {
+		if errors.Is(err, bufio.ErrBufferFull) {
 			continue // no newline yet, the line goes on
 		}
 		// err == nil means a complete line, including an empty one. On EOF or a
